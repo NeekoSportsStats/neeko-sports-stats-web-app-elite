@@ -1,24 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  RefreshCw,
-  Fingerprint,
-  TriangleAlert as AlertTriangle,
-  CircleCheck as CheckCircle,
-  ShieldAlert,
-  Users,
-  ClipboardList,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Search,
-  Download,
-  Shield,
-  GitMerge,
-  Database,
-  Eye,
-} from "lucide-react";
+import { RefreshCw, Fingerprint, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, ShieldAlert, Users, ClipboardList, ChevronDown, ChevronRight, Clock, Search, Download, Shield, GitMerge, Database, Eye, ChartBar as BarChart2, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { AdminPageHeader } from "../shared/AdminPageHeader";
 
@@ -27,7 +10,7 @@ import { AdminPageHeader } from "../shared/AdminPageHeader";
 type Severity = "critical" | "high" | "medium" | "low";
 type AuditSeverity = "CRITICAL" | "WARNING" | "REVIEW" | "LOW" | "PASS";
 type AnomalyStatus = "open" | "resolved" | "ignored";
-type ActiveTab = "anomalies" | "team_audit" | "review_queue";
+type ActiveTab = "anomalies" | "team_audit" | "review_queue" | "stats_mismatch";
 
 interface Anomaly {
   id: string;
@@ -870,6 +853,305 @@ function ReviewQueueItem({ item }: { item: ReviewQueueRow }) {
   );
 }
 
+// ─── Stats Mismatch Audit tab ────────────────────────────────────────────────
+
+interface StatsMismatchRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  severity: AuditSeverity;
+  issue_type: string;
+  detail: string;
+  raw_value: string | null;
+  cache_value: string | null;
+  games_raw: number;
+  has_override: boolean;
+}
+
+interface StatsAuditSummaryRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  position_group: string | null;
+  games_played_raw: number;
+  games_played_cache: number;
+  raw_season_avg_disposals: number | null;
+  cache_season_avg: number | null;
+  cache_projection_final: number | null;
+  projection_delta: number | null;
+  disposal_rows: number;
+  disposal_discrepancy_rows: number;
+  avg_hitouts_raw: number | null;
+  is_ruck_cache: boolean;
+  raw_team: string | null;
+  cache_team: string | null;
+  team_mismatch: boolean;
+  missing_from_cache: boolean;
+  missing_from_raw: boolean;
+  has_override: boolean;
+  check_flags: string[];
+  severity: AuditSeverity;
+}
+
+const STATS_ISSUE_LABEL: Record<string, string> = {
+  disposal_arithmetic:   "Disposal Arithmetic",
+  projection_insane:     "Projection Out of Range",
+  projection_season_gap: "Projection vs Season Gap",
+  team_mismatch:         "Team Mismatch",
+  ruck_no_hitouts:       "Ruckman — No Hitouts",
+  missing_from_cache:    "Missing from Cache",
+  missing_from_raw:      "Missing from Raw",
+};
+
+function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const sevStyle = AUDIT_SEV_STYLES[item.severity] ?? AUDIT_SEV_STYLES.LOW;
+
+  return (
+    <div className={`${
+      item.severity === "CRITICAL" ? "bg-red-950/5" :
+      item.severity === "WARNING"  ? "bg-amber-950/5" : ""
+    }`}>
+      <button
+        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors text-left"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <span className="shrink-0 mt-0.5">
+          {expanded
+            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        </span>
+        <span className={`shrink-0 mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${sevStyle.chip}`}>
+          <span className={`w-1 h-1 rounded-full ${sevStyle.dot}`} />
+          {sevStyle.label}
+        </span>
+        <span className="shrink-0 text-[11px] text-muted-foreground/70 bg-muted/40 px-1.5 py-0.5 rounded font-mono hidden sm:inline-block mt-0.5">
+          {STATS_ISSUE_LABEL[item.issue_type] ?? item.issue_type}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-medium text-foreground truncate">{item.player_name}</span>
+            <span className="text-[11px] text-muted-foreground/60 font-mono shrink-0">#{item.player_id}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+            {item.team_name}
+            {item.has_override && <span className="ml-2 text-sky-400/80">· Has override</span>}
+          </div>
+        </div>
+        <div className="text-right shrink-0 hidden md:block">
+          <div className="text-[11px] text-muted-foreground/60 tabular-nums">{item.games_raw} games</div>
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 ml-[2.25rem] border-l border-border/30">
+          <div className="mt-2 text-[11px] text-amber-400/90 bg-amber-950/20 border border-amber-800/20 rounded px-3 py-2">
+            {item.detail}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 mt-3 text-[11px]">
+            {[
+              ["Provider ID",  `#${item.player_id}`],
+              ["Team",         item.team_name],
+              ["Issue Type",   STATS_ISSUE_LABEL[item.issue_type] ?? item.issue_type],
+              ["Has Override", item.has_override ? "Yes" : "No"],
+              ["Raw Value",    item.raw_value ?? "—"],
+              ["Cache Value",  item.cache_value ?? "—"],
+              ["Games (raw)",  String(item.games_raw)],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-2">
+                <span className="text-muted-foreground shrink-0">{k}</span>
+                <span className="font-mono text-foreground/80 text-right">{v}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[10px] text-muted-foreground/40 italic border-t border-border/20 pt-2">
+            Read-only audit — no changes can be made from this view.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatsMismatchAuditTab() {
+  const [queue, setQueue] = useState<StatsMismatchRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterSev, setFilterSev] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const copied = useRef(false);
+  const [copyLabel, setCopyLabel] = useState("Copy CSV");
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    supabase
+      .rpc("admin_get_player_stats_mismatch_queue")
+      .then(({ data, error: err }) => {
+        if (err) { setError(err.message); return; }
+        setQueue((data as StatsMismatchRow[]) ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = queue.filter((r) => {
+    const nameMatch = search === ""
+      || r.player_name.toLowerCase().includes(search.toLowerCase())
+      || r.team_name.toLowerCase().includes(search.toLowerCase())
+      || String(r.player_id).includes(search);
+    const sevMatch  = filterSev  === "all" || r.severity   === filterSev;
+    const typeMatch = filterType === "all" || r.issue_type === filterType;
+    return nameMatch && sevMatch && typeMatch;
+  });
+
+  const issueTypes = [...new Set(queue.map((r) => r.issue_type))].sort();
+  const sevCounts: Record<string, number> = {};
+  for (const r of queue) sevCounts[r.severity] = (sevCounts[r.severity] ?? 0) + 1;
+
+  const handleCopyCSV = () => {
+    if (copied.current) return;
+    copied.current = true;
+    const header = "player_id,player_name,team_name,severity,issue_type,detail,raw_value,cache_value,games_raw,has_override";
+    const rows = filtered.map((r) =>
+      [r.player_id, `"${r.player_name}"`, `"${r.team_name}"`, r.severity, r.issue_type,
+       `"${r.detail}"`, r.raw_value ?? "", r.cache_value ?? "", r.games_raw, r.has_override].join(",")
+    );
+    navigator.clipboard.writeText([header, ...rows].join("\n")).catch(() => {});
+    setCopyLabel("Copied!");
+    setTimeout(() => { copied.current = false; setCopyLabel("Copy CSV"); }, 2500);
+  };
+
+  const criticalCount = sevCounts["CRITICAL"] ?? 0;
+  const warningCount  = sevCounts["WARNING"]  ?? 0;
+  const reviewCount   = sevCounts["REVIEW"]   ?? 0;
+
+  return (
+    <div className="space-y-5">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <SummaryCard label="Critical Issues"     value={loading ? "…" : criticalCount} icon={AlertTriangle} accent={criticalCount > 0 ? "red" : "muted"} />
+        <SummaryCard label="Warnings"            value={loading ? "…" : warningCount}  icon={ShieldAlert}   accent={warningCount > 0 ? "amber" : "muted"} />
+        <SummaryCard label="Review Items"        value={loading ? "…" : reviewCount}   icon={Eye}           accent={reviewCount > 0 ? "sky" : "muted"} />
+        <SummaryCard label="Total Queue"         value={loading ? "…" : queue.length}  icon={BarChart2}     accent="muted" />
+      </div>
+
+      {/* Severity filter chips */}
+      {!loading && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {(["CRITICAL", "WARNING", "REVIEW"] as AuditSeverity[]).map((sev) => {
+            const n = sevCounts[sev] ?? 0;
+            if (n === 0) return null;
+            return (
+              <button
+                key={sev}
+                onClick={() => setFilterSev(filterSev === sev ? "all" : sev)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
+                  AUDIT_SEV_STYLES[sev].chip
+                } ${filterSev === sev ? "ring-2 ring-offset-1 ring-offset-background" : "opacity-80 hover:opacity-100"}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${AUDIT_SEV_STYLES[sev].dot}`} />
+                {sev} · {n}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
+          <input
+            type="text"
+            placeholder="Search player, team, or ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-background border border-border/40 rounded-md focus:outline-none focus:ring-1 focus:ring-border/60 text-foreground placeholder:text-muted-foreground/40"
+          />
+        </div>
+        <select
+          value={filterSev}
+          onChange={(e) => setFilterSev(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All Severities</option>
+          {(["CRITICAL", "WARNING", "REVIEW"] as AuditSeverity[]).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All Issue Types</option>
+          {issueTypes.map((t) => (
+            <option key={t} value={t}>{STATS_ISSUE_LABEL[t] ?? t}</option>
+          ))}
+        </select>
+        <span className="text-[11px] text-muted-foreground">
+          {filtered.length} of {queue.length}
+        </span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleCopyCSV}
+          className="gap-2 ml-auto text-[11px]"
+          disabled={filtered.length === 0}
+        >
+          <Download className="h-3 w-3" />
+          {copyLabel}
+        </Button>
+      </div>
+
+      {/* Queue table */}
+      <Card className="border-border/50">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            Stats Mismatch Queue
+            {!loading && (
+              <span className="ml-1 text-[11px] text-muted-foreground font-normal">({filtered.length})</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0 pt-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-3">
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground/50">Loading stats mismatch queue…</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500/40" />
+              <p className="text-sm text-muted-foreground">Failed to load: {error}</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <CheckCircle className="h-8 w-8 text-emerald-500/40" />
+              <p className="text-sm text-muted-foreground">No items match current filters</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/20">
+              {filtered.map((item, idx) => (
+                <StatsMismatchQueueItem key={`${item.player_id}-${item.issue_type}-${idx}`} item={item} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <div className="text-[11px] text-muted-foreground/50 space-y-0.5 border-t border-border/20 pt-3">
+        <p><span className="text-red-400/70 font-semibold">CRITICAL</span> — Disposal arithmetic mismatch or projection outside [0, 200].</p>
+        <p><span className="text-amber-400/70 font-semibold">WARNING</span> — Raw team differs from cache team, or large season_avg vs projection gap (&gt;40 pts).</p>
+        <p><span className="text-sky-400/70 font-semibold">REVIEW</span> — Ruckman with near-zero hitouts, or player present in only one data source.</p>
+        <p className="mt-1 italic">Read-only. No production data is modified by this audit.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AdminPlayerIdentity() {
@@ -947,9 +1229,10 @@ export default function AdminPlayerIdentity() {
   const totalOpen = anomalies.length;
 
   const tabs: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
-    { id: "anomalies",   label: "Open Anomalies",    icon: Fingerprint },
-    { id: "team_audit",  label: "Team Coverage Audit", icon: Shield },
-    { id: "review_queue", label: "Review Queue",     icon: ClipboardList },
+    { id: "anomalies",      label: "Open Anomalies",      icon: Fingerprint },
+    { id: "team_audit",     label: "Team Coverage Audit", icon: Shield },
+    { id: "review_queue",   label: "Review Queue",        icon: ClipboardList },
+    { id: "stats_mismatch", label: "Stats Mismatch Audit", icon: BarChart2 },
   ];
 
   return (
@@ -1146,6 +1429,9 @@ export default function AdminPlayerIdentity() {
 
       {/* ── Tab: Review Queue ── */}
       {activeTab === "review_queue" && <ReviewQueueTab />}
+
+      {/* ── Tab: Stats Mismatch Audit ── */}
+      {activeTab === "stats_mismatch" && <StatsMismatchAuditTab />}
     </div>
   );
 }
