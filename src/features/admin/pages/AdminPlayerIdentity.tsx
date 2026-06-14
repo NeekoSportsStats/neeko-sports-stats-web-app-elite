@@ -1771,25 +1771,78 @@ interface PlaceholderRow {
   jumper_number: number | null;
 }
 
+interface PlaceholderGameRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  jumper_number: number | null;
+  week: number;
+  game_id: number;
+  game_date: string | null;
+  venue: string | null;
+  opponent: string | null;
+  disposals: number;
+  kicks: number;
+  handballs: number;
+  marks: number;
+  tackles: number;
+  goals: number;
+  behinds: number;
+  hitouts: number;
+  clearances: number;
+  fantasy_score: number;
+}
+
 function placeholderSeverity(games: number): AuditSeverity {
   if (games >= 5) return "CRITICAL";
   if (games >= 3) return "WARNING";
   return "REVIEW";
 }
 
+function csvEscape(v: string | number | null | undefined): string {
+  const s = v == null ? "" : String(v);
+  return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: (string | number | null | undefined)[][]): void {
+  const content = [
+    headers.map(csvEscape).join(","),
+    ...rows.map((r) => r.map(csvEscape).join(",")),
+  ].join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function PlaceholderGuardTab() {
   const [rows, setRows] = useState<PlaceholderRow[]>([]);
+  const [gameRows, setGameRows] = useState<PlaceholderGameRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSev, setFilterSev] = useState("all");
   const [search, setSearch] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    supabase
-      .rpc("admin_get_placeholder_identities")
-      .then(({ data }) => setRows((data as PlaceholderRow[]) ?? []))
-      .finally(() => setLoading(false));
+    Promise.all([
+      supabase.rpc("admin_get_placeholder_identities"),
+      supabase.rpc("admin_get_placeholder_game_stats"),
+    ]).then(([{ data: d1 }, { data: d2 }]) => {
+      setRows((d1 as PlaceholderRow[]) ?? []);
+      setGameRows((d2 as PlaceholderGameRow[]) ?? []);
+    }).finally(() => setLoading(false));
   }, []);
+
+  const gamesByPlayer = gameRows.reduce<Record<number, PlaceholderGameRow[]>>((acc, g) => {
+    if (!acc[g.player_id]) acc[g.player_id] = [];
+    if (acc[g.player_id].length < 10) acc[g.player_id].push(g);
+    return acc;
+  }, {});
 
   const filtered = rows.filter((r) => {
     const sev = placeholderSeverity(r.games_played ?? 0);
@@ -1807,13 +1860,100 @@ function PlaceholderGuardTab() {
     return acc;
   }, {});
 
+  function toggleExpand(id: number) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function copyPlayerReviewRow(row: PlaceholderRow) {
+    const sev = placeholderSeverity(row.games_played ?? 0);
+    const games = gamesByPlayer[row.player_id] ?? [];
+    const headers = [
+      "provider_player_id","placeholder_name","team","jumper_number","position",
+      "games_played","season_avg","projection_final","severity",
+      "week","game_id","opponent","match_date",
+      "disposals","kicks","handballs","marks","tackles","goals","behinds","hitouts","clearances",
+      "notes","manual_confirmed_name","manual_confirmed_team","manual_confirmed_position","confidence","reviewer_notes",
+    ];
+    const dataRows = games.length > 0
+      ? games.map((g) => [
+          row.player_id, row.player_name, row.team_name, row.jumper_number ?? "", row.position ?? "",
+          row.games_played, row.season_avg ?? "", row.projection ?? "", sev,
+          g.week, g.game_id, g.opponent ?? "", g.game_date ? g.game_date.slice(0, 10) : "",
+          g.disposals, g.kicks, g.handballs, g.marks, g.tackles, g.goals, g.behinds, g.hitouts, g.clearances,
+          "","","","","","",
+        ])
+      : [[
+          row.player_id, row.player_name, row.team_name, row.jumper_number ?? "", row.position ?? "",
+          row.games_played, row.season_avg ?? "", row.projection ?? "", sev,
+          "","","","","","","","","","","","","","","","","","","",
+        ]];
+    const content = [
+      headers.join(","),
+      ...dataRows.map((r) => r.map(csvEscape).join(",")),
+    ].join("\n");
+    navigator.clipboard.writeText(content).then(() => {
+      setCopiedId(row.player_id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
+  function exportReviewCsv() {
+    const headers = [
+      "provider_player_id","placeholder_name","team","jumper_number","position",
+      "games_played","season_avg","projection_final","severity",
+      "week","game_id","opponent","match_date",
+      "disposals","kicks","handballs","marks","tackles","goals","behinds","hitouts","clearances",
+      "notes","manual_confirmed_name","manual_confirmed_team","manual_confirmed_position","confidence","reviewer_notes",
+    ];
+    const dataRows: (string | number | null | undefined)[][] = [];
+    for (const row of rows) {
+      const sev = placeholderSeverity(row.games_played ?? 0);
+      const games = gamesByPlayer[row.player_id] ?? [];
+      if (games.length > 0) {
+        for (const g of games) {
+          dataRows.push([
+            row.player_id, row.player_name, row.team_name, row.jumper_number ?? "", row.position ?? "",
+            row.games_played, row.season_avg ?? "", row.projection ?? "", sev,
+            g.week, g.game_id, g.opponent ?? "", g.game_date ? g.game_date.slice(0, 10) : "",
+            g.disposals, g.kicks, g.handballs, g.marks, g.tackles, g.goals, g.behinds, g.hitouts, g.clearances,
+            "","","","","","",
+          ]);
+        }
+      } else {
+        dataRows.push([
+          row.player_id, row.player_name, row.team_name, row.jumper_number ?? "", row.position ?? "",
+          row.games_played, row.season_avg ?? "", row.projection ?? "", sev,
+          "","","","","","","","","","","","","","","","","","","",
+        ]);
+      }
+    }
+    downloadCsv(`placeholder_review_${new Date().toISOString().slice(0, 10)}.csv`, headers, dataRows);
+  }
+
+  function exportOverrideCsv() {
+    const headers = [
+      "provider_player_id","confirmed_player_name","confirmed_team","confirmed_position",
+      "jumper_number","confidence","evidence_notes","source","apply_override",
+    ];
+    const dataRows = rows.map((row) => [
+      row.player_id, "", row.team_name, row.position ?? "",
+      row.jumper_number ?? "", "", "", "manual_review_confirmed", "false",
+    ]);
+    downloadCsv(`placeholder_override_template_${new Date().toISOString().slice(0, 10)}.csv`, headers, dataRows);
+  }
+
   return (
     <div className="space-y-5">
       {/* Alert banner */}
       <div className="rounded-lg border border-red-800/40 bg-red-950/20 px-4 py-3">
         <div className="flex items-start gap-3">
           <EyeOff className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <p className="text-sm font-semibold text-red-300">
               {rows.length} Provider Placeholder Identities — Hidden from All Public Surfaces
             </p>
@@ -1828,6 +1968,24 @@ function PlaceholderGuardTab() {
               To resolve: obtain real player names from the provider, then add an entry to{" "}
               <code className="font-mono bg-red-950/40 px-1 rounded">afl.player_identity_overrides</code>.
             </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={exportReviewCsv}
+              disabled={loading || rows.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium bg-sky-900/40 hover:bg-sky-900/60 text-sky-300 border border-sky-700/30 disabled:opacity-40 transition-colors"
+            >
+              <Download className="h-3 w-3" />
+              Review CSV
+            </button>
+            <button
+              onClick={exportOverrideCsv}
+              disabled={loading || rows.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium bg-amber-900/40 hover:bg-amber-900/60 text-amber-300 border border-amber-700/30 disabled:opacity-40 transition-colors"
+            >
+              <Download className="h-3 w-3" />
+              Override Template
+            </button>
           </div>
         </div>
       </div>
@@ -1887,6 +2045,7 @@ function PlaceholderGuardTab() {
             {!loading && (
               <span className="ml-1 text-[11px] text-muted-foreground font-normal">({filtered.length})</span>
             )}
+            <span className="ml-auto text-[10px] text-muted-foreground/50 font-normal">Click row to expand game history</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0 pb-0 pt-0">
@@ -1905,6 +2064,7 @@ function PlaceholderGuardTab() {
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="border-b border-border/40 bg-muted/20">
+                    <th className="w-5 px-2" />
                     <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Severity</th>
                     <th className="text-left px-3 py-2.5 text-muted-foreground font-medium">Provider ID</th>
                     <th className="text-left px-3 py-2.5 text-muted-foreground font-medium">Team</th>
@@ -1913,56 +2073,138 @@ function PlaceholderGuardTab() {
                     <th className="text-right px-3 py-2.5 text-muted-foreground font-medium hidden md:table-cell">Season Avg</th>
                     <th className="text-right px-3 py-2.5 text-muted-foreground font-medium hidden md:table-cell">Projection</th>
                     <th className="text-center px-3 py-2.5 text-muted-foreground font-medium">Public</th>
-                    <th className="text-left px-3 py-2.5 text-muted-foreground font-medium hidden lg:table-cell">Next Step</th>
+                    <th className="text-center px-3 py-2.5 text-muted-foreground font-medium">Copy</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((row) => {
                     const sev = placeholderSeverity(row.games_played ?? 0);
                     const sevStyle = AUDIT_SEV_STYLES[sev];
+                    const isExpanded = expandedIds.has(row.player_id);
+                    const playerGames = gamesByPlayer[row.player_id] ?? [];
                     return (
-                      <tr
-                        key={row.player_id}
-                        className={`border-b border-border/20 ${
-                          sev === "CRITICAL" ? "bg-red-950/10" :
-                          sev === "WARNING"  ? "bg-amber-950/5" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-2.5">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${sevStyle.chip}`}>
-                            <span className={`w-1 h-1 rounded-full ${sevStyle.dot}`} />
-                            {sevStyle.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-muted-foreground/80">
-                          #{row.player_id}
-                        </td>
-                        <td className="px-3 py-2.5 text-foreground font-medium">{row.team_name}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
-                          {row.jumper_number != null ? `#${row.jumper_number}` : "—"}
-                        </td>
-                        <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
-                          sev === "CRITICAL" ? "text-red-300" :
-                          sev === "WARNING"  ? "text-amber-300" : "text-sky-300"
-                        }`}>
-                          {row.games_played}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
-                          {row.season_avg != null ? Number(row.season_avg).toFixed(1) : "—"}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
-                          {row.projection != null ? Number(row.projection).toFixed(1) : "—"}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80 font-medium bg-emerald-950/20 border border-emerald-800/20 rounded px-1.5 py-0.5">
-                            <EyeOff className="h-2.5 w-2.5" />
-                            Hidden
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground/60 hidden lg:table-cell">
-                          Add to <code className="font-mono text-[10px] bg-muted/30 px-1 rounded">player_identity_overrides</code>
-                        </td>
-                      </tr>
+                      <>
+                        <tr
+                          key={row.player_id}
+                          onClick={() => toggleExpand(row.player_id)}
+                          className={`border-b border-border/20 cursor-pointer transition-colors hover:bg-muted/10 ${
+                            sev === "CRITICAL" ? "bg-red-950/10" :
+                            sev === "WARNING"  ? "bg-amber-950/5" : ""
+                          }`}
+                        >
+                          <td className="px-2 py-2.5 text-muted-foreground/40">
+                            {isExpanded
+                              ? <ChevronDown className="h-3 w-3" />
+                              : <ChevronRight className="h-3 w-3" />}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${sevStyle.chip}`}>
+                              <span className={`w-1 h-1 rounded-full ${sevStyle.dot}`} />
+                              {sevStyle.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-muted-foreground/80">
+                            #{row.player_id}
+                          </td>
+                          <td className="px-3 py-2.5 text-foreground font-medium">{row.team_name}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                            {row.jumper_number != null ? `#${row.jumper_number}` : "—"}
+                          </td>
+                          <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
+                            sev === "CRITICAL" ? "text-red-300" :
+                            sev === "WARNING"  ? "text-amber-300" : "text-sky-300"
+                          }`}>
+                            {row.games_played}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
+                            {row.season_avg != null ? Number(row.season_avg).toFixed(1) : "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
+                            {row.projection != null ? Number(row.projection).toFixed(1) : "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80 font-medium bg-emerald-950/20 border border-emerald-800/20 rounded px-1.5 py-0.5">
+                              <EyeOff className="h-2.5 w-2.5" />
+                              Hidden
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => copyPlayerReviewRow(row)}
+                              title="Copy review CSV rows for this player"
+                              className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                                copiedId === row.player_id
+                                  ? "text-emerald-300 bg-emerald-950/30 border-emerald-700/30"
+                                  : "text-muted-foreground/60 bg-muted/20 border-border/30 hover:text-foreground hover:bg-muted/40"
+                              }`}
+                            >
+                              {copiedId === row.player_id ? "Copied!" : "Copy"}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${row.player_id}-expanded`} className={`border-b border-border/20 ${
+                            sev === "CRITICAL" ? "bg-red-950/5" :
+                            sev === "WARNING"  ? "bg-amber-950/3" : "bg-muted/3"
+                          }`}>
+                            <td colSpan={10} className="px-6 pb-3 pt-1">
+                              {playerGames.length === 0 ? (
+                                <p className="text-[10px] text-muted-foreground/50 py-2">No game records found in player_games.</p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <p className="text-[10px] text-muted-foreground/60 mb-2 pt-1">
+                                    Last {playerGames.length} game{playerGames.length !== 1 ? "s" : ""} · Player #{row.player_id} · {row.team_name}
+                                  </p>
+                                  <table className="w-full text-[10px] border border-border/20 rounded-md overflow-hidden">
+                                    <thead>
+                                      <tr className="bg-muted/30 border-b border-border/20">
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Wk</th>
+                                        <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Opponent</th>
+                                        <th className="text-left px-2 py-1.5 text-muted-foreground font-medium hidden sm:table-cell">Venue</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Dis</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">K</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">HB</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Mk</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Tk</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">G</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">B</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium hidden md:table-cell">HO</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium hidden md:table-cell">Clr</th>
+                                        <th className="text-right px-2 py-1.5 text-muted-foreground font-medium font-semibold">SC</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {playerGames.map((g) => (
+                                        <tr key={g.game_id} className="border-b border-border/10 hover:bg-muted/10">
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/70">{g.week}</td>
+                                          <td className="px-2 py-1.5 text-foreground/80">{g.opponent ?? "—"}</td>
+                                          <td className="px-2 py-1.5 text-muted-foreground/60 hidden sm:table-cell">{g.venue ?? "—"}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums">{g.disposals}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/80">{g.kicks}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/80">{g.handballs}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/80">{g.marks}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/80">{g.tackles}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-amber-400/80">{g.goals}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/60">{g.behinds}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/60 hidden md:table-cell">{g.hitouts}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground/60 hidden md:table-cell">{g.clearances}</td>
+                                          <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${
+                                            g.fantasy_score >= 80 ? "text-emerald-300" :
+                                            g.fantasy_score >= 60 ? "text-sky-300" :
+                                            g.fantasy_score >= 40 ? "text-foreground" :
+                                            g.fantasy_score === 0 ? "text-muted-foreground/30" :
+                                            "text-muted-foreground/60"
+                                          }`}>{g.fantasy_score}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     );
                   })}
                 </tbody>
@@ -1980,6 +2222,7 @@ function PlaceholderGuardTab() {
         <p><span className="text-sky-400/70 font-semibold">REVIEW (1–2 games)</span> — Low volume. May be a new player or injured player with sparse data. Monitor.</p>
         <p className="pt-1">All rows are blocked at <code className="font-mono bg-muted/30 px-1 rounded">player_name NOT LIKE 'Player#%'</code> in all public views and RPCs.
           Raw stats are preserved intact. No production data is modified by this view.</p>
+        <p className="pt-1"><strong className="text-muted-foreground/70">Review CSV</strong> — Per-game rows with blank fill-in columns: manual_confirmed_name, manual_confirmed_team, manual_confirmed_position, confidence, reviewer_notes. <strong className="text-muted-foreground/70">Override Template</strong> — One row per Player# with apply_override=false. Set to true when ready to apply.</p>
       </div>
     </div>
   );
