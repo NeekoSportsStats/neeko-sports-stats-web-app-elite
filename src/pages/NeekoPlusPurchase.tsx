@@ -520,12 +520,7 @@ const NeekoPlusPurchase = () => {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        toast({
-          title: "Please log in first",
-          description: "You need to be logged in to subscribe.",
-          variant: "destructive",
-        });
-        navigate("/auth?redirect=checkout");
+        navigate(`/auth?mode=signup&plan_key=${plan}`);
         return;
       }
 

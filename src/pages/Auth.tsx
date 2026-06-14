@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Trophy, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Trophy, ArrowLeft, Eye, EyeOff, Crown, Zap } from "lucide-react";
+import { NEEKO_PRICING } from "@/config/neekoPricing";
+import type { NeekoPlan } from "@/config/neekoPricing";
 
 const emailSchema = z.string().email("Invalid email address");
 
@@ -22,8 +24,97 @@ const passwordSchema = z
   .regex(/[0-9]/, "Must contain at least one number")
   .regex(/[^A-Za-z0-9]/, "Must contain at least one symbol");
 
+const VALID_PLANS = new Set<string>(["round_pass_7d", "weekly", "season"]);
+
+function isValidPlan(val: string | null): val is NeekoPlan {
+  return val !== null && VALID_PLANS.has(val);
+}
+
+function planLabel(plan: NeekoPlan): string {
+  if (plan === "round_pass_7d") return "7-Day Round Pass";
+  if (plan === "season") return "Season Pass";
+  return "Weekly";
+}
+
+function planPrice(plan: NeekoPlan): string {
+  if (plan === "round_pass_7d") return `$${NEEKO_PRICING.round_pass_7d.price} AUD`;
+  if (plan === "season") return `$${NEEKO_PRICING.season.price} AUD`;
+  return `$${NEEKO_PRICING.weekly.price} AUD/wk`;
+}
+
+function planNote(plan: NeekoPlan): string {
+  if (plan === "round_pass_7d") return "One-time payment · 7 days full access · No subscription";
+  if (plan === "season") return "One-time payment · Full 2026 season access";
+  return "Weekly subscription · Cancel anytime";
+}
+
+function PlanCard({ plan }: { plan: NeekoPlan }) {
+  return (
+    <div style={{
+      background: plan === "season"
+        ? "linear-gradient(160deg, #1c1507 0%, #110e04 100%)"
+        : plan === "round_pass_7d"
+          ? "linear-gradient(160deg, #0d1829 0%, #07101e 100%)"
+          : "rgba(255,255,255,0.04)",
+      border: `1px solid ${
+        plan === "season"
+          ? "rgba(224,174,45,0.40)"
+          : plan === "round_pass_7d"
+            ? "rgba(96,165,250,0.40)"
+            : "rgba(255,255,255,0.18)"
+      }`,
+      borderRadius: 12,
+      padding: "14px 16px",
+      marginBottom: 20,
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+        background: plan === "season"
+          ? "rgba(224,174,45,0.12)"
+          : plan === "round_pass_7d"
+            ? "rgba(96,165,250,0.12)"
+            : "rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        {plan === "season" ? (
+          <Crown size={16} style={{ color: "#E0AE2D" }} />
+        ) : (
+          <Zap size={16} style={{ color: plan === "round_pass_7d" ? "#60a5fa" : "#F5F5F5" }} />
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#F5F5F5" }}>
+          {planLabel(plan)}
+        </p>
+        <p style={{ margin: "1px 0 0", fontSize: 11, color: "rgba(255,255,255,0.40)" }}>
+          {planNote(plan)}
+        </p>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <p style={{
+          margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: "-0.03em",
+          color: plan === "season" ? "#E0AE2D" : plan === "round_pass_7d" ? "#60a5fa" : "#F5F5F5",
+        }}>
+          {planPrice(plan)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const Auth = () => {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const rawPlanKey = searchParams.get("plan_key") ?? searchParams.get("plan");
+  const planKey: NeekoPlan | null = isValidPlan(rawPlanKey) ? rawPlanKey : null;
+  const isPurchaseIntent = planKey !== null;
+
+  const [mode, setMode] = useState<"login" | "signup">(isPurchaseIntent ? "signup" : "login");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,36 +136,34 @@ const Auth = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
   const SAFE_REDIRECTS = new Set(["/", "/account", "/dashboard", "checkout", "account"]);
   const rawRedirect = searchParams.get("redirect") || "/";
-  const redirect = SAFE_REDIRECTS.has(rawRedirect) ? rawRedirect : "/";
 
-  // ⭐ FIXED REDIRECT BEHAVIOUR ⭐
+  function getPostAuthPath(): string {
+    if (planKey) {
+      return `/start-checkout?plan_key=${planKey}`;
+    }
+    if (rawRedirect === "checkout") return "/start-checkout";
+    if (rawRedirect === "account") return "/account";
+    if (SAFE_REDIRECTS.has(rawRedirect)) return rawRedirect;
+    return "/";
+  }
+
   useEffect(() => {
     if (!user) return;
-
-    // 🚫 Block redirects during password recovery
     const path = window.location.pathname;
-    if (path.includes("forgot-password") || path.includes("reset-password")) {
-      return;
-    }
+    if (path.includes("forgot-password") || path.includes("reset-password")) return;
+    navigate(getPostAuthPath(), { replace: true });
+  }, [user]);
 
-    if (redirect === "checkout") {
-      navigate("/start-checkout", { replace: true });
-      return;
+  useEffect(() => {
+    if (isPurchaseIntent) {
+      track("auth_checkout_viewed", {
+        plan_key: planKey,
+        mode,
+      });
     }
-
-    if (redirect === "account") {
-      navigate("/account", { replace: true });
-      return;
-    }
-
-    navigate(redirect, { replace: true });
-  }, [user, redirect, navigate]);
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +174,10 @@ const Auth = () => {
       emailSchema.parse(email);
 
       if (mode === "login") {
+        if (isPurchaseIntent) {
+          track("auth_signin_started", { plan_key: planKey });
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -106,6 +199,10 @@ const Auth = () => {
       }
 
       // SIGNUP
+      if (isPurchaseIntent) {
+        track("auth_signup_started", { plan_key: planKey });
+      }
+
       passwordSchema.parse(password);
 
       if (password !== confirmPassword) {
@@ -172,9 +269,23 @@ const Auth = () => {
           </div>
 
           <h2 className="text-xl font-semibold">
-            {mode === "login" ? "Welcome Back" : "Create Account"}
+            {isPurchaseIntent
+              ? mode === "signup"
+                ? "Create account to continue"
+                : "Sign in to continue"
+              : mode === "login"
+                ? "Welcome Back"
+                : "Create Account"}
           </h2>
+          {isPurchaseIntent && (
+            <p className="text-sm text-muted-foreground">
+              You&apos;ll be taken straight to checkout after {mode === "signup" ? "signing up" : "signing in"}.
+            </p>
+          )}
         </div>
+
+        {/* Plan card — only shown for purchase intent */}
+        {isPurchaseIntent && planKey && <PlanCard plan={planKey} />}
 
         {/* FORM */}
         <form onSubmit={handleAuth} className="space-y-4">
@@ -288,7 +399,11 @@ const Auth = () => {
           )}
 
           <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
-            {loading ? "Loading..." : mode === "login" ? "Sign In" : "Sign Up"}
+            {loading
+              ? "Loading..."
+              : mode === "login"
+                ? isPurchaseIntent ? "Sign In & Continue to Checkout" : "Sign In"
+                : isPurchaseIntent ? "Create Account & Continue" : "Sign Up"}
           </Button>
 
           {/* INLINE ERROR MESSAGE */}

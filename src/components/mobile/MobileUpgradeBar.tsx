@@ -54,7 +54,7 @@ export default function MobileUpgradeBar({ state }: Props) {
         </div>
 
         <Link
-          to="/neeko-plus"
+          to="/start-checkout?plan_key=round_pass_7d"
           onClick={() =>
             trackMobileStickyCTA({
               button_text: ctaLabel,

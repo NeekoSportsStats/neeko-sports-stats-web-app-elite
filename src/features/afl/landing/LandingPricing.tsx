@@ -369,7 +369,7 @@ export default function LandingPricing() {
             </div>
 
             <Link
-              to="/neeko-plus"
+              to={`/start-checkout?plan_key=${hoveredPlan}`}
               onClick={() => trackPricingCTA({ plan: hoveredPlan, button_text: hoveredPlan === "round_pass_7d" ? "Start 7-Day Access — $7.99" : hoveredPlan === "weekly" ? "Get Neeko+ Weekly" : "Get Neeko+ Season Pass", source: "landing_pricing", plan_key: hoveredPlan, billing_type: hoveredPlan === "weekly" ? "subscription" : "one_time", value: hoveredPlan === "round_pass_7d" ? 7.99 : hoveredPlan === "weekly" ? 5.99 : 59, currency: "AUD" })}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

@@ -61,10 +61,10 @@ export default function LandingFinalCTA() {
           alignItems: "center", gap: 14,
         }}>
           <Link
-            to="/neeko-plus"
+            to="/start-checkout?plan_key=round_pass_7d"
             onClick={() => {
               trackNeekoPlus({ source: "final_cta", button_text: "Start 7-Day Access — $7.99 AUD", plan: "round_pass_7d", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" });
-              trackLandingCTA({ button_text: "Start 7-Day Access — $7.99 AUD", section: "final_cta", target_url: "/neeko-plus", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" });
+              trackLandingCTA({ button_text: "Start 7-Day Access — $7.99 AUD", section: "final_cta", target_url: "/start-checkout", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" });
             }}
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
