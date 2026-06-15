@@ -1,8 +1,14 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import posthog from "posthog-js";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardMatch, StatBoardPlayer } from "@/features/afl/stat-board/types";
+
+// ── Build marker — proves this exact code is running in production ────────────
+const BUILD_MARKER = "cta_hotfix_v2";
+
+// ── Feature flags ─────────────────────────────────────────────────────────────
+const ENABLE_TIKTOK_STICKY_CTA = false;
 
 // ── UTM helpers ───────────────────────────────────────────────────────────────
 
@@ -84,6 +90,60 @@ const PAID_TRACKING = {
   currency: "AUD",
   source_page: "/tiktok",
 } as const;
+
+// ── CTA tracking helper ───────────────────────────────────────────────────────
+// Attaches to BOTH onPointerDownCapture and onClickCapture.
+// A 500ms debounce distinguishes "pointer event reached element" from "click fired".
+
+function makeTrackTikTokCTA(
+  utms: Record<string, string>,
+  params: {
+    cta_type: string;
+    cta_text: string;
+    cta_location: string;
+    destination: string;
+    plan_key?: string;
+    billing_type?: string;
+    value?: number;
+    currency?: string;
+  },
+) {
+  let lastFired = 0;
+
+  return function trackTikTokCTA(eventType: "pointer_down" | "click") {
+    const now = Date.now();
+    // Debounce: pointer_down and click within 500ms are the same tap — fire each once
+    if (eventType === "click" && now - lastFired < 500) return;
+    lastFired = now;
+
+    try {
+      posthog.capture("cta_clicked", {
+        page: "tiktok",
+        source_page: "/tiktok",
+        clean_page_path: "/tiktok",
+        device_type: getDeviceType(),
+        in_app_browser: detectInAppBrowser(),
+        viewport_width: window.innerWidth,
+        viewport_height: window.innerHeight,
+        event_type: eventType,
+        build_marker: BUILD_MARKER,
+        ...params,
+        ...utms,
+      });
+      posthog.capture("tiktok_cta_navigation_started", {
+        clean_page_path: "/tiktok",
+        event_type: eventType,
+        build_marker: BUILD_MARKER,
+        ...params,
+        ...utms,
+      });
+    } catch { /* non-critical */ }
+
+    if (import.meta.env.DEV) {
+      console.log("[TikTok CTA]", eventType, params.cta_type, params.cta_location, "→", params.destination);
+    }
+  };
+}
 
 // ── Preview data types ────────────────────────────────────────────────────────
 
@@ -175,137 +235,6 @@ async function fetchPreviewRows(utms: Record<string, string>): Promise<PreviewRo
   });
 }
 
-// ── Safe CTA fire-and-navigate helper ────────────────────────────────────────
-// Fires analytics synchronously, then navigates. Navigation NEVER waits on
-// analytics so a posthog failure cannot block the user.
-
-function fireCTAAnalytics(
-  utms: Record<string, string>,
-  params: {
-    cta_type: string;
-    cta_text: string;
-    cta_location: string;
-    destination: string;
-    plan_key?: string;
-    billing_type?: string;
-    value?: number;
-    currency?: string;
-  },
-) {
-  try {
-    posthog.capture("cta_clicked", {
-      page: "tiktok",
-      source_page: "/tiktok",
-      clean_page_path: "/tiktok",
-      device_type: getDeviceType(),
-      in_app_browser: detectInAppBrowser(),
-      viewport_width: window.innerWidth,
-      viewport_height: window.innerHeight,
-      ...params,
-      ...utms,
-    });
-  } catch { /* non-critical */ }
-
-  if (import.meta.env.DEV) {
-    console.log("[TikTok CTA]", params.cta_type, params.cta_location, "→", params.destination);
-  }
-}
-
-function fireCTANavigationStarted(
-  utms: Record<string, string>,
-  params: {
-    cta_type: string;
-    cta_location: string;
-    destination: string;
-    plan_key?: string;
-  },
-) {
-  try {
-    posthog.capture("tiktok_cta_navigation_started", {
-      clean_page_path: "/tiktok",
-      ...params,
-      ...utms,
-    });
-  } catch { /* non-critical */ }
-}
-
-// ── Checkout helpers ──────────────────────────────────────────────────────────
-
-async function startCheckout(
-  utms: Record<string, string>,
-  ctaLocation: string,
-): Promise<void> {
-  if (!supabase) throw new Error("Supabase not initialised");
-
-  const { data: { session } } = await supabase.auth.getSession();
-
-  posthog.capture("checkout_attempted", {
-    clean_page_path: "/tiktok",
-    cta_location: ctaLocation,
-    ...PAID_TRACKING,
-    ...utms,
-  });
-
-  if (!session?.access_token) {
-    // Logged out — route to auth with plan preserved
-    posthog.capture("auth_required_for_checkout", {
-      clean_page_path: "/tiktok",
-      cta_location: ctaLocation,
-      ...PAID_TRACKING,
-      ...utms,
-    });
-    throw new Error("AUTH_REQUIRED");
-  }
-
-  const origin = window.location.origin;
-  const successUrl = `${origin}/success`;
-  const cancelUrl = appendUtms(`${origin}/tiktok`, utms);
-
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) ?? "";
-  const resp = await fetch(`${supabaseUrl}/functions/v1/stripe-checkout`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      plan: "round_pass_7d",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-    }),
-  });
-
-  if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}));
-    posthog.capture("checkout_error", {
-      clean_page_path: "/tiktok",
-      cta_location: ctaLocation,
-      error_message: body?.error ?? `HTTP ${resp.status}`,
-      ...PAID_TRACKING,
-      ...utms,
-    });
-    throw new Error(body?.error ?? "Checkout unavailable");
-  }
-
-  const { url } = await resp.json();
-
-  posthog.capture("checkout_session_created", {
-    clean_page_path: "/tiktok",
-    cta_location: ctaLocation,
-    ...PAID_TRACKING,
-    ...utms,
-  });
-
-  posthog.capture("checkout_redirected", {
-    clean_page_path: "/tiktok",
-    cta_location: ctaLocation,
-    ...PAID_TRACKING,
-    ...utms,
-  });
-
-  window.location.href = url;
-}
-
 // ── Position chip colors ──────────────────────────────────────────────────────
 
 function posColor(pos: string): { text: string; bg: string; border: string } {
@@ -317,11 +246,31 @@ function posColor(pos: string): { text: string; bg: string; border: string } {
   }
 }
 
+// ── Shared CTA anchor styles ──────────────────────────────────────────────────
+
+const anchorBase: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textDecoration: "none",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+  userSelect: "none",
+  position: "relative",
+  zIndex: 9999,
+  pointerEvents: "auto",
+  minHeight: 48,
+  width: "100%",
+  borderRadius: 13,
+  fontWeight: 900,
+  letterSpacing: "-0.01em",
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function TikTokLanding() {
   const location = useLocation();
-  const navigate = useNavigate();
   const utms = getUtmParams(location.search);
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -333,10 +282,13 @@ export default function TikTokLanding() {
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading");
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
 
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // Build-marker trackers — created once per mount
+  const trackHeroFree  = useRef(makeTrackTikTokCTA(utms, { cta_type: "free",  cta_text: "View Free Games",               cta_location: "tiktok_landing_hero",               destination: "/stat-board"                           }));
+  const trackHeroPaid  = useRef(makeTrackTikTokCTA(utms, { cta_type: "paid",  cta_text: "Start 7-Day Access — A$7.99",   cta_location: "tiktok_landing_hero",               destination: "/auth?mode=signup&plan_key=round_pass_7d", ...PAID_TRACKING }));
+  const trackHeroPlans = useRef(makeTrackTikTokCTA(utms, { cta_type: "plans", cta_text: "View all plans",                cta_location: "hero",                              destination: "/neeko-plus"                           }));
+  const trackPassPaid  = useRef(makeTrackTikTokCTA(utms, { cta_type: "paid",  cta_text: "Start 7-Day Access",            cta_location: "tiktok_landing_round_pass_section", destination: "/auth?mode=signup&plan_key=round_pass_7d", ...PAID_TRACKING }));
 
-  // tiktok_landing_loaded — on first render
+  // tiktok_landing_loaded + build marker — on first render
   useEffect(() => {
     const prevTitle = document.title;
     document.title = "AFL Stats This Week | Neeko Sports Stats";
@@ -350,6 +302,18 @@ export default function TikTokLanding() {
     metaDesc.content =
       "See AFL player hit rates, recent form and matchup trends. Free game boards available.";
     fireTikTokEvent("tiktok_landing_loaded", utms);
+    // Phase 1 build marker — proves this patched code reached production
+    try {
+      posthog.capture("tiktok_landing_build_marker", {
+        page: "tiktok",
+        marker: BUILD_MARKER,
+        clean_page_path: "/tiktok",
+        device_type: getDeviceType(),
+        in_app_browser: detectInAppBrowser(),
+        viewport_width: window.innerWidth,
+        viewport_height: window.innerHeight,
+      });
+    } catch { /* non-critical */ }
     return () => {
       document.title = prevTitle;
       if (metaDesc && prevDesc !== null) metaDesc.content = prevDesc;
@@ -366,8 +330,9 @@ export default function TikTokLanding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // sticky CTA after 3s
+  // sticky CTA after 3s (gated by feature flag)
   useEffect(() => {
+    if (!ENABLE_TIKTOK_STICKY_CTA) return;
     const t = setTimeout(() => {
       if (!stickyDismissed) setStickyVisible(true);
     }, 3000);
@@ -439,123 +404,22 @@ export default function TikTokLanding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const navFree = useCallback((location_: string, text: string) => {
-    const dest = appendUtms("/stat-board", utms);
-    fireCTAAnalytics(utms, {
-      cta_type: "free",
-      cta_text: text,
-      cta_location: location_,
-      destination: "/stat-board",
-    });
-    fireCTANavigationStarted(utms, {
-      cta_type: "free",
-      cta_location: location_,
-      destination: "/stat-board",
-    });
-    // Use navigate for SPA routing; window.location as safety fallback
-    try {
-      navigate(dest);
-    } catch {
-      window.location.href = dest;
-    }
-  }, [navigate, utms]);
-
-  const handlePaidCTA = useCallback((location_: string, text: string) => {
-    if (checkoutLoading) return;
-
-    const authDest = appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms);
-
-    fireCTAAnalytics(utms, {
-      cta_type: "paid",
-      cta_text: text,
-      cta_location: location_,
-      destination: authDest,
-      plan_key: PAID_TRACKING.plan_key,
-      billing_type: PAID_TRACKING.billing_type,
-      value: PAID_TRACKING.value,
-      currency: PAID_TRACKING.currency,
-    });
-    fireCTANavigationStarted(utms, {
-      cta_type: "paid",
-      cta_location: location_,
-      destination: authDest,
-      plan_key: PAID_TRACKING.plan_key,
-    });
-
-    setCheckoutLoading(true);
-    setCheckoutError(null);
-
-    startCheckout(utms, location_)
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-
-        if (msg === "AUTH_REQUIRED") {
-          // Navigate immediately — do not wait for any async work
-          try {
-            navigate(authDest);
-          } catch {
-            window.location.href = authDest;
-          }
-          return;
-        }
-
-        setCheckoutError("Checkout unavailable right now. Try again or view plans.");
-      })
-      .finally(() => {
-        setCheckoutLoading(false);
-      });
-  }, [checkoutLoading, navigate, utms]);
-
-  // Button style helpers — extracted to avoid repetition and ensure consistent tap targets
-  const btnFree: React.CSSProperties = {
-    width: "100%",
-    padding: "16px",
-    borderRadius: 13,
-    background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
-    border: "none",
-    color: "#eff6ff",
-    fontSize: 16,
-    fontWeight: 900,
-    cursor: "pointer",
-    boxShadow: "0 6px 24px rgba(59,130,246,0.28)",
-    letterSpacing: "-0.01em",
-    // Android touch fix: explicit touch-action and no user-select interference
-    touchAction: "manipulation",
-    WebkitTapHighlightColor: "transparent",
-    position: "relative",
-    zIndex: 1,
-  };
-
-  const btnPaid: React.CSSProperties = {
-    width: "100%",
-    padding: "15px",
-    borderRadius: 13,
-    background: checkoutLoading
-      ? "rgba(245,200,66,0.5)"
-      : "linear-gradient(160deg, #f5c842 0%, #d48800 100%)",
-    border: "none",
-    color: "#120900",
-    fontSize: 15,
-    fontWeight: 900,
-    cursor: checkoutLoading ? "not-allowed" : "pointer",
-    boxShadow: "0 5px 20px rgba(224,174,45,0.24)",
-    letterSpacing: "-0.01em",
-    touchAction: "manipulation",
-    WebkitTapHighlightColor: "transparent",
-    position: "relative",
-    zIndex: 1,
-    opacity: checkoutLoading ? 0.7 : 1,
-  };
+  // ── Destination URLs ────────────────────────────────────────────────────────
+  const freeHref  = appendUtms("/stat-board", utms);
+  const paidHref  = appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms);
+  const plansHref = appendUtms("/neeko-plus?plan=round_pass_7d", utms);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#080c10",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      // Ensure the page itself doesn't have stacking issues blocking touch
-      position: "relative",
-      zIndex: 0,
-    }}>
+    <div
+      data-build-marker={BUILD_MARKER}
+      style={{
+        minHeight: "100vh",
+        background: "#080c10",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        position: "relative",
+        zIndex: 0,
+      }}
+    >
       <div style={{
         maxWidth: 480,
         margin: "0 auto",
@@ -618,38 +482,44 @@ export default function TikTokLanding() {
         </p>
 
         {/* ── 4 & 5. CTA stack ── */}
-        <div ref={heroRef} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          ref={heroRef}
+          style={{ display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto" }}
+        >
 
-          {/* Free CTA */}
-          <button
-            type="button"
-            onClick={() => navFree("tiktok_landing_hero", "View Free Games")}
-            style={btnFree}
+          {/* Free CTA — native anchor, no JS navigation */}
+          <a
+            href={freeHref}
+            onPointerDownCapture={() => trackHeroFree.current("pointer_down")}
+            onClickCapture={() => trackHeroFree.current("click")}
+            style={{
+              ...anchorBase,
+              padding: "16px",
+              background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
+              color: "#eff6ff",
+              fontSize: 16,
+              boxShadow: "0 6px 24px rgba(59,130,246,0.28)",
+            }}
           >
             View Free Games
-          </button>
+          </a>
 
-          {/* Paid CTA */}
-          <button
-            type="button"
-            onClick={() => handlePaidCTA("tiktok_landing_hero", "Start 7-Day Access — A$7.99")}
-            disabled={checkoutLoading}
-            style={btnPaid}
+          {/* Paid CTA — native anchor, direct to auth with plan preserved */}
+          <a
+            href={paidHref}
+            onPointerDownCapture={() => trackHeroPaid.current("pointer_down")}
+            onClickCapture={() => trackHeroPaid.current("click")}
+            style={{
+              ...anchorBase,
+              padding: "15px",
+              background: "linear-gradient(160deg, #f5c842 0%, #d48800 100%)",
+              color: "#120900",
+              fontSize: 15,
+              boxShadow: "0 5px 20px rgba(224,174,45,0.24)",
+            }}
           >
-            {checkoutLoading ? "Starting checkout…" : "Start 7-Day Access — A$7.99"}
-          </button>
-
-          {/* Checkout error */}
-          {checkoutError && (
-            <p style={{
-              textAlign: "center",
-              fontSize: 11,
-              color: "rgba(239,68,68,0.85)",
-              margin: "0",
-            }}>
-              {checkoutError}
-            </p>
-          )}
+            Start 7-Day Access — A$7.99
+          </a>
 
           <div style={{
             display: "flex",
@@ -669,37 +539,24 @@ export default function TikTokLanding() {
             </p>
             <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 11 }}>·</span>
             {/* Secondary: View all plans */}
-            <button
-              type="button"
-              onClick={() => {
-                const dest = appendUtms("/neeko-plus?plan=round_pass_7d", utms);
-                fireCTAAnalytics(utms, {
-                  cta_type: "plans",
-                  cta_text: "View all plans",
-                  cta_location: "hero",
-                  destination: "/neeko-plus",
-                });
-                fireCTANavigationStarted(utms, {
-                  cta_type: "plans",
-                  cta_location: "hero",
-                  destination: "/neeko-plus",
-                });
-                try {
-                  navigate(dest);
-                } catch {
-                  window.location.href = dest;
-                }
-              }}
+            <a
+              href={plansHref}
+              onPointerDownCapture={() => trackHeroPlans.current("pointer_down")}
+              onClickCapture={() => trackHeroPlans.current("click")}
               style={{
-                background: "none", border: "none", padding: 0,
-                fontSize: 11, color: "rgba(255,255,255,0.28)",
-                cursor: "pointer", textDecoration: "underline",
+                position: "relative",
+                zIndex: 9999,
+                pointerEvents: "auto",
+                fontSize: 11,
+                color: "rgba(255,255,255,0.28)",
+                cursor: "pointer",
+                textDecoration: "underline",
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
               View all plans
-            </button>
+            </a>
           </div>
         </div>
 
@@ -918,34 +775,24 @@ export default function TikTokLanding() {
             Full access for 7 days. No subscription. No auto-renew.
           </p>
 
-          <button
-            type="button"
-            onClick={() => handlePaidCTA("tiktok_landing_round_pass_section", "Start 7-Day Access")}
-            disabled={checkoutLoading}
+          {/* Paid CTA — native anchor */}
+          <a
+            href={paidHref}
+            onPointerDownCapture={() => trackPassPaid.current("pointer_down")}
+            onClickCapture={() => trackPassPaid.current("click")}
             style={{
-              width: "100%",
+              ...anchorBase,
               padding: "14px",
               borderRadius: 12,
-              background: checkoutLoading
-                ? "rgba(59,130,246,0.5)"
-                : "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
-              border: "none",
+              background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
               color: "#eff6ff",
               fontSize: 15,
-              fontWeight: 900,
-              cursor: checkoutLoading ? "not-allowed" : "pointer",
               boxShadow: "0 5px 20px rgba(59,130,246,0.25)",
-              letterSpacing: "-0.01em",
               marginBottom: 14,
-              opacity: checkoutLoading ? 0.7 : 1,
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent",
-              position: "relative",
-              zIndex: 1,
             }}
           >
-            {checkoutLoading ? "Starting checkout…" : "Start 7-Day Access"}
-          </button>
+            Start 7-Day Access
+          </a>
 
           {/* Trust chips */}
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -991,12 +838,12 @@ export default function TikTokLanding() {
           ))}
         </div>
 
-        {/* Bottom padding — must clear sticky CTA height (approx 88px) */}
-        <div style={{ height: 104 }} />
+        {/* Bottom padding */}
+        <div style={{ height: 40 }} />
       </div>
 
-      {/* ── 9. Sticky mobile CTA ── */}
-      {stickyVisible && !stickyDismissed && (
+      {/* ── 9. Sticky mobile CTA — disabled via ENABLE_TIKTOK_STICKY_CTA ── */}
+      {ENABLE_TIKTOK_STICKY_CTA && stickyVisible && !stickyDismissed && (
         <div
           aria-label="Quick action bar"
           style={{
@@ -1008,11 +855,7 @@ export default function TikTokLanding() {
             WebkitBackdropFilter: "blur(16px)",
             padding: "11px 16px 22px",
             zIndex: 50,
-            // Use will-change instead of translateZ — avoids stacking context issues
-            // that cause the fixed bar to intercept taps on the main page content
-            // below it on some Android Chrome versions.
             willChange: "transform",
-            // Strictly constrain touch interception to the visible element bounds
             pointerEvents: "auto",
             overflow: "hidden",
           }}
@@ -1047,51 +890,45 @@ export default function TikTokLanding() {
           </div>
 
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
-                // Dismiss AFTER navigating so the handler is not killed by unmount
-                navFree("tiktok_landing_sticky_cta", "View Free Games");
-                setStickyDismissed(true);
-              }}
+            <a
+              href={freeHref}
+              onClick={() => setStickyDismissed(true)}
               style={{
                 flex: 1, padding: "14px 6px", borderRadius: 10,
                 background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
-                border: "none", color: "#eff6ff",
+                color: "#eff6ff",
                 fontSize: 13, fontWeight: 800, cursor: "pointer",
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
-                position: "relative", zIndex: 1,
+                position: "relative", zIndex: 9999,
                 minHeight: 44,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                textDecoration: "none",
+                pointerEvents: "auto",
               }}
             >
               View Free Games
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                // Dismiss AFTER triggering paid flow so the handler is not killed by unmount
-                handlePaidCTA("tiktok_landing_sticky_cta", "7-Day Access — A$7.99");
-                setStickyDismissed(true);
-              }}
-              disabled={checkoutLoading}
+            </a>
+            <a
+              href={paidHref}
+              onClick={() => setStickyDismissed(true)}
               style={{
                 flex: 1, padding: "14px 6px", borderRadius: 10,
-                background: checkoutLoading
-                  ? "rgba(245,200,66,0.5)"
-                  : "linear-gradient(160deg, #f5c842 0%, #d48800 100%)",
-                border: "none", color: "#120900",
+                background: "linear-gradient(160deg, #f5c842 0%, #d48800 100%)",
+                color: "#120900",
                 fontSize: 13, fontWeight: 800,
-                cursor: checkoutLoading ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
-                position: "relative", zIndex: 1,
+                position: "relative", zIndex: 9999,
                 minHeight: 44,
-                opacity: checkoutLoading ? 0.7 : 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                textDecoration: "none",
+                pointerEvents: "auto",
               }}
             >
-              {checkoutLoading ? "Starting…" : "7-Day Access — A$7.99"}
-            </button>
+              7-Day Access — A$7.99
+            </a>
           </div>
         </div>
       )}
