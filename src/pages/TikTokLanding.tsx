@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { trackCTA } from "@/lib/analytics";
 import posthog from "posthog-js";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardMatch, StatBoardPlayer } from "@/features/afl/stat-board/types";
@@ -174,6 +173,60 @@ async function fetchPreviewRows(utms: Record<string, string>): Promise<PreviewRo
       ] as [boolean, boolean, boolean, boolean],
     };
   });
+}
+
+// ── Safe CTA fire-and-navigate helper ────────────────────────────────────────
+// Fires analytics synchronously, then navigates. Navigation NEVER waits on
+// analytics so a posthog failure cannot block the user.
+
+function fireCTAAnalytics(
+  utms: Record<string, string>,
+  params: {
+    cta_type: string;
+    cta_text: string;
+    cta_location: string;
+    destination: string;
+    plan_key?: string;
+    billing_type?: string;
+    value?: number;
+    currency?: string;
+  },
+) {
+  try {
+    posthog.capture("cta_clicked", {
+      page: "tiktok",
+      source_page: "/tiktok",
+      clean_page_path: "/tiktok",
+      device_type: getDeviceType(),
+      in_app_browser: detectInAppBrowser(),
+      viewport_width: window.innerWidth,
+      viewport_height: window.innerHeight,
+      ...params,
+      ...utms,
+    });
+  } catch { /* non-critical */ }
+
+  if (import.meta.env.DEV) {
+    console.log("[TikTok CTA]", params.cta_type, params.cta_location, "→", params.destination);
+  }
+}
+
+function fireCTANavigationStarted(
+  utms: Record<string, string>,
+  params: {
+    cta_type: string;
+    cta_location: string;
+    destination: string;
+    plan_key?: string;
+  },
+) {
+  try {
+    posthog.capture("tiktok_cta_navigation_started", {
+      clean_page_path: "/tiktok",
+      ...params,
+      ...utms,
+    });
+  } catch { /* non-critical */ }
 }
 
 // ── Checkout helpers ──────────────────────────────────────────────────────────
@@ -386,59 +439,71 @@ export default function TikTokLanding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function navFree(location_: string, text: string) {
-    trackCTA({
-      cta_location: location_,
+  const navFree = useCallback((location_: string, text: string) => {
+    const dest = appendUtms("/stat-board", utms);
+    fireCTAAnalytics(utms, {
+      cta_type: "free",
       cta_text: text,
-      cta_type: "free_entry",
-      destination: "/stat-board",
-      clean_page_path: "/tiktok",
-      ...utms,
-    });
-    fireTikTokEvent("cta_clicked", utms, {
       cta_location: location_,
-      cta_text: text,
-      cta_type: "free_entry",
       destination: "/stat-board",
     });
-    navigate(appendUtms("/stat-board", utms));
-  }
+    fireCTANavigationStarted(utms, {
+      cta_type: "free",
+      cta_location: location_,
+      destination: "/stat-board",
+    });
+    // Use navigate for SPA routing; window.location as safety fallback
+    try {
+      navigate(dest);
+    } catch {
+      window.location.href = dest;
+    }
+  }, [navigate, utms]);
 
-  const handlePaidCTA = useCallback(async (location_: string, text: string) => {
+  const handlePaidCTA = useCallback((location_: string, text: string) => {
     if (checkoutLoading) return;
 
-    trackCTA({
-      cta_location: location_,
+    const authDest = appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms);
+
+    fireCTAAnalytics(utms, {
+      cta_type: "paid",
       cta_text: text,
-      cta_type: "paid_entry",
-      ...PAID_TRACKING,
-      clean_page_path: "/tiktok",
-      ...utms,
+      cta_location: location_,
+      destination: authDest,
+      plan_key: PAID_TRACKING.plan_key,
+      billing_type: PAID_TRACKING.billing_type,
+      value: PAID_TRACKING.value,
+      currency: PAID_TRACKING.currency,
     });
-    fireTikTokEvent("cta_clicked", utms, {
+    fireCTANavigationStarted(utms, {
+      cta_type: "paid",
       cta_location: location_,
-      cta_text: text,
-      cta_type: "paid_entry",
-      ...PAID_TRACKING,
+      destination: authDest,
+      plan_key: PAID_TRACKING.plan_key,
     });
 
     setCheckoutLoading(true);
     setCheckoutError(null);
 
-    try {
-      await startCheckout(utms, location_);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+    startCheckout(utms, location_)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
 
-      if (msg === "AUTH_REQUIRED") {
-        navigate(appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms));
-        return;
-      }
+        if (msg === "AUTH_REQUIRED") {
+          // Navigate immediately — do not wait for any async work
+          try {
+            navigate(authDest);
+          } catch {
+            window.location.href = authDest;
+          }
+          return;
+        }
 
-      setCheckoutError("Checkout unavailable right now. Try again or view plans.");
-    } finally {
-      setCheckoutLoading(false);
-    }
+        setCheckoutError("Checkout unavailable right now. Try again or view plans.");
+      })
+      .finally(() => {
+        setCheckoutLoading(false);
+      });
   }, [checkoutLoading, navigate, utms]);
 
   // Button style helpers — extracted to avoid repetition and ensure consistent tap targets
@@ -606,7 +671,25 @@ export default function TikTokLanding() {
             {/* Secondary: View all plans */}
             <button
               type="button"
-              onClick={() => navigate(appendUtms("/neeko-plus?plan=round_pass_7d", utms))}
+              onClick={() => {
+                const dest = appendUtms("/neeko-plus?plan=round_pass_7d", utms);
+                fireCTAAnalytics(utms, {
+                  cta_type: "plans",
+                  cta_text: "View all plans",
+                  cta_location: "hero",
+                  destination: "/neeko-plus",
+                });
+                fireCTANavigationStarted(utms, {
+                  cta_type: "plans",
+                  cta_location: "hero",
+                  destination: "/neeko-plus",
+                });
+                try {
+                  navigate(dest);
+                } catch {
+                  window.location.href = dest;
+                }
+              }}
               style={{
                 background: "none", border: "none", padding: 0,
                 fontSize: 11, color: "rgba(255,255,255,0.28)",
@@ -914,21 +997,26 @@ export default function TikTokLanding() {
 
       {/* ── 9. Sticky mobile CTA ── */}
       {stickyVisible && !stickyDismissed && (
-        <div style={{
-          position: "fixed",
-          bottom: 0, left: 0, right: 0,
-          background: "rgba(8,12,16,0.97)",
-          borderTop: "1px solid rgba(255,255,255,0.09)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          padding: "11px 16px 22px",
-          // Explicit stacking context — prevents Android Chrome from misrouting touches
-          zIndex: 50,
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
-          // Ensure the sticky bar itself doesn't eat taps beyond its visible area
-          pointerEvents: "auto",
-        }}>
+        <div
+          aria-label="Quick action bar"
+          style={{
+            position: "fixed",
+            bottom: 0, left: 0, right: 0,
+            background: "rgba(8,12,16,0.97)",
+            borderTop: "1px solid rgba(255,255,255,0.09)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            padding: "11px 16px 22px",
+            zIndex: 50,
+            // Use will-change instead of translateZ — avoids stacking context issues
+            // that cause the fixed bar to intercept taps on the main page content
+            // below it on some Android Chrome versions.
+            willChange: "transform",
+            // Strictly constrain touch interception to the visible element bounds
+            pointerEvents: "auto",
+            overflow: "hidden",
+          }}
+        >
           <div style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
             marginBottom: 9,
@@ -949,8 +1037,7 @@ export default function TikTokLanding() {
                 padding: "0 4px", lineHeight: 1,
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
-                // Explicit min tap target for Android
-                minWidth: 36, minHeight: 36,
+                minWidth: 44, minHeight: 44,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
               aria-label="Dismiss"
@@ -963,8 +1050,9 @@ export default function TikTokLanding() {
             <button
               type="button"
               onClick={() => {
-                setStickyDismissed(true);
+                // Dismiss AFTER navigating so the handler is not killed by unmount
                 navFree("tiktok_landing_sticky_cta", "View Free Games");
+                setStickyDismissed(true);
               }}
               style={{
                 flex: 1, padding: "14px 6px", borderRadius: 10,
@@ -974,7 +1062,6 @@ export default function TikTokLanding() {
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
                 position: "relative", zIndex: 1,
-                // Minimum 44px tap target height for WCAG/Android
                 minHeight: 44,
               }}
             >
@@ -983,8 +1070,9 @@ export default function TikTokLanding() {
             <button
               type="button"
               onClick={() => {
-                setStickyDismissed(true);
+                // Dismiss AFTER triggering paid flow so the handler is not killed by unmount
                 handlePaidCTA("tiktok_landing_sticky_cta", "7-Day Access — A$7.99");
+                setStickyDismissed(true);
               }}
               disabled={checkoutLoading}
               style={{
