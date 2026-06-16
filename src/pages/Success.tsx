@@ -1,6 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { track, trackGoogleAdsPurchase } from "@/lib/analytics";
+import { loadReferralAttribution } from "@/lib/referralAttribution";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +75,9 @@ export default function Success() {
     const alreadyFired = dedupeKey ? localStorage.getItem(dedupeKey) === "1" : false;
     if (!alreadyFired) {
       if (dedupeKey) localStorage.setItem(dedupeKey, "1");
-      track("subscription_activated", { session_id: sessionId ?? undefined });
+      const ref = loadReferralAttribution();
+      const refProps = ref ? { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name } : {};
+      track("subscription_activated", { session_id: sessionId ?? undefined, ...refProps });
       const planParam = new URLSearchParams(window.location.search).get("plan");
       const conversionValue = planParam === "weekly"
         ? NEEKO_PRICING.weekly.price

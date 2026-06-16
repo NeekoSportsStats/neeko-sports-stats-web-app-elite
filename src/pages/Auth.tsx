@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track, identifyUser } from "@/lib/analytics";
+import { loadReferralAttribution } from "@/lib/referralAttribution";
 
 // ---------------------------------------------------------------------------
 // Checkout intent persistence (no PII — only plan metadata + UTMs)
@@ -221,9 +222,11 @@ const Auth = () => {
 
   useEffect(() => {
     if (isPurchaseIntent) {
+      const ref = loadReferralAttribution();
       track("auth_checkout_viewed", {
         plan_key: planKey,
         mode,
+        ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }),
       });
     }
   }, []);
@@ -238,9 +241,10 @@ const Auth = () => {
 
       if (mode === "login") {
         if (isPurchaseIntent) {
+          const ref = loadReferralAttribution();
           saveCheckoutIntent(planKey!);
-          track("checkout_intent_saved", { plan_key: planKey, trigger: "signin" });
-          track("auth_signin_started", { plan_key: planKey });
+          track("checkout_intent_saved", { plan_key: planKey, trigger: "signin", ...(ref && { creator_slug: ref.creator_slug }) });
+          track("auth_signin_started", { plan_key: planKey, ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }) });
         }
 
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -265,9 +269,10 @@ const Auth = () => {
 
       // SIGNUP
       if (isPurchaseIntent) {
+        const ref = loadReferralAttribution();
         saveCheckoutIntent(planKey!);
-        track("checkout_intent_saved", { plan_key: planKey, trigger: "signup" });
-        track("auth_signup_started", { plan_key: planKey });
+        track("checkout_intent_saved", { plan_key: planKey, trigger: "signup", ...(ref && { creator_slug: ref.creator_slug }) });
+        track("auth_signup_started", { plan_key: planKey, ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }) });
       }
 
       passwordSchema.parse(password);
