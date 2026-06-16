@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardMatch, StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ── Build marker — proves this exact code is running in production ────────────
-const BUILD_MARKER = "cta_hotfix_v2";
+const BUILD_MARKER = "cta_hotfix_v3";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 const ENABLE_TIKTOK_STICKY_CTA = false;
@@ -88,61 +88,147 @@ const PAID_TRACKING = {
   billing_type: "one_time",
   value: 7.99,
   currency: "AUD",
-  source_page: "/tiktok",
 } as const;
 
-// ── CTA tracking helper ───────────────────────────────────────────────────────
-// Attaches to BOTH onPointerDownCapture and onClickCapture.
-// A 500ms debounce distinguishes "pointer event reached element" from "click fired".
+// ── HardenedTikTokLink ────────────────────────────────────────────────────────
+// WebView-safe CTA component. Fires forced navigation via window.location.assign
+// on pointer_up / touch_end because TikTok in-app browser suppresses click events.
 
-function makeTrackTikTokCTA(
-  utms: Record<string, string>,
-  params: {
-    cta_type: string;
-    cta_text: string;
-    cta_location: string;
-    destination: string;
-    plan_key?: string;
-    billing_type?: string;
-    value?: number;
-    currency?: string;
-  },
-) {
-  let lastFired = 0;
+interface HardenedTikTokLinkProps {
+  href: string;
+  cta_type: string;
+  cta_text: string;
+  cta_location: string;
+  destination: string;
+  plan_key?: string;
+  billing_type?: string;
+  value?: number;
+  currency?: string;
+  utms: Record<string, string>;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}
 
-  return function trackTikTokCTA(eventType: "pointer_down" | "click") {
+function HardenedTikTokLink({
+  href,
+  cta_type,
+  cta_text,
+  cta_location,
+  destination,
+  plan_key,
+  billing_type,
+  value,
+  currency,
+  utms,
+  style,
+  children,
+}: HardenedTikTokLinkProps) {
+  const touchStartedHere = useRef(false);
+  const lastNavigated = useRef(0);
+
+  const debugProps = () => ({
+    build_marker: BUILD_MARKER,
+    cta_type,
+    cta_text,
+    cta_location,
+    destination,
+    href,
+    ...(plan_key !== undefined && { plan_key }),
+    ...(billing_type !== undefined && { billing_type }),
+    ...(value !== undefined && { value }),
+    ...(currency !== undefined && { currency }),
+    page: "tiktok",
+    source_page: "/tiktok",
+    clean_page_path: "/tiktok",
+    device_type: getDeviceType(),
+    in_app_browser: detectInAppBrowser(),
+    viewport_width: window.innerWidth,
+    viewport_height: window.innerHeight,
+    ua: navigator.userAgent,
+    current_pathname: window.location.pathname,
+    current_href: window.location.href,
+    client_ts: Date.now(),
+    ...utms,
+  });
+
+  const navigate = (navigationMethod: string) => {
     const now = Date.now();
-    // Debounce: pointer_down and click within 500ms are the same tap — fire each once
-    if (eventType === "click" && now - lastFired < 500) return;
-    lastFired = now;
+    if (now - lastNavigated.current < 1000) return;
+    lastNavigated.current = now;
 
     try {
       posthog.capture("cta_clicked", {
-        page: "tiktok",
-        source_page: "/tiktok",
-        clean_page_path: "/tiktok",
-        device_type: getDeviceType(),
-        in_app_browser: detectInAppBrowser(),
-        viewport_width: window.innerWidth,
-        viewport_height: window.innerHeight,
-        event_type: eventType,
-        build_marker: BUILD_MARKER,
-        ...params,
-        ...utms,
+        ...debugProps(),
+        event_type: navigationMethod,
+        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
       });
       posthog.capture("tiktok_cta_navigation_started", {
-        clean_page_path: "/tiktok",
-        event_type: eventType,
-        build_marker: BUILD_MARKER,
-        ...params,
-        ...utms,
+        ...debugProps(),
+        event_type: navigationMethod,
+        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
       });
-    } catch { /* non-critical */ }
+      posthog.capture("tiktok_cta_navigation_attempted", {
+        ...debugProps(),
+        event_type: "forced_navigation",
+        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
+      });
+    } catch { /* non-critical — must not block navigation */ }
 
     if (import.meta.env.DEV) {
-      console.log("[TikTok CTA]", eventType, params.cta_type, params.cta_location, "→", params.destination);
+      console.log("[TikTok CTA]", navigationMethod, cta_type, cta_location, "→", destination);
     }
+
+    window.location.assign(href);
   };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (e.pointerType === "mouse") return;
+    touchStartedHere.current = true;
+    try {
+      posthog.capture("cta_touch_started", {
+        ...debugProps(),
+        event_type: "pointer_down",
+        navigation_method: "native_anchor",
+      });
+    } catch { /* non-critical */ }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (e.pointerType === "mouse") return;
+    if (!touchStartedHere.current) return;
+    touchStartedHere.current = false;
+    navigate("pointer_up");
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLAnchorElement>) => {
+    if (!touchStartedHere.current) return;
+    touchStartedHere.current = false;
+    e.preventDefault();
+    navigate("touch_end");
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const now = Date.now();
+    if (now - lastNavigated.current < 1000) {
+      e.preventDefault();
+      return;
+    }
+    navigate("click");
+    e.preventDefault();
+  };
+
+  return (
+    <a
+      href={href}
+      onPointerDownCapture={handlePointerDown}
+      onPointerUpCapture={handlePointerUp}
+      onTouchEndCapture={handleTouchEnd}
+      onClickCapture={handleClick}
+      style={style}
+    >
+      {children}
+    </a>
+  );
 }
 
 // ── Preview data types ────────────────────────────────────────────────────────
@@ -281,12 +367,6 @@ export default function TikTokLanding() {
 
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading");
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
-
-  // Build-marker trackers — created once per mount
-  const trackHeroFree  = useRef(makeTrackTikTokCTA(utms, { cta_type: "free",  cta_text: "View Free Games",               cta_location: "tiktok_landing_hero",               destination: "/stat-board"                           }));
-  const trackHeroPaid  = useRef(makeTrackTikTokCTA(utms, { cta_type: "paid",  cta_text: "Start 7-Day Access — A$7.99",   cta_location: "tiktok_landing_hero",               destination: "/auth?mode=signup&plan_key=round_pass_7d", ...PAID_TRACKING }));
-  const trackHeroPlans = useRef(makeTrackTikTokCTA(utms, { cta_type: "plans", cta_text: "View all plans",                cta_location: "hero",                              destination: "/neeko-plus"                           }));
-  const trackPassPaid  = useRef(makeTrackTikTokCTA(utms, { cta_type: "paid",  cta_text: "Start 7-Day Access",            cta_location: "tiktok_landing_round_pass_section", destination: "/auth?mode=signup&plan_key=round_pass_7d", ...PAID_TRACKING }));
 
   // tiktok_landing_loaded + build marker — on first render
   useEffect(() => {
@@ -487,11 +567,14 @@ export default function TikTokLanding() {
           style={{ display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto" }}
         >
 
-          {/* Free CTA — native anchor, no JS navigation */}
-          <a
+          {/* Free CTA */}
+          <HardenedTikTokLink
             href={freeHref}
-            onPointerDownCapture={() => trackHeroFree.current("pointer_down")}
-            onClickCapture={() => trackHeroFree.current("click")}
+            cta_type="free"
+            cta_text="View Free Games"
+            cta_location="tiktok_landing_hero"
+            destination="/stat-board"
+            utms={utms}
             style={{
               ...anchorBase,
               padding: "16px",
@@ -502,13 +585,17 @@ export default function TikTokLanding() {
             }}
           >
             View Free Games
-          </a>
+          </HardenedTikTokLink>
 
-          {/* Paid CTA — native anchor, direct to auth with plan preserved */}
-          <a
+          {/* Paid CTA — direct to auth with plan preserved */}
+          <HardenedTikTokLink
             href={paidHref}
-            onPointerDownCapture={() => trackHeroPaid.current("pointer_down")}
-            onClickCapture={() => trackHeroPaid.current("click")}
+            cta_type="paid"
+            cta_text="Start 7-Day Access — A$7.99"
+            cta_location="tiktok_landing_hero"
+            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            {...PAID_TRACKING}
+            utms={utms}
             style={{
               ...anchorBase,
               padding: "15px",
@@ -519,7 +606,7 @@ export default function TikTokLanding() {
             }}
           >
             Start 7-Day Access — A$7.99
-          </a>
+          </HardenedTikTokLink>
 
           <div style={{
             display: "flex",
@@ -539,10 +626,13 @@ export default function TikTokLanding() {
             </p>
             <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 11 }}>·</span>
             {/* Secondary: View all plans */}
-            <a
+            <HardenedTikTokLink
               href={plansHref}
-              onPointerDownCapture={() => trackHeroPlans.current("pointer_down")}
-              onClickCapture={() => trackHeroPlans.current("click")}
+              cta_type="plans"
+              cta_text="View all plans"
+              cta_location="hero"
+              destination="/neeko-plus?plan=round_pass_7d"
+              utms={utms}
               style={{
                 position: "relative",
                 zIndex: 9999,
@@ -556,7 +646,7 @@ export default function TikTokLanding() {
               }}
             >
               View all plans
-            </a>
+            </HardenedTikTokLink>
           </div>
         </div>
 
@@ -775,11 +865,15 @@ export default function TikTokLanding() {
             Full access for 7 days. No subscription. No auto-renew.
           </p>
 
-          {/* Paid CTA — native anchor */}
-          <a
+          {/* Paid CTA — round pass section */}
+          <HardenedTikTokLink
             href={paidHref}
-            onPointerDownCapture={() => trackPassPaid.current("pointer_down")}
-            onClickCapture={() => trackPassPaid.current("click")}
+            cta_type="paid"
+            cta_text="Start 7-Day Access"
+            cta_location="tiktok_landing_round_pass_section"
+            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            {...PAID_TRACKING}
+            utms={utms}
             style={{
               ...anchorBase,
               padding: "14px",
@@ -792,7 +886,7 @@ export default function TikTokLanding() {
             }}
           >
             Start 7-Day Access
-          </a>
+          </HardenedTikTokLink>
 
           {/* Trust chips */}
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
