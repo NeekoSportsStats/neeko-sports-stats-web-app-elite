@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardMatch, StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ── Build marker — proves this exact code is running in production ────────────
-const BUILD_MARKER = "cta_hotfix_v3";
+const BUILD_MARKER = "cta_hotfix_v4";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 const ENABLE_TIKTOK_STICKY_CTA = false;
@@ -91,8 +91,11 @@ const PAID_TRACKING = {
 } as const;
 
 // ── HardenedTikTokLink ────────────────────────────────────────────────────────
-// WebView-safe CTA component. Fires forced navigation via window.location.assign
-// on pointer_up / touch_end because TikTok in-app browser suppresses click events.
+// WebView-safe CTA. Tracks gesture movement to distinguish real taps from scrolls.
+// Forces navigation via window.location.assign only on confirmed taps.
+
+const TAP_MOVE_THRESHOLD_PX = 10;
+const TAP_MAX_DURATION_MS = 2500;
 
 interface HardenedTikTokLinkProps {
   href: string;
@@ -123,10 +126,18 @@ function HardenedTikTokLink({
   style,
   children,
 }: HardenedTikTokLinkProps) {
-  const touchStartedHere = useRef(false);
   const lastNavigated = useRef(0);
+  const gestureActive = useRef(false);
+  const gestureCancelled = useRef(false);
+  const cancelReason = useRef("");
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const startTime = useRef(0);
+  const maxDeltaX = useRef(0);
+  const maxDeltaY = useRef(0);
+  const maxDistance = useRef(0);
 
-  const debugProps = () => ({
+  const baseProps = () => ({
     build_marker: BUILD_MARKER,
     cta_type,
     cta_text,
@@ -151,31 +162,66 @@ function HardenedTikTokLink({
     ...utms,
   });
 
-  const navigate = (navigationMethod: string) => {
+  const gestureProps = (dxFinal = 0, dyFinal = 0) => ({
+    delta_x: dxFinal,
+    delta_y: dyFinal,
+    max_delta_x: maxDeltaX.current,
+    max_delta_y: maxDeltaY.current,
+    max_distance: maxDistance.current,
+    touch_duration_ms: Date.now() - startTime.current,
+    gesture_cancelled: gestureCancelled.current,
+  });
+
+  const resetGesture = () => {
+    gestureActive.current = false;
+    gestureCancelled.current = false;
+    cancelReason.current = "";
+    maxDeltaX.current = 0;
+    maxDeltaY.current = 0;
+    maxDistance.current = 0;
+  };
+
+  const cancelGesture = (reason: string, dxFinal = 0, dyFinal = 0) => {
+    gestureCancelled.current = true;
+    cancelReason.current = reason;
+    try {
+      posthog.capture("cta_touch_cancelled", {
+        ...baseProps(),
+        ...gestureProps(dxFinal, dyFinal),
+        event_type: reason,
+        cancel_reason: reason,
+        gesture_cancelled: true,
+      });
+    } catch { /* non-critical */ }
+  };
+
+  const confirmNavigation = (eventType: string, dxFinal = 0, dyFinal = 0) => {
     const now = Date.now();
     if (now - lastNavigated.current < 1000) return;
     lastNavigated.current = now;
 
+    const navMethod = eventType === "click"
+      ? "click_location_assign"
+      : eventType === "pointer_up"
+      ? "pointerup_location_assign"
+      : "touchend_location_assign";
+
+    const props = {
+      ...baseProps(),
+      ...gestureProps(dxFinal, dyFinal),
+      event_type: eventType,
+      navigation_method: navMethod,
+      gesture_cancelled: false,
+    };
+
     try {
-      posthog.capture("cta_clicked", {
-        ...debugProps(),
-        event_type: navigationMethod,
-        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
-      });
-      posthog.capture("tiktok_cta_navigation_started", {
-        ...debugProps(),
-        event_type: navigationMethod,
-        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
-      });
-      posthog.capture("tiktok_cta_navigation_attempted", {
-        ...debugProps(),
-        event_type: "forced_navigation",
-        navigation_method: navigationMethod === "click" ? "click_location_assign" : navigationMethod === "pointer_up" ? "pointerup_location_assign" : "touchend_location_assign",
-      });
+      posthog.capture("cta_clicked", props);
+      posthog.capture("tiktok_cta_navigation_started", props);
+      posthog.capture("tiktok_cta_navigation_attempted", { ...props, event_type: "forced_navigation" });
     } catch { /* non-critical — must not block navigation */ }
 
     if (import.meta.env.DEV) {
-      console.log("[TikTok CTA]", navigationMethod, cta_type, cta_location, "→", destination);
+      console.log("[TikTok CTA v4]", eventType, cta_type, cta_location, "→", destination);
     }
 
     window.location.assign(href);
@@ -183,37 +229,139 @@ function HardenedTikTokLink({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (e.pointerType === "mouse") return;
-    touchStartedHere.current = true;
+    gestureActive.current = true;
+    gestureCancelled.current = false;
+    cancelReason.current = "";
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    startTime.current = Date.now();
+    maxDeltaX.current = 0;
+    maxDeltaY.current = 0;
+    maxDistance.current = 0;
     try {
       posthog.capture("cta_touch_started", {
-        ...debugProps(),
+        ...baseProps(),
         event_type: "pointer_down",
         navigation_method: "native_anchor",
+        gesture_cancelled: false,
+        delta_x: 0, delta_y: 0,
+        max_delta_x: 0, max_delta_y: 0,
+        max_distance: 0, touch_duration_ms: 0,
       });
     } catch { /* non-critical */ }
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLAnchorElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!gestureActive.current || gestureCancelled.current) return;
     if (e.pointerType === "mouse") return;
-    if (!touchStartedHere.current) return;
-    touchStartedHere.current = false;
-    navigate("pointer_up");
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    maxDeltaX.current = Math.max(maxDeltaX.current, Math.abs(dx));
+    maxDeltaY.current = Math.max(maxDeltaY.current, Math.abs(dy));
+    maxDistance.current = Math.max(maxDistance.current, dist);
+    if (Math.abs(dx) > TAP_MOVE_THRESHOLD_PX || Math.abs(dy) > TAP_MOVE_THRESHOLD_PX) {
+      cancelGesture("movement_threshold", dx, dy);
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!gestureActive.current) return;
+    if (e.pointerType === "mouse") return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+    const duration = Date.now() - startTime.current;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    maxDeltaX.current = Math.max(maxDeltaX.current, Math.abs(dx));
+    maxDeltaY.current = Math.max(maxDeltaY.current, Math.abs(dy));
+    maxDistance.current = Math.max(maxDistance.current, dist);
+
+    if (gestureCancelled.current) {
+      cancelGesture(cancelReason.current || "movement_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
+    if (Math.abs(dx) > TAP_MOVE_THRESHOLD_PX || Math.abs(dy) > TAP_MOVE_THRESHOLD_PX) {
+      cancelGesture("movement_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
+    if (duration > TAP_MAX_DURATION_MS) {
+      cancelGesture("duration_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
+    resetGesture();
+    confirmNavigation("pointer_up", dx, dy);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!gestureActive.current) return;
+    if (e.pointerType === "mouse") return;
+    cancelGesture("pointer_cancel");
+    resetGesture();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLAnchorElement>) => {
+    if (!gestureActive.current || gestureCancelled.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const dx = touch.clientX - startX.current;
+    const dy = touch.clientY - startY.current;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    maxDeltaX.current = Math.max(maxDeltaX.current, Math.abs(dx));
+    maxDeltaY.current = Math.max(maxDeltaY.current, Math.abs(dy));
+    maxDistance.current = Math.max(maxDistance.current, dist);
+    if (Math.abs(dx) > TAP_MOVE_THRESHOLD_PX || Math.abs(dy) > TAP_MOVE_THRESHOLD_PX) {
+      cancelGesture("movement_threshold", dx, dy);
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent<HTMLAnchorElement>) => {
-    if (!touchStartedHere.current) return;
-    touchStartedHere.current = false;
+    if (!gestureActive.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch ? touch.clientX - startX.current : 0;
+    const dy = touch ? touch.clientY - startY.current : 0;
+    const duration = Date.now() - startTime.current;
+
+    if (gestureCancelled.current) {
+      cancelGesture(cancelReason.current || "movement_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
+    if (Math.abs(dx) > TAP_MOVE_THRESHOLD_PX || Math.abs(dy) > TAP_MOVE_THRESHOLD_PX) {
+      cancelGesture("movement_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
+    if (duration > TAP_MAX_DURATION_MS) {
+      cancelGesture("duration_threshold", dx, dy);
+      resetGesture();
+      return;
+    }
     e.preventDefault();
-    navigate("touch_end");
+    resetGesture();
+    confirmNavigation("touch_end", dx, dy);
+  };
+
+  const handleTouchCancel = () => {
+    if (!gestureActive.current) return;
+    cancelGesture("touch_cancel");
+    resetGesture();
   };
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (gestureCancelled.current) {
+      e.preventDefault();
+      resetGesture();
+      return;
+    }
     const now = Date.now();
     if (now - lastNavigated.current < 1000) {
       e.preventDefault();
       return;
     }
-    navigate("click");
+    confirmNavigation("click");
     e.preventDefault();
   };
 
@@ -221,8 +369,12 @@ function HardenedTikTokLink({
     <a
       href={href}
       onPointerDownCapture={handlePointerDown}
+      onPointerMoveCapture={handlePointerMove}
       onPointerUpCapture={handlePointerUp}
+      onPointerCancelCapture={handlePointerCancel}
+      onTouchMoveCapture={handleTouchMove}
       onTouchEndCapture={handleTouchEnd}
+      onTouchCancelCapture={handleTouchCancel}
       onClickCapture={handleClick}
       style={style}
     >
@@ -231,7 +383,6 @@ function HardenedTikTokLink({
   );
 }
 
-// ── Preview data types ────────────────────────────────────────────────────────
 
 interface PreviewRow {
   name: string;
@@ -340,7 +491,7 @@ const anchorBase: React.CSSProperties = {
   justifyContent: "center",
   textDecoration: "none",
   cursor: "pointer",
-  touchAction: "manipulation",
+  touchAction: "pan-y manipulation",
   WebkitTapHighlightColor: "transparent",
   userSelect: "none",
   position: "relative",
