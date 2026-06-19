@@ -385,20 +385,19 @@ export function ExpandedPlayerPanel({
         </div>
       )}
 
-      {/* ── 5. AI Insight — only shown for disposal/goals lenses where AI context applies ── */}
-      {(lens === "disposals" || lens === "goals") && (
+      {/* ── 5. AI Insight — lens guard applied inside PlayerIntelligencePanel ── */}
       <PlayerIntelligencePanel
         intelligence={intelligence}
         loading={intelligenceLoading}
         isPremium={isPremium}
         playerName={player.player_name}
+        statLens={lens}
         projection={player.projection}
         avgLast3={player.last_3_avg ?? undefined}
         confidenceLabel={player.confidence_label}
         variant="card"
         upgradeHref="/billing"
       />
-      )}
 
       {/* ── View full player analysis link ───────────────────────────────── */}
       <div className="px-3 sm:px-5 pb-2 sm:pb-3">

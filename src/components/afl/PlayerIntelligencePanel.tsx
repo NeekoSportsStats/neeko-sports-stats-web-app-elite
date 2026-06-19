@@ -2,12 +2,16 @@ import { Sparkles, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import { PLAYER_AI_PROMPT_VERSION } from "@/constants/aiVersions";
+import type { StatLens } from "@/features/afl/stat-board/types";
+import { isInsightValidForLens } from "@/features/afl/stat-board/lib/insightLensGuard";
 
 interface Props {
   intelligence: PlayerIntelligence | null;
   loading: boolean;
   isPremium: boolean;
   playerName: string;
+  /** Active stat lens — insight is suppressed when it does not match */
+  statLens?: StatLens;
   // Stat-based fallback values — shown when no AI text is available
   projection?: number | null;
   avgLast3?: number | null;
@@ -25,6 +29,7 @@ export function PlayerIntelligencePanel({
   loading,
   isPremium,
   playerName,
+  statLens,
   projection,
   avgLast3,
   avgLast5,
@@ -33,10 +38,17 @@ export function PlayerIntelligencePanel({
   variant = "card",
   upgradeHref = "/billing",
 }: Props) {
+  // Lens guard: suppress intelligence when the insight does not belong to the
+  // current stat context.  When statLens is not provided the check is skipped
+  // (legacy callers outside the stat board do not pass a lens).
+  const insightMatchesLens = statLens == null || isInsightValidForLens(intelligence, statLens);
+  // Treat a lens mismatch as if there is no insight (loading=false, text=null)
+  const effectiveIntelligence = insightMatchesLens ? intelligence : null;
+
   const CURRENT_PLAYER_VERSION = PLAYER_AI_PROMPT_VERSION;
-  const isCurrentVersion = intelligence?.prompt_version === CURRENT_PLAYER_VERSION;
-  const hasText = !!(intelligence?.summary_long || intelligence?.summary_short) && isCurrentVersion;
-  const displayText = hasText ? (intelligence?.summary_long ?? intelligence?.summary_short ?? null) : null;
+  const isCurrentVersion = effectiveIntelligence?.prompt_version === CURRENT_PLAYER_VERSION;
+  const hasText = !!(effectiveIntelligence?.summary_long || effectiveIntelligence?.summary_short) && isCurrentVersion;
+  const displayText = hasText ? (effectiveIntelligence?.summary_long ?? effectiveIntelligence?.summary_short ?? null) : null;
 
   // Loading state
   if (loading) {
@@ -138,9 +150,9 @@ export function PlayerIntelligencePanel({
               Player Intelligence
             </p>
           </div>
-          {intelligence?.ai_generated_at && (
+          {effectiveIntelligence?.ai_generated_at && (
             <p className="text-[9px] text-white/18 tabular-nums">
-              Updated {new Date(intelligence.ai_generated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+              Updated {new Date(effectiveIntelligence.ai_generated_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
             </p>
           )}
         </div>
