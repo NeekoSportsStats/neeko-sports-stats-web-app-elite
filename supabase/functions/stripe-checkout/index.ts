@@ -138,7 +138,20 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { plan, success_url, cancel_url } = body;
+    const {
+      plan,
+      success_url,
+      cancel_url,
+      source_page = '',
+      referral_source = '',
+      campaign_type = '',
+      creator_slug = '',
+      creator_name = '',
+      referral_code = '',
+      referral_landing_url = '',
+      referral_first_seen_at = '',
+      referral_last_seen_at = '',
+    } = body;
 
     if (!plan || (plan !== 'weekly' && plan !== 'season' && plan !== 'round_pass_7d')) {
       return err('Invalid plan — must be "weekly", "season", or "round_pass_7d"');
@@ -205,6 +218,13 @@ Deno.serve(async (req) => {
     const isOneTime = interval === 'one_time';
 
     console.log(`stripe-checkout: plan=${plan_type}, mode=${isOneTime ? 'payment' : 'subscription'}, price=${price_id}, user=${user.id}`);
+    console.log('stripe-checkout attribution', {
+      referral_source,
+      campaign_type,
+      creator_slug,
+      referral_code,
+      source_page,
+    });
 
     const { data: customer, error: getCustomerError } = await supabase
       .from('stripe_customers')
@@ -270,6 +290,15 @@ Deno.serve(async (req) => {
         plan_key: plan_type,
         product: 'neeko_plus',
         access_days: plan_type === 'round_pass_7d' ? '7' : plan_type === 'season' ? '161' : '',
+        source_page,
+        referral_source,
+        campaign_type,
+        creator_slug,
+        creator_name,
+        referral_code,
+        referral_landing_url,
+        referral_first_seen_at,
+        referral_last_seen_at,
       },
     };
 

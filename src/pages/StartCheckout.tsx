@@ -67,6 +67,8 @@ const StartCheckout = () => {
             plan,
             success_url: `${origin}/success`,
             cancel_url: `${origin}/neeko-plus`,
+            source_page: "/checkout",
+            ...refProps,
           }),
         });
 
