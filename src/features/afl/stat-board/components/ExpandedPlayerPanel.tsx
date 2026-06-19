@@ -189,8 +189,10 @@ export function ExpandedPlayerPanel({
 
   const hitRates = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates ?? {};
 
-  const displayLow  = player.min_season  ?? player.min_last_10;
-  const displayHigh = player.max_season  ?? player.max_last_10;
+  const displayLow       = player.min_season  ?? player.min_last_10;
+  const displayHigh      = player.max_season  ?? player.max_last_10;
+  // Track which period supplied the low/high values so we can label accurately.
+  const lowHighPeriod    = player.min_season != null ? "season" : "l10";
 
   if (process.env.NODE_ENV !== "production") {
     const seasonGames = player.season_threshold_hit_rates
@@ -217,14 +219,14 @@ export function ExpandedPlayerPanel({
   }
 
   const summaryStats: { label: string; value: string; muted?: boolean }[] = [
-    { label: "L3 avg",  value: fmt1(player.last_3_avg) },
-    { label: "L5 avg",  value: fmt1(player.last_5_avg) },
-    { label: "L10 avg", value: fmt1(player.last_10_avg) },
-    { label: "Season",  value: fmt1(player.season_avg) },
-    { label: "Low",     value: n(displayLow)  != null ? String(displayLow)  : "—" },
-    { label: "High",    value: n(displayHigh) != null ? String(displayHigh) : "—" },
-    { label: "Std dev", value: fmt1(player.stddev_last_10) },
-    { label: "Games",   value: n(player.games_played) != null ? String(player.games_played) : "—" },
+    { label: "L3 avg",                value: fmt1(player.last_3_avg) },
+    { label: "L5 avg",                value: fmt1(player.last_5_avg) },
+    { label: "L10 avg",               value: fmt1(player.last_10_avg) },
+    { label: "Season",                value: fmt1(player.season_avg) },
+    { label: lowHighPeriod === "season" ? "Low"     : "L10 low",  value: n(displayLow)  != null ? String(displayLow)  : "—" },
+    { label: lowHighPeriod === "season" ? "High"    : "L10 high", value: n(displayHigh) != null ? String(displayHigh) : "—" },
+    { label: "L10 dev",               value: fmt1(player.stddev_last_10) },
+    { label: "Games",                 value: n(player.games_played) != null ? String(player.games_played) : "—" },
   ].map((s) => ({ ...s, muted: s.value === "—" }));
 
   const hasPlayerStats = summaryStats.some((s) => !s.muted)

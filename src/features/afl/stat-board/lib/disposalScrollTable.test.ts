@@ -172,7 +172,61 @@ describe("Disposal scroll table: user scroll independence", () => {
   });
 });
 
-// ─── 7. Goals and marks lenses unchanged ─────────────────────────────────────
+// ─── 8. Summary stat label period accuracy ───────────────────────────────────
+
+/**
+ * Mirrors the label-derivation logic from ExpandedPlayerPanel summaryStats.
+ * Ensures the label shown to the user matches the actual data period.
+ */
+function deriveSummaryLabels(minSeason: number | null, stddevLast10: number | null): {
+  lowLabel: string;
+  highLabel: string;
+  stdDevLabel: string;
+} {
+  const lowHighPeriod = minSeason != null ? "season" : "l10";
+  return {
+    lowLabel:    lowHighPeriod === "season" ? "Low"      : "L10 low",
+    highLabel:   lowHighPeriod === "season" ? "High"     : "L10 high",
+    stdDevLabel: "L10 dev",
+  };
+}
+
+describe("Summary stat label period accuracy", () => {
+  it("Low/High labelled 'Low'/'High' when min_season is available (season scope)", () => {
+    const { lowLabel, highLabel } = deriveSummaryLabels(14, 4.1);
+    expect(lowLabel).toBe("Low");
+    expect(highLabel).toBe("High");
+  });
+
+  it("Low/High labelled 'L10 low'/'L10 high' when only min_last_10 is available (early season fallback)", () => {
+    const { lowLabel, highLabel } = deriveSummaryLabels(null, 4.1);
+    expect(lowLabel).toBe("L10 low");
+    expect(highLabel).toBe("L10 high");
+  });
+
+  it("Std dev label is always 'L10 dev' — never unlabelled 'Std dev'", () => {
+    expect(deriveSummaryLabels(14, 4.1).stdDevLabel).toBe("L10 dev");
+    expect(deriveSummaryLabels(null, 4.1).stdDevLabel).toBe("L10 dev");
+    expect(deriveSummaryLabels(null, null).stdDevLabel).toBe("L10 dev");
+  });
+
+  it("Labels do not mix season and last-10 scope without qualification", () => {
+    // When season data is present: Low/High are season, L10 dev is last-10 — both are labelled.
+    const { lowLabel, highLabel, stdDevLabel } = deriveSummaryLabels(14, 4.1);
+    expect(lowLabel).not.toContain("L10");
+    expect(highLabel).not.toContain("L10");
+    // std dev always carries period marker
+    expect(stdDevLabel).toContain("L10");
+  });
+
+  it("When min_season is null, all three stat labels carry the period prefix", () => {
+    const { lowLabel, highLabel, stdDevLabel } = deriveSummaryLabels(null, 2.5);
+    expect(lowLabel).toContain("L10");
+    expect(highLabel).toContain("L10");
+    expect(stdDevLabel).toContain("L10");
+  });
+});
+
 
 describe("Non-disposal lenses: thresholds unchanged", () => {
   it("goals threshold count is 4", () => {

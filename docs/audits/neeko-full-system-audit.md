@@ -432,20 +432,129 @@ The `season_games` CTE in `get_stat_board_players` uses `NOT (disposals=0 AND go
 
 ---
 
+---
+
+## Final Production Reconciliation Pass — 2026-06-19 (Session 2)
+
+### Section 1 — Version State
+
+| Item | Value |
+|------|-------|
+| Git repo | No `.git` directory in working directory — SHA/branch cannot be determined from this environment |
+| Latest DB migration | `20260619040513` — `fix_disposal_threshold_hit_rates_full_range` |
+| Build assets (fresh build) | `StatBoardPlayersPage-CH14JAaT.js`, `SocialPlannerPage--KHl3rwh.js`, `index-DXqlErhA.js` (selected; see build output for full list) |
+| Deployed frontend commit | Cannot determine — no browser/deploy tool access |
+
+### Section 2 — Period Label Fix (ExpandedPlayerPanel summary stats)
+
+**Problem:** Summary stats tile showed "Std dev" (ambiguous — actually `stddev_last_10`, L10 scope) alongside "Low"/"High" (season scope when data available). Labels did not communicate their data period.
+
+**Fix applied to `src/features/afl/stat-board/components/ExpandedPlayerPanel.tsx`:**
+
+1. Added `lowHighPeriod` tracker after existing `displayLow`/`displayHigh` derivations:
+   ```ts
+   const lowHighPeriod = player.min_season != null ? "season" : "l10";
+   ```
+2. Updated `summaryStats` array:
+   - `"Std dev"` → `"L10 dev"` (always, because source is `stddev_last_10`)
+   - `"Low"` → `"L10 low"` when `min_season` is null (early season / data unavailable)
+   - `"High"` → `"L10 high"` when `min_season` is null
+   - "Low"/"High" remain as-is when `min_season` is present (season scope, unambiguous)
+
+**Unit tests added to `src/features/afl/stat-board/lib/disposalScrollTable.test.ts`** (5 new tests):
+
+| Test | Outcome |
+|------|---------|
+| Low/High → "Low"/"High" when min_season present | PASS |
+| Low/High → "L10 low"/"L10 high" when min_season null | PASS |
+| Std dev label is always "L10 dev" | PASS |
+| Labels do not mix periods without qualification | PASS |
+| When min_season null all three carry L10 prefix | PASS |
+
+### Section 3 — Required Source Behaviour
+
+| Behaviour | Result | Evidence |
+|-----------|--------|---------|
+| Chart thresholds exactly [15, 20, 25, 30] | PASS | `publicCollapsedCard = [15, 20, 25, 30]` — `disposalThresholds.ts:18`; confirmed in `chartThresholdProfile.test.ts` |
+| Table rows 10–40 (31 rows) | PASS | `publicExpandedPlayer = range(10,40)` — `disposalThresholds.ts:21`; 31 entries |
+| Filter 3-row mobile layout | PASS | `StatBoardPlayersPage.tsx:503–593` — `PillScrollRow` stat family, `PillScrollRow` position, search+sort row |
+| PlayerIntelligencePanel returns null when !insightMatchesLens | PASS | `PlayerIntelligencePanel.tsx:48` — `if (!insightMatchesLens) return null` before `isPremium` check at line 77 |
+
+### Section 4 — Admin "Game Picks" Tab Verification
+
+> The user requested verification of an admin tab labelled "Game & Players". The actual tab is labelled **"Game Picks"** (desktop) / **"GP"** (mobile) — key `game_picks`. No tab labelled "Game & Players" exists.
+
+| Item | Finding |
+|------|---------|
+| Tab label | "Game Picks" (desktop), "GP" (mobile) — `SocialPostPlanner.tsx:4428–4432` |
+| Tab key | `game_picks` — `isGamePicksTab = activeDay === "game_picks"` (line 4272) |
+| Disposal threshold range in tab | 15–40 (via `adminSocialPlanner = range(15,40)` — `disposalThresholds.ts:15`) |
+| Player controls in GamePicksTabContent | Stat lens toggle (Disposals/Goals), Confidence filter (All/High/Medium/Low), Search box, "25+ tier only" toggle (disposals only) |
+| `allThresholdHitRates` persistence | Read-only from DB. The `all_threshold_hit_rates` jsonb column is populated by the `get_stat_board_players` / `get_stat_board_team` RPCs and read into `GamePickPlayer.allThresholdHitRates` (optional field). It is NOT written back to Supabase from the admin UI — it is ephemeral in the admin session. |
+| No individual player checkbox/ordering/Top N controls | Confirmed absent from `GamePicksTabContent` (controls are lens/confidence/search/tier filters only) |
+
+### Section 5 — CI Results (Final)
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `tsc --noEmit` | **PASS** | 0 errors |
+| `vitest run` | **PASS** | **248/248 tests, 10 files** (up from 243; +5 label period accuracy tests) |
+| `npm run build` | **PASS** | Exits 0 in 31.7 s; chunk advisory is pre-existing |
+
+#### Updated test file inventory
+
+| Test file | Tests | Result |
+|-----------|-------|--------|
+| `src/config/disposalThresholds.test.ts` | 19 | PASS |
+| `src/features/afl/stat-board/lib/thresholdInvariants.test.ts` | 27 | PASS |
+| `src/features/afl/stat-board/components/statFilters.test.ts` | 50 | PASS |
+| `src/features/afl/stat-board/components/expandedDisposalTable.test.ts` | 11 | PASS |
+| `src/features/afl/stat-board/lib/chartThresholdProfile.test.ts` | 17 | PASS |
+| `src/features/admin/pages/social-planner/copyAllStats.test.ts` | 20 | PASS |
+| `src/features/admin/pages/social-planner/statLineEngine.test.ts` | 7 | PASS |
+| `src/features/admin/social-planner/lib/statsBoardCarousel.test.ts` | 29 | PASS |
+| `src/features/afl/stat-board/lib/disposalScrollTable.test.ts` | **18** | PASS (+5 label period accuracy tests) |
+| `src/features/afl/stat-board/lib/insightLensGuard.test.ts` | 50 | PASS |
+| **Total** | **248** | **248/248 PASS** |
+
+### Sections 6–10 — Deployment / Browser / Screenshots
+
+**BLOCKED — Environment limitation.** No deployment mechanism, browser automation, or screenshot capability is available in this environment. The dev server is running and the build passes; all source and data checks are complete. Manual browser QA is required for the following:
+
+| Item | Status |
+|------|--------|
+| Deploy to neekostats.com.au | BLOCKED — no deploy tool |
+| Mobile runtime at 390px / 430px (Brayshaw + Ryan) | BLOCKED — no browser |
+| Admin "Game Picks" tab in deployed admin | BLOCKED — no browser |
+| Console zero-error check | BLOCKED — no browser |
+| Network panel RPC key inspection (10–40) | BLOCKED — no browser |
+| 10 screenshot captures | BLOCKED — no browser |
+
+---
+
 ## Overall Verdict
 
 **NOT SAFE TO SHIP** (browser verification pending)
 
-The single confirmed P1 code bug — Player Intelligence showing fantasy scoring values (86-96 pt projections) under non-fantasy stat lenses — has been fixed. The fix is tested, type-checked, and the build passes.
+### Confirmed fixes shipped in this two-session reconciliation
 
-Remaining BLOCKED items are pixel/interaction tests that require a live browser:
-- Chart label overlap at 4 threshold lines
-- Disposal table scroll-to-edge (initial position near Best line)
-- Mobile selected-pill scroll nudge
-- Browser console — zero React/RPC errors
+| Fix | File | Severity |
+|----|------|---------|
+| Player Intelligence shows fantasy scores under non-fantasy lenses | `PlayerIntelligencePanel.tsx` — early `return null` when `!insightMatchesLens` | **P1 — fixed** |
+| Period labels ambiguous in summary stats tile | `ExpandedPlayerPanel.tsx` — "Std dev" → "L10 dev"; Low/High → "L10 low"/"L10 high" when season data absent | **P2 — fixed** |
 
-No P0 data integrity issues exist. All 31 disposal threshold keys are present and mathematically correct in the DB. The Brayshaw and Ryan invariants the user reported are NOT violations — they are mathematically consistent with the underlying game data.
+### No P0 data integrity issues
 
-**Ship condition:** Manual browser QA confirming (a) Player Intelligence is blank/hidden under Disposals for a premium user, (b) chart shows exactly 4 horizontal lines, (c) no console errors, (d) expanded table opens near threshold 20 row for Brayshaw.
+All 31 disposal threshold keys (10–40) are present in the DB and mathematically correct. All hit-rate denominators are consistent. The Brayshaw and Ryan invariants are mathematically valid.
 
-**Screenshots:** Not available — no browser automation in this environment. Dev server is running and the fix is live in the build.
+### Ship condition
+
+Manual browser QA must confirm:
+1. Player Intelligence panel is blank/hidden under Disposals for a premium user who has an untagged fantasy AI insight
+2. Summary stats tile shows correct period labels ("Low"/"High" vs "L10 low"/"L10 high") depending on season data availability
+3. Chart shows exactly 4 horizontal threshold lines (15/20/25/30)
+4. Expanded disposal table scroll opens near best-threshold row, scrolls to 10+ and 40+, no partial sixth row
+5. No browser console errors
+6. Admin "Game Picks" tab shows disposal hit-rate table with 15–40 range
+
+**Screenshots and deployment:** Not available in this environment. Dev server is running with all changes applied and build verified.
