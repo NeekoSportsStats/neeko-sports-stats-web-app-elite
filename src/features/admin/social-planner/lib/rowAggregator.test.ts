@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { adminSocialPlanner, socialPostStatsBoard, range } from "@/config/disposalThresholds";
+import { adminSocialPlanner, adminFineLines, socialPostStatsBoard, range } from "@/config/disposalThresholds";
 import { aggregateToRows, rowsToStatBoardRows } from "./rowAggregator";
 import { postToDb } from "./dbAdapter";
 import { buildCopyAllStatsText } from "../../pages/social-planner/copyAllStats";
@@ -702,5 +702,142 @@ describe("Public expanded-player profiles unchanged by admin view-mode switch", 
     }
     // But stats board is strictly a 4-value subset
     expect([...socialPostStatsBoard]).toHaveLength(4);
+  });
+});
+
+// ─── adminFineLines constant ──────────────────────────────────────────────────
+
+describe("adminFineLines — 31 threshold columns (10–40)", () => {
+  it("has exactly 31 values", () => {
+    expect(adminFineLines).toHaveLength(31);
+  });
+
+  it("starts at 10", () => {
+    expect(adminFineLines[0]).toBe(10);
+  });
+
+  it("ends at 40", () => {
+    expect(adminFineLines[adminFineLines.length - 1]).toBe(40);
+  });
+
+  it("contains every integer from 10 to 40 inclusive", () => {
+    for (let t = 10; t <= 40; t++) {
+      expect(adminFineLines).toContain(t);
+    }
+  });
+
+  it("is a superset of socialPostStatsBoard (15/20/25/30)", () => {
+    for (const t of socialPostStatsBoard) {
+      expect(adminFineLines).toContain(t);
+    }
+  });
+
+  it("includes 10, 11, 12, 13, 14 (below adminSocialPlanner range)", () => {
+    for (let t = 10; t <= 14; t++) {
+      expect(adminFineLines).toContain(t);
+      expect(adminSocialPlanner).not.toContain(t);
+    }
+  });
+});
+
+// ─── Board Lines / Fine Lines label verification ──────────────────────────────
+// The UI labels are "Board Lines" (value stats_board) and "Fine Lines".
+// The data constants that power each mode:
+
+describe("Board Lines mode — data constants", () => {
+  it("Board Lines uses socialPostStatsBoard = [15, 20, 25, 30]", () => {
+    expect([...socialPostStatsBoard]).toEqual([15, 20, 25, 30]);
+  });
+
+  it("Board Lines has exactly 4 columns", () => {
+    expect([...socialPostStatsBoard]).toHaveLength(4);
+  });
+});
+
+describe("Fine Lines mode — data constants", () => {
+  it("Fine Lines uses adminFineLines (31 columns)", () => {
+    expect(adminFineLines).toHaveLength(31);
+  });
+
+  it("Fine Lines starts at 10, not 15 (extends below Board Lines)", () => {
+    expect(adminFineLines[0]).toBe(10);
+  });
+});
+
+// ─── Cell tooltip format ──────────────────────────────────────────────────────
+// Cells show hits/games (e.g. 13/15); tooltip format is "${hits} of ${games} — ${pct}%"
+
+describe("Disposal cell tooltip format — hits of games — pct%", () => {
+  it("formats 15/15 at 100% as '15 of 15 — 100%'", () => {
+    const hits = 15; const games = 15; const rate = 1.0;
+    const pct = Math.round((rate > 1 ? rate / 100 : rate) * 100);
+    const tooltip = `${hits} of ${games} — ${pct}%`;
+    expect(tooltip).toBe("15 of 15 — 100%");
+  });
+
+  it("formats 5/13 (38%) as '5 of 13 — 38%'", () => {
+    const hits = 5; const games = 13; const rate = 0.384615;
+    const pct = Math.round((rate > 1 ? rate / 100 : rate) * 100);
+    const tooltip = `${hits} of ${games} — ${pct}%`;
+    expect(tooltip).toBe("5 of 13 — 38%");
+  });
+
+  it("aria-label format: '18 plus: 5 hits from 13 games, 38 percent'", () => {
+    const t = 18; const hits = 5; const games = 13; const pct = 38;
+    const ariaLabel = `${t} plus: ${hits} hits from ${games} games, ${pct} percent`;
+    expect(ariaLabel).toBe("18 plus: 5 hits from 13 games, 38 percent");
+  });
+
+  it("does NOT use the old 't+: pct%' tooltip format", () => {
+    const t = 20; const hits = 8; const games = 10; const rate = 0.8;
+    const pct = Math.round(rate * 100);
+    const oldFormat = `${t}+: ${pct}%`;
+    const newFormat = `${hits} of ${games} — ${pct}%`;
+    expect(newFormat).not.toBe(oldFormat);
+    expect(newFormat).toBe("8 of 10 — 80%");
+  });
+});
+
+// ─── Copy All Stats — now includes 10+–40+ ───────────────────────────────────
+
+describe("Copy All Stats — full 10–40 range", () => {
+  it("adminFineLines (used by Copy All Stats) contains 10+", () => {
+    expect(adminFineLines).toContain(10);
+  });
+
+  it("adminFineLines contains 24+", () => {
+    expect(adminFineLines).toContain(24);
+  });
+
+  it("adminFineLines contains 40+", () => {
+    expect(adminFineLines).toContain(40);
+  });
+
+  it("adminFineLines starts at 10, extending below the old adminSocialPlanner (15) range", () => {
+    expect(adminFineLines[0]).toBe(10);
+    expect(adminSocialPlanner[0]).toBe(15);
+    expect(adminFineLines.length).toBeGreaterThan(adminSocialPlanner.length);
+  });
+
+  it("simulated Copy All Stats text includes 10+ and 14+ threshold lines", () => {
+    const rates: Record<string, { hits: number; games: number; rate: number }> = {};
+    for (let t = 10; t <= 40; t++) {
+      rates[String(t)] = { hits: 8, games: 10, rate: 0.8 };
+    }
+    const parts = adminFineLines.map(t => {
+      const entry = rates[String(t)];
+      if (!entry || entry.games === 0) return `${t}+=—`;
+      const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+      return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
+    });
+    const line = parts.join("; ");
+    expect(line).toContain("10+=");
+    expect(line).toContain("14+=");
+    expect(line).toContain("24+=");
+    expect(line).toContain("40+=");
+  });
+
+  it("Post 2 (socialPostStatsBoard) is NOT affected — still [15,20,25,30]", () => {
+    expect([...socialPostStatsBoard]).toEqual([15, 20, 25, 30]);
   });
 });

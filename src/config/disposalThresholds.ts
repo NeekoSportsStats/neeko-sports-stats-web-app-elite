@@ -14,6 +14,9 @@
 /** Integer thresholds used by the admin social planner UI (full range). */
 export const adminSocialPlanner = range(15, 40) as readonly number[];
 
+/** Integer thresholds for the admin Fine Lines disposal view (10–40 inclusive, 31 values). */
+export const adminFineLines = range(10, 40) as readonly number[];
+
 /** Integer thresholds shown in the public collapsed stat-board card columns. */
 export const publicCollapsedCard = [15, 20, 25, 30] as const;
 

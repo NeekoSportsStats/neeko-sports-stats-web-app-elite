@@ -24,9 +24,9 @@ import {
   checkPromptHealth,
   type PromptMode,
 } from "../lib/carouselPromptBuilder";
-import { adminSocialPlanner, socialPostStatsBoard, range } from "@/config/disposalThresholds";
+import { adminFineLines, socialPostStatsBoard } from "@/config/disposalThresholds";
 
-const FINE_LINE_THRESHOLDS: readonly number[] = range(10, 40);
+const FINE_LINE_THRESHOLDS: readonly number[] = adminFineLines;
 const STATS_BOARD_THRESHOLDS: readonly number[] = socialPostStatsBoard;
 import { copyToClipboard } from "../../pages/social-planner/copyAllStats";
 
@@ -687,7 +687,7 @@ function MatchBoardAggregatedSections({
 
   function buildMatchBoardStatsText(): string {
     if (!rows) return "(no player data)";
-    const thresholds = adminSocialPlanner;
+    const thresholds = FINE_LINE_THRESHOLDS;
     const lines: string[] = [
       `NEEKO GAME & PLAYERS EXPORT`,
       `Post: ${post.title}`,
@@ -1233,7 +1233,7 @@ function AggregatedRowSection({
                 onClick={() => setViewMode("stats_board")}
                 className={`px-2 py-0.5 transition-colors ${viewMode === "stats_board" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
               >
-                Stats Board
+                Board Lines
               </button>
               <button
                 onClick={() => setViewMode("fine_lines")}
@@ -1266,7 +1266,11 @@ function AggregatedRowSection({
                 <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
                 {isDisposals ? (
                   activeThresholds.map(t => (
-                    <th key={t} className={`text-right py-1.5 px-1 font-medium whitespace-nowrap ${t % 5 === 0 ? "text-zinc-400" : "text-zinc-600"}`}>{t}+</th>
+                    <th key={t} className={`text-right py-1.5 px-1 font-medium whitespace-nowrap ${
+                      t % 5 === 0
+                        ? viewMode === "fine_lines" ? "text-zinc-300" : "text-zinc-400"
+                        : "text-zinc-600"
+                    }`}>{t}+</th>
                   ))
                 ) : (
                   <>
@@ -1343,7 +1347,8 @@ function AggregatedRowSection({
                         return (
                           <td key={t}
                             className={`py-1.5 px-1 text-right font-mono whitespace-nowrap ${colorClass} ${isMilestone ? "font-semibold" : "font-normal"}`}
-                            title={`${t}+: ${pct}%`}
+                            title={`${entry.hits} of ${entry.games} — ${pct}%`}
+                            aria-label={`${t} plus: ${entry.hits} hits from ${entry.games} games, ${pct} percent`}
                           >
                             {entry.hits}/{entry.games}
                           </td>

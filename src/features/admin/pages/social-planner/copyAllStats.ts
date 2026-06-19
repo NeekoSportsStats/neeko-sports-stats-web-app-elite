@@ -9,14 +9,14 @@
  * Clipboard API is used first; a hidden-textarea fallback supports iOS Safari.
  */
 import type { GamePick, GamePickPlayer } from "./gamePicksEngine";
-import { adminSocialPlanner } from "@/config/disposalThresholds";
+import { adminFineLines } from "@/config/disposalThresholds";
 
 // ─── Text generation ──────────────────────────────────────────────────────────
 
 function formatDisposalLines(picks: GamePickPlayer[]): string {
   if (picks.length === 0) return "  (no qualifying disposal picks)";
 
-  const thresholds = adminSocialPlanner;
+  const thresholds = adminFineLines;
   const lines: string[] = [];
 
   for (const p of picks) {
