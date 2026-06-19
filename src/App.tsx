@@ -80,6 +80,7 @@ const StatBoardHubPage          = React.lazy(() => import("@/features/afl/stat-b
 const StatBoardPlayersPage      = React.lazy(() => import("@/features/afl/stat-board/StatBoardPlayersPage"));
 const StatBoardTeamsPage        = React.lazy(() => import("@/features/afl/stat-board/StatBoardTeamsPage"));
 const StatBoardMatchCentrePage  = React.lazy(() => import("@/features/afl/stat-board/StatBoardMatchCentrePage"));
+const StatBoardCurrentWeekPage  = React.lazy(() => import("@/features/afl/stat-board/current-week/StatBoardCurrentWeekPage"));
 const FantasyHubPage       = React.lazy(() => import("@/features/afl/fantasy/FantasyHubPage"));
 const CurrentWeekPage      = React.lazy(() => import("@/features/afl/fantasy/CurrentWeekPage"));
 
@@ -159,6 +160,7 @@ function App() {
         <Route path="/fantasy/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
         <Route path="/fantasy/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
         <Route path="/stat-board" element={<S fallback={Generic}><StatBoardHubPage /></S>} />
+        <Route path="/stat-board/current-week" element={<S fallback={Players}><StatBoardCurrentWeekPage /></S>} />
         <Route path="/stat-board/players" element={<S fallback={Players}><StatBoardPlayersPage /></S>} />
         <Route path="/stat-board/teams" element={<S fallback={Players}><StatBoardTeamsPage /></S>} />
         <Route path="/stat-board/match-centre" element={<S fallback={Players}><StatBoardMatchCentrePage /></S>} />

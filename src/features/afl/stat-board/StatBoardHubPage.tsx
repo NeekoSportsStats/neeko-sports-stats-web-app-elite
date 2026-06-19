@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Users, ChartBar as BarChart2, Swords, ArrowRight } from "lucide-react";
+import { Users, ChartBar as BarChart2, Swords, CalendarDays, ArrowRight } from "lucide-react";
 
 // ── Shared layout tokens (mirrored in FantasyHubPage) ─────────────────────────
 // maxWidth: 680 | padding: clamp(36px,4.5vw,60px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)
@@ -18,6 +18,12 @@ interface HubCard {
 }
 
 const CARDS: HubCard[] = [
+  {
+    icon: <CalendarDays size={18} />,
+    title: "Current Week",
+    copy: "Compare players from this week's games side-by-side across stat lines. Filter by position and sort by hit rate.",
+    href: "/stat-board/current-week",
+  },
   {
     icon: <Users size={18} />,
     title: "Player Stats",
@@ -123,7 +129,7 @@ export default function StatBoardHubPage() {
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <Link
-                to="/stat-board/players"
+                to="/stat-board/current-week"
                 onMouseEnter={() => setPrimaryHovered(true)}
                 onMouseLeave={() => setPrimaryHovered(false)}
                 style={{
@@ -137,7 +143,7 @@ export default function StatBoardHubPage() {
                   transition: "all 0.15s ease",
                 }}
               >
-                Open Player Stats <ArrowRight size={13} />
+                Open Current Week <ArrowRight size={13} />
               </Link>
               <Link
                 to="/stat-board/match-centre"

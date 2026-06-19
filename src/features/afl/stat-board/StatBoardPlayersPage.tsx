@@ -345,6 +345,20 @@ export default function StatBoardPlayersPage() {
               <span className="sm:hidden">Pick a game, choose a stat, compare trends.</span>
               <span className="hidden sm:inline">Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.</span>
             </p>
+            {/* Secondary nav */}
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <Link
+                to="/stat-board/current-week"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-medium border bg-white/[0.02] border-white/[0.08] text-white/50 hover:bg-white/[0.05] hover:text-white/75 hover:border-white/15 transition-colors"
+              >
+                Current Week
+              </Link>
+              <span
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border bg-white/[0.08] border-white/20 text-white cursor-default"
+              >
+                Player Board
+              </span>
+            </div>
           </div>
 
           {/* ── Mobile layout: match card + access banner ─────────────────── */}
