@@ -42,6 +42,10 @@ export function PlayerIntelligencePanel({
   // current stat context.  When statLens is not provided the check is skipped
   // (legacy callers outside the stat board do not pass a lens).
   const insightMatchesLens = statLens == null || isInsightValidForLens(intelligence, statLens);
+  // When the lens does not match, render nothing — not even the stat-based fallback,
+  // which uses fantasy scoring values (projection, avgLast3) that are misleading under
+  // non-fantasy lenses (e.g. disposals, marks).
+  if (!insightMatchesLens) return null;
   // Treat a lens mismatch as if there is no insight (loading=false, text=null)
   const effectiveIntelligence = insightMatchesLens ? intelligence : null;
 
