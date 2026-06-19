@@ -5,13 +5,18 @@
  * - Goal rows unchanged (1+/2+/3+)
  * - Post 2 isolation: socialPostStatsBoard stays [15,20,25,30]
  * - Top-level Game Picks: GamePickPlayer no longer renders DisposalThresholdTable
+ * - Cell display: hits/games as primary (pct in tooltip)
+ * - postToDb strips allThresholdHitRates from matchBoardRows
+ * - buildCopyAllStatsText includes 24+/40+, both teams, all players
  */
 
 import { describe, it, expect } from "vitest";
 import { adminSocialPlanner, socialPostStatsBoard } from "@/config/disposalThresholds";
 import { aggregateToRows, rowsToStatBoardRows } from "./rowAggregator";
+import { postToDb } from "./dbAdapter";
+import { buildCopyAllStatsText } from "../../pages/social-planner/copyAllStats";
 import type { AFLPlayerStat } from "../types";
-import type { GamePickPlayer } from "../../pages/social-planner/gamePicksEngine";
+import type { GamePickPlayer, GamePick } from "../../pages/social-planner/gamePicksEngine";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -233,5 +238,193 @@ describe("GamePickPlayer — allThresholdHitRates field exists (data layer)", ()
 
   it("allThresholdHitRates is optional — null is valid", () => {
     expect(mockPick.allThresholdHitRates).toBeNull();
+  });
+});
+
+// ─── Cell display: hits/games ─────────────────────────────────────────────────
+
+describe("allThresholdHitRates — 24+ is a real data key (not '—')", () => {
+  it("key '24' exists in a fully populated allThresholdHitRates map", () => {
+    const rates = makeAllThresholdHitRates();
+    expect("24" in rates).toBe(true);
+    expect(rates["24"].games).toBe(10);
+  });
+
+  it("key '40' exists in a fully populated allThresholdHitRates map", () => {
+    const rates = makeAllThresholdHitRates();
+    expect("40" in rates).toBe(true);
+    expect(rates["40"].games).toBe(10);
+  });
+
+  it("allThresholdHitRates rows survive aggregation for 24+ and 40+", () => {
+    const rates = makeAllThresholdHitRates();
+    const stats = [makeDisposalStat({ allThresholdHitRates: rates })];
+    const rows = aggregateToRows(stats, "Team A", "disposals");
+    expect(rows[0].allThresholdHitRates?.["24"]).toBeDefined();
+    expect(rows[0].allThresholdHitRates?.["40"]).toBeDefined();
+    expect(rows[0].allThresholdHitRates?.["24"]!.games).toBe(10);
+    expect(rows[0].allThresholdHitRates?.["40"]!.games).toBe(10);
+  });
+});
+
+// ─── postToDb strips allThresholdHitRates ─────────────────────────────────────
+
+function makeMinimalPost(matchBoardRows: NonNullable<import("../types").SocialPost["matchBoardRows"]>): import("../types").SocialPost {
+  return {
+    id: "post-test-1",
+    round: 1,
+    season: 2026,
+    date: "2026-06-19",
+    dayOfWeek: "Thu",
+    contentType: "match_stat_board",
+    title: "Test Post",
+    hook: "hook",
+    caption: "caption",
+    shortCaption: "short",
+    hashtags: [],
+    imagePrompt: "",
+    carouselSlides: [],
+    selectedPlayers: [],
+    warnings: [],
+    status: "draft",
+    platform: "instagram",
+    createdAt: "2026-06-19T00:00:00Z",
+    updatedAt: "2026-06-19T00:00:00Z",
+    matchBoardRows,
+  };
+}
+
+describe("postToDb — allThresholdHitRates stripped from matchBoardRows", () => {
+  it("allThresholdHitRates is absent from persisted homeDisposals rows", () => {
+    const rates = makeAllThresholdHitRates();
+    const stat = makeDisposalStat({ allThresholdHitRates: rates });
+    const rows = aggregateToRows([stat], "Team A", "disposals");
+    rows[0].selected = true;
+    rows[0].displayMode = "visible";
+
+    const matchBoardRows = {
+      homeDisposals: rows,
+      awayDisposals: [],
+      homeGoals: [],
+      awayGoals: [],
+    };
+    const post = makeMinimalPost(matchBoardRows);
+    const dbPayload = postToDb(post);
+    const persisted = dbPayload.match_board_rows as { homeDisposals: Record<string, unknown>[] };
+    expect(persisted.homeDisposals).toHaveLength(1);
+    expect("allThresholdHitRates" in persisted.homeDisposals[0]).toBe(false);
+  });
+
+  it("other MatchBoardPlayerRow fields are preserved after strip", () => {
+    const stat = makeDisposalStat({ allThresholdHitRates: null });
+    const rows = aggregateToRows([stat], "Team A", "disposals");
+    rows[0].selected = true;
+
+    const matchBoardRows = {
+      homeDisposals: rows,
+      awayDisposals: [],
+      homeGoals: [],
+      awayGoals: [],
+    };
+    const dbPayload = postToDb(makeMinimalPost(matchBoardRows));
+    const persisted = dbPayload.match_board_rows as { homeDisposals: Record<string, unknown>[] };
+    expect(persisted.homeDisposals[0].playerName).toBe("Test Player");
+    expect(persisted.homeDisposals[0].selected).toBe(true);
+  });
+
+  it("null matchBoardRows stays null", () => {
+    const post = makeMinimalPost({ homeDisposals: [], awayDisposals: [], homeGoals: [], awayGoals: [] });
+    post.matchBoardRows = undefined;
+    const dbPayload = postToDb(post);
+    expect(dbPayload.match_board_rows).toBeNull();
+  });
+});
+
+// ─── buildCopyAllStatsText — includes 24+/40+, both teams, all players ────────
+
+function makeGamePick(overrides: Partial<GamePick> = {}): GamePick {
+  const basePlayer = (name: string, team: string): GamePickPlayer => ({
+    player_id: 1,
+    player_name: name,
+    team_name: team,
+    threshold: 20,
+    statFamily: "disposals",
+    hitRecord: "8/10",
+    hitPct: "80%",
+    hitRate: 0.8,
+    l5_avg: 22.4,
+    season_avg: 21.5,
+    games_played: 10,
+    projection: 23,
+    position_group: "MID",
+    tier: "High",
+    consistency_score: 85,
+    copy_line: "Test copy",
+    last_5_values: [21, 24, 19, 25, 22],
+    last_5_strip: "21-24-19-25-22",
+    last5Warning: null,
+    publicContentTier: 20,
+    adminWarnings: [],
+    allThresholdHitRates: makeAllThresholdHitRates(),
+  });
+
+  return {
+    match_id: 1,
+    match_label: "Team A vs Team B",
+    game_date: "2026-06-19",
+    venue: "MCG",
+    week: 1,
+    round: "R1",
+    home_team_name: "Team A",
+    away_team_name: "Team B",
+    is_free_match: false,
+    disposal_picks: [basePlayer("Player One", "Team A"), basePlayer("Player Two", "Team B")],
+    goal_picks: [],
+    goal_picks_1plus: [],
+    ...overrides,
+  };
+}
+
+describe("buildCopyAllStatsText — content requirements", () => {
+  it("output includes 24+ threshold line", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R1 2026");
+    expect(text).toContain("24+=");
+  });
+
+  it("output includes 40+ threshold line", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R1 2026");
+    expect(text).toContain("40+=");
+  });
+
+  it("output includes 15+ threshold line", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R1 2026");
+    expect(text).toContain("15+=");
+  });
+
+  it("output includes players from both teams", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R1 2026");
+    expect(text).toContain("Player One");
+    expect(text).toContain("Player Two");
+  });
+
+  it("output uses hits/games format (e.g. 8/10)", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R1 2026");
+    // At least one threshold entry should show hits/games ratio
+    expect(text).toMatch(/\d+\/\d+/);
+  });
+
+  it("output includes unselected/hidden players — all disposal_picks included", () => {
+    // All disposal_picks are included regardless of selection state
+    // (copyAllStats operates on raw picks, not filtered UI state)
+    const pick = makeGamePick();
+    const text = buildCopyAllStatsText([pick], "R1 2026");
+    for (const p of pick.disposal_picks) {
+      expect(text).toContain(p.player_name);
+    }
+  });
+
+  it("header contains round label", () => {
+    const text = buildCopyAllStatsText([makeGamePick()], "R5 2026");
+    expect(text).toContain("R5 2026");
   });
 });

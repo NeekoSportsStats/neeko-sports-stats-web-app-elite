@@ -25,6 +25,7 @@ import {
   type PromptMode,
 } from "../lib/carouselPromptBuilder";
 import { adminSocialPlanner } from "@/config/disposalThresholds";
+import { copyToClipboard } from "../../pages/social-planner/copyAllStats";
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
 
@@ -724,18 +725,7 @@ function MatchBoardAggregatedSections({
 
   async function handleCopyAllStats() {
     const text = buildMatchBoardStatsText();
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
+    await copyToClipboard(text);
     setCopiedStats(true);
     setTimeout(() => setCopiedStats(false), 2000);
   }
@@ -1222,9 +1212,9 @@ function AggregatedRowSection({
                         return (
                           <td key={t}
                             className={`py-1.5 px-1 text-right font-mono whitespace-nowrap ${colorClass} ${isMilestone ? "font-semibold" : "font-normal"}`}
-                            title={`${t}+: ${entry.hits}/${entry.games}`}
+                            title={`${t}+: ${pct}%`}
                           >
-                            {pct}%
+                            {entry.hits}/{entry.games}
                           </td>
                         );
                       })

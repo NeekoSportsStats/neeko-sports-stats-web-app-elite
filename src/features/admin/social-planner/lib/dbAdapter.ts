@@ -7,6 +7,7 @@ import type {
   CarouselSlide, ConfidenceTier, PlayerAvailabilityStatus,
   ReferenceScreenshot,
 } from "../types";
+import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 // ─── UUID validation ──────────────────────────────────────────────────────────
 
@@ -162,6 +163,25 @@ export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
   };
 }
 
+// ─── UI-only field stripping ──────────────────────────────────────────────────
+
+function stripRow(row: MatchBoardPlayerRow): Omit<MatchBoardPlayerRow, "allThresholdHitRates"> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { allThresholdHitRates: _dropped, ...rest } = row;
+  return rest;
+}
+
+function stripAllThresholdHitRates(
+  matchBoardRows: NonNullable<SocialPost["matchBoardRows"]>
+): NonNullable<SocialPost["matchBoardRows"]> {
+  return {
+    homeDisposals: matchBoardRows.homeDisposals.map(stripRow),
+    awayDisposals: matchBoardRows.awayDisposals.map(stripRow),
+    homeGoals:     matchBoardRows.homeGoals.map(stripRow),
+    awayGoals:     matchBoardRows.awayGoals.map(stripRow),
+  };
+}
+
 export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game_key: string | null } {
   return {
     // Never send id — let Supabase generate via gen_random_uuid()
@@ -196,7 +216,7 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
     full_slide_text_package: post.fullSlideTextPackage ?? null,
     background_prompt_package: post.backgroundPromptPackage ?? null,
     reference_screenshots: post.referenceScreenshots ?? [],
-    match_board_rows: post.matchBoardRows ?? null,
+    match_board_rows: post.matchBoardRows ? stripAllThresholdHitRates(post.matchBoardRows) : null,
     match_board_data_version: post.match_board_data_version ?? null,
     match_board_refreshed_at: post.match_board_refreshed_at ?? null,
   };
