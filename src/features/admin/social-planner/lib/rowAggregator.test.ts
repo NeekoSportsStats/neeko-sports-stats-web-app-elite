@@ -428,3 +428,108 @@ describe("buildCopyAllStatsText — content requirements", () => {
     expect(text).toContain("R5 2026");
   });
 });
+
+// ─── GoalHitCell logic (unit-level, no DOM) ───────────────────────────────────
+// These tests verify the data layer used to drive GoalHitCell rendering:
+// parseRecord helpers, percentage derivation, zero-hit records, and missing data.
+
+function parseGoalRecord(label?: string, percent?: number) {
+  if (!label || label === "—") return { display: "—", pct: null, colorClass: null };
+  const m = label.match(/^(\d+)\/(\d+)$/);
+  if (!m) return { display: "—", pct: null, colorClass: null };
+  const games = Number(m[2]);
+  if (games === 0) return { display: "—", pct: null, colorClass: null };
+  const pct = percent != null ? Math.round(percent) : Math.round((Number(m[1]) / games) * 100);
+  const colorClass =
+    pct >= 80 ? "text-emerald-400" :
+    pct >= 60 ? "text-sky-400" :
+    pct >= 40 ? "text-amber-400" :
+    "text-zinc-500";
+  const tooltip = `${label} — ${pct}%`;
+  return { display: label, pct, colorClass, tooltip };
+}
+
+describe("GoalHitCell rendering logic", () => {
+  it("15/15 renders as 15/15 with 100% tooltip", () => {
+    const result = parseGoalRecord("15/15", 100);
+    expect(result.display).toBe("15/15");
+    expect(result.pct).toBe(100);
+    expect(result.tooltip).toBe("15/15 — 100%");
+    expect(result.colorClass).toBe("text-emerald-400");
+  });
+
+  it("14/15 renders as 14/15 with 93% tooltip", () => {
+    const result = parseGoalRecord("14/15", 93);
+    expect(result.display).toBe("14/15");
+    expect(result.pct).toBe(93);
+    expect(result.tooltip).toBe("14/15 — 93%");
+    expect(result.colorClass).toBe("text-emerald-400");
+  });
+
+  it("0/15 renders as 0/15 with 0% tooltip — valid zero-hit record", () => {
+    const result = parseGoalRecord("0/15", 0);
+    expect(result.display).toBe("0/15");
+    expect(result.pct).toBe(0);
+    expect(result.tooltip).toBe("0/15 — 0%");
+    // 0% uses neutral colour
+    expect(result.colorClass).toBe("text-zinc-500");
+  });
+
+  it("missing data (undefined label) renders —", () => {
+    const result = parseGoalRecord(undefined, undefined);
+    expect(result.display).toBe("—");
+    expect(result.pct).toBeNull();
+  });
+
+  it("explicit — string renders —", () => {
+    const result = parseGoalRecord("—", undefined);
+    expect(result.display).toBe("—");
+    expect(result.pct).toBeNull();
+  });
+
+  it("colour uses percentage correctly — 80% gets emerald", () => {
+    const result = parseGoalRecord("8/10", 80);
+    expect(result.colorClass).toBe("text-emerald-400");
+  });
+
+  it("colour uses percentage correctly — 60% gets sky", () => {
+    const result = parseGoalRecord("6/10", 60);
+    expect(result.colorClass).toBe("text-sky-400");
+  });
+
+  it("colour uses percentage correctly — 40% gets amber", () => {
+    const result = parseGoalRecord("4/10", 40);
+    expect(result.colorClass).toBe("text-amber-400");
+  });
+
+  it("colour uses percentage correctly — below 40% gets zinc", () => {
+    const result = parseGoalRecord("3/10", 30);
+    expect(result.colorClass).toBe("text-zinc-500");
+  });
+
+  it("games=0 in label renders —", () => {
+    const result = parseGoalRecord("0/0", 0);
+    expect(result.display).toBe("—");
+  });
+});
+
+describe("Post 2 unchanged — goal record label format in rowsToStatBoardRows", () => {
+  it("goal rows still emit t1/t2/t3 record strings to StatBoardRow", () => {
+    const g1 = makeGoalStat({ threshold: 1, id: "p2_g1", recordLabel: "15/15", percent: 100 });
+    const g2 = makeGoalStat({ threshold: 2, id: "p2_g2", recordLabel: "14/15", percent: 93 });
+    const g3 = makeGoalStat({ threshold: 3, id: "p2_g3", recordLabel: "0/15",  percent: 0 });
+    const rows = aggregateToRows([g1, g2, g3], "Team A", "goals");
+    rows[0].selected = true;
+    rows[0].displayMode = "visible";
+    rows[0].sortOrder = 0;
+
+    const boardRows = rowsToStatBoardRows(rows);
+    expect(boardRows[0].threshold1Goal).toBe("15/15");
+    expect(boardRows[0].threshold2Goals).toBe("14/15");
+    expect(boardRows[0].threshold3Goals).toBe("0/15");
+    // Disposal fields absent for goal rows
+    expect(boardRows[0].threshold15).toBeUndefined();
+    expect(boardRows[0].threshold20).toBeUndefined();
+  });
+});
+

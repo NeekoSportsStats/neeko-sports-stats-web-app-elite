@@ -870,6 +870,40 @@ function GradeCell({ label }: { label?: string; percent?: number; gamesPlayed?: 
   return <span className={cls}>{label ?? "—"}</span>;
 }
 
+/**
+ * Renders a goal threshold hit-rate cell using hits/games primary display
+ * with percentage in the title tooltip — same pattern as disposal cells.
+ * `label` is a record string like "7/10" or undefined/absent.
+ * `percent` is 0–100.
+ */
+function GoalHitCell({ label, percent }: { label?: string; percent?: number }) {
+  if (!label || label === "—") {
+    return <td className="py-1.5 px-2 text-right text-zinc-700 font-mono whitespace-nowrap tabular-nums">—</td>;
+  }
+  const m = label.match(/^(\d+)\/(\d+)$/);
+  if (!m) {
+    return <td className="py-1.5 px-2 text-right text-zinc-700 font-mono whitespace-nowrap tabular-nums">—</td>;
+  }
+  const games = Number(m[2]);
+  if (games === 0) {
+    return <td className="py-1.5 px-2 text-right text-zinc-700 font-mono whitespace-nowrap tabular-nums">—</td>;
+  }
+  const pct = percent != null ? Math.round(percent) : Math.round((Number(m[1]) / games) * 100);
+  const colorClass =
+    pct >= 80 ? "text-emerald-400" :
+    pct >= 60 ? "text-sky-400" :
+    pct >= 40 ? "text-amber-400" :
+    "text-zinc-500";
+  return (
+    <td
+      className={`py-1.5 px-2 text-right font-mono whitespace-nowrap tabular-nums ${colorClass}`}
+      title={`${label} — ${pct}%`}
+    >
+      {label}
+    </td>
+  );
+}
+
 // ─── Availability badge ───────────────────────────────────────────────────────
 
 const AVAIL_STATUS_CONFIG: Record<PlayerAvailabilityStatus, { label: string; cls: string }> = {
@@ -1220,9 +1254,9 @@ function AggregatedRowSection({
                       })
                     ) : (
                       <>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t1} percent={row.p1} gamesPlayed={row.maxGamesPlayed} /></td>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t2} percent={row.p2} gamesPlayed={row.maxGamesPlayed} /></td>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t3} percent={row.p3} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <GoalHitCell label={row.t1} percent={row.p1} />
+                        <GoalHitCell label={row.t2} percent={row.p2} />
+                        <GoalHitCell label={row.t3} percent={row.p3} />
                       </>
                     )}
                     {/* Display mode selector */}
