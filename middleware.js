@@ -254,7 +254,7 @@ function getPageMeta(pathname) {
   };
 }
 
-function buildBotHTML(meta, pathname) {
+function buildBotHTML(meta, _pathname) {
   const { title, description, canonical } = meta;
   const escaped = (s) =>
     s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

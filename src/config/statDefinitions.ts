@@ -1,4 +1,12 @@
-import type { StatLens } from "@/features/afl/stat-board/types";
+import {
+  type StatLens,
+  DISPOSAL_THRESHOLDS,
+  GOALS_THRESHOLDS,
+  MARKS_THRESHOLDS,
+  TACKLES_THRESHOLDS,
+  KICKS_THRESHOLDS,
+  FANTASY_THRESHOLDS,
+} from "@/features/afl/stat-board/types";
 
 export interface StatDefinition {
   key: StatLens;
@@ -21,7 +29,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Disposals",
     labelShort: "Disp",
     historyColumn: "disposals",
-    collapsedThresholds: [15, 20, 25, 30],
+    collapsedThresholds: DISPOSAL_THRESHOLDS,
     defaultThreshold: 20,
     supportsProjection: true,
     zeroIsValid: false,
@@ -31,7 +39,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Goals",
     labelShort: "Goals",
     historyColumn: "goals",
-    collapsedThresholds: [1, 2, 3, 4],
+    collapsedThresholds: GOALS_THRESHOLDS,
     defaultThreshold: 1,
     supportsProjection: true,
     zeroIsValid: true,
@@ -41,7 +49,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Marks",
     labelShort: "Marks",
     historyColumn: "marks",
-    collapsedThresholds: [3, 4, 5, 6, 7],
+    collapsedThresholds: MARKS_THRESHOLDS,
     defaultThreshold: 4,
     supportsProjection: true,
     zeroIsValid: false,
@@ -51,7 +59,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Tackles",
     labelShort: "Tkls",
     historyColumn: "tackles",
-    collapsedThresholds: [3, 4, 5, 6],
+    collapsedThresholds: TACKLES_THRESHOLDS,
     defaultThreshold: 4,
     supportsProjection: true,
     zeroIsValid: false,
@@ -61,7 +69,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Kicks",
     labelShort: "Kicks",
     historyColumn: "kicks",
-    collapsedThresholds: [8, 10, 12, 15, 18],
+    collapsedThresholds: KICKS_THRESHOLDS,
     defaultThreshold: 10,
     supportsProjection: true,
     zeroIsValid: false,
@@ -71,7 +79,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     label: "Fantasy",
     labelShort: "Fant",
     historyColumn: "fantasy_score",
-    collapsedThresholds: [60, 70, 80, 90, 100],
+    collapsedThresholds: FANTASY_THRESHOLDS,
     defaultThreshold: 75,
     supportsProjection: true,
     zeroIsValid: false,
