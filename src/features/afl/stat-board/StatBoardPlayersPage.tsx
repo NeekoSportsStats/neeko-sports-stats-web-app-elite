@@ -332,7 +332,7 @@ export default function StatBoardPlayersPage() {
           className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0"
           style={{
             paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
-            paddingTop: isMobile ? "calc(62px + 0.75rem)" : undefined,
+            paddingTop: isMobile ? "calc(62px + env(safe-area-inset-top, 0px) + 1.25rem)" : undefined,
             boxSizing: "border-box",
             maxWidth: "100%",
           }}
@@ -498,17 +498,16 @@ export default function StatBoardPlayersPage() {
           <div ref={controlsRef} className="mb-2.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
             {/* Mobile controls — compact pill style */}
-            <div className="sm:hidden space-y-2" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+            <div className="sm:hidden space-y-1.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
-              {/* Row 1: Stat lens toggle + position pills in one scrollable row */}
-              <div
-                className="flex gap-1.5 overflow-x-auto"
-                style={{ scrollbarWidth: "none", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
-              >
+              {/* ROW 1 — STAT FAMILY: independent horizontal scroll */}
+              <PillScrollRow aria-label="Filter by stat family">
                 {(["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as StatLens[]).map((l) => (
                   <button
                     key={l}
+                    data-active={lens === l ? "" : undefined}
                     onClick={() => handleLensChange(l)}
+                    aria-pressed={lens === l}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors border shrink-0 ${
                       lens === l
                         ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
@@ -518,11 +517,16 @@ export default function StatBoardPlayersPage() {
                     {statLabel(l)}
                   </button>
                 ))}
-                <span className="text-white/15 text-[10px] self-center shrink-0">|</span>
+              </PillScrollRow>
+
+              {/* ROW 2 — POSITION: independent horizontal scroll */}
+              <PillScrollRow aria-label="Filter by position">
                 {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
+                    data-active={positionFilter === key ? "" : undefined}
                     onClick={() => handlePositionChange(key)}
+                    aria-pressed={positionFilter === key}
                     className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors border shrink-0 ${
                       positionFilter === key
                         ? "bg-white/12 border-white/20 text-white"
@@ -532,9 +536,9 @@ export default function StatBoardPlayersPage() {
                     {label}
                   </button>
                 ))}
-              </div>
+              </PillScrollRow>
 
-              {/* Row 2: Search + Sort + How-to-read */}
+              {/* ROW 3 — SEARCH + SORT + HELP */}
               <div className="flex items-center gap-1.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
                 {/* Search */}
                 <div className="flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] pl-2.5 pr-2 py-1.5 gap-1.5" style={{ flex: "1 1 0", minWidth: 0 }}>
@@ -827,6 +831,57 @@ export default function StatBoardPlayersPage() {
         />
       )}
     </>
+  );
+}
+
+// ── Pill scroll row ───────────────────────────────────────────────────────────
+// An independent horizontal-scroll container for filter pill rows.
+// Scrolls the active pill into view within the row (never the page).
+// Edge fades appear only where content overflows.
+
+function PillScrollRow({
+  children,
+  "aria-label": ariaLabel,
+}: {
+  children: React.ReactNode;
+  "aria-label"?: string;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Scroll active pill into view within this row after every render
+  // where the active pill may have changed.
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const active = row.querySelector<HTMLElement>("[data-active]");
+    if (!active) return;
+    const rowRect = row.getBoundingClientRect();
+    const pillRect = active.getBoundingClientRect();
+    const paddingPx = 12;
+    const leftEdge = pillRect.left - rowRect.left + row.scrollLeft;
+    const rightEdge = leftEdge + pillRect.width;
+    if (leftEdge < row.scrollLeft + paddingPx) {
+      row.scrollLeft = Math.max(0, leftEdge - paddingPx);
+    } else if (rightEdge > row.scrollLeft + row.clientWidth - paddingPx) {
+      row.scrollLeft = rightEdge - row.clientWidth + paddingPx;
+    }
+  });
+
+  return (
+    <div
+      ref={rowRef}
+      role="group"
+      aria-label={ariaLabel}
+      className="relative flex gap-1.5 overflow-x-auto"
+      style={{
+        scrollbarWidth: "none",
+        WebkitOverflowScrolling: "touch",
+        maskImage: "linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent)",
+        WebkitMaskImage: "linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent)",
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -1314,19 +1369,23 @@ const TeamBoard = memo(function TeamBoard({
         {/* Fully visible players */}
         <div className="flex flex-col gap-2 w-full min-w-0">
           {fullyVisiblePlayers.map((player) => (
-            <MobilePlayerCard
+            <div
               key={`${matchId ?? 0}-${player.player_id}`}
-              player={player}
-              lens={lens}
-              thresholds={thresholds}
-              defaultThreshold={defaultThreshold}
-              isMatchLocked={isMatchLocked}
-              isExpanded={expandedPlayerId === player.player_id}
-              onToggleExpand={() =>
-                onToggleExpand(expandedPlayerId === player.player_id ? null : player.player_id)
-              }
-              matchId={matchId}
-            />
+              style={{ scrollMarginTop: "calc(62px + env(safe-area-inset-top, 0px) + 0.5rem)" }}
+            >
+              <MobilePlayerCard
+                player={player}
+                lens={lens}
+                thresholds={thresholds}
+                defaultThreshold={defaultThreshold}
+                isMatchLocked={isMatchLocked}
+                isExpanded={expandedPlayerId === player.player_id}
+                onToggleExpand={() =>
+                  onToggleExpand(expandedPlayerId === player.player_id ? null : player.player_id)
+                }
+                matchId={matchId}
+              />
+            </div>
           ))}
         </div>
 
