@@ -25,13 +25,6 @@ const POSITION_OPTIONS: { key: PositionFilter; label: string }[] = [
   { key: "RUCK", label: "RUCK" },
 ];
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "hit_rate",   label: "Hit rate" },
-  { key: "l5_avg",     label: "L5 avg" },
-  { key: "projection", label: "Projection" },
-  { key: "name",       label: "A–Z" },
-];
-
 interface Props {
   stat: StatLens;
   mode: CompareMode;
@@ -46,60 +39,94 @@ interface Props {
 }
 
 export function CurrentWeekControls({
-  stat, mode, position, sort, search,
-  onStatChange, onModeChange, onPositionChange, onSortChange, onSearchChange,
+  stat, mode, position, search,
+  onStatChange, onModeChange, onPositionChange, onSearchChange,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
-  const px = "clamp(12px,3vw,20px)";
+  const px = "var(--page-px)";
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* Row 1: Stat family */}
-      <ScrollRow label="Stat" px={px}>
-        {STAT_OPTIONS.map((o) => (
-          <PillButton
-            key={o.key}
-            active={stat === o.key}
-            onClick={() => onStatChange(o.key)}
-          >
-            {o.label}
-          </PillButton>
-        ))}
-      </ScrollRow>
+    <div className="flex flex-col gap-2">
 
-      {/* Row 2: Mode */}
-      <ScrollRow label="Mode" px={px}>
-        {MODE_OPTIONS.map((o) => (
-          <PillButton
-            key={o.key}
-            active={mode === o.key}
-            onClick={() => onModeChange(o.key)}
-          >
-            {o.label}
-          </PillButton>
-        ))}
-      </ScrollRow>
-
-      {/* Row 3: Position */}
-      <ScrollRow label="Position" px={px}>
-        {POSITION_OPTIONS.map((o) => (
-          <PillButton
-            key={o.key}
-            active={position === o.key}
-            onClick={() => onPositionChange(o.key)}
-          >
-            {o.label}
-          </PillButton>
-        ))}
-      </ScrollRow>
-
-      {/* Row 4: Search + Sort */}
+      {/*
+       * Row 1 (desktop): stat pills on the left, mode toggle on the right.
+       * Mobile: stats scroll, mode below.
+       */}
       <div
-        className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5"
+        className="flex items-center gap-3 justify-between"
         style={{ paddingInline: px }}
       >
-        {/* Search input */}
-        <div className="relative flex-1 min-w-[120px] max-w-[220px]">
+        {/* Stat pills — scrollable on mobile, wrap-friendly on desktop */}
+        <div
+          className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-1 min-w-0"
+          role="group"
+          aria-label="Select stat"
+        >
+          {STAT_OPTIONS.map((o) => (
+            <PillButton
+              key={o.key}
+              active={stat === o.key}
+              onClick={() => onStatChange(o.key)}
+              aria-pressed={stat === o.key}
+            >
+              {o.label}
+            </PillButton>
+          ))}
+        </div>
+
+        {/* Mode toggle — fixed right, never scrolls off */}
+        <div
+          className="flex gap-1 flex-shrink-0 bg-white/[0.03] border border-white/[0.07] rounded-xl p-0.5"
+          role="group"
+          aria-label="Select view mode"
+        >
+          {MODE_OPTIONS.map((o) => (
+            <button
+              key={o.key}
+              onClick={() => onModeChange(o.key)}
+              aria-pressed={mode === o.key}
+              className={[
+                "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-150",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
+                mode === o.key
+                  ? "bg-white/[0.12] text-white shadow-sm"
+                  : "text-white/40 hover:text-white/70",
+              ].join(" ")}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/*
+       * Row 2: position filter left, search centre, (sort moved to per-team header).
+       */}
+      <div
+        className="flex items-center gap-3"
+        style={{ paddingInline: px }}
+      >
+        {/* Position filter */}
+        <div
+          className="flex gap-1 flex-shrink-0"
+          role="group"
+          aria-label="Filter by position"
+        >
+          {POSITION_OPTIONS.map((o) => (
+            <PillButton
+              key={o.key}
+              active={position === o.key}
+              onClick={() => onPositionChange(o.key)}
+              small
+              aria-pressed={position === o.key}
+            >
+              {o.label}
+            </PillButton>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-[240px]">
           <Search
             size={11}
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"
@@ -109,7 +136,7 @@ export function CurrentWeekControls({
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search player..."
+            placeholder="Search player…"
             className="w-full pl-7 pr-7 py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder:text-white/25 focus:outline-none focus:border-white/20 focus:bg-white/[0.06] transition-colors"
           />
           {search && (
@@ -122,48 +149,25 @@ export function CurrentWeekControls({
             </button>
           )}
         </div>
-
-        {/* Sort pills */}
-        <div className="flex gap-1.5 flex-shrink-0">
-          {SORT_OPTIONS.map((o) => (
-            <PillButton
-              key={o.key}
-              active={sort === o.key}
-              onClick={() => onSortChange(o.key)}
-              small
-            >
-              {o.label}
-            </PillButton>
-          ))}
-        </div>
       </div>
-    </div>
-  );
-}
 
-function ScrollRow({ label, px, children }: { label: string; px: string; children: React.ReactNode }) {
-  return (
-    <div
-      className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5"
-      style={{ paddingInline: px }}
-      aria-label={label}
-    >
-      {children}
     </div>
   );
 }
 
 function PillButton({
-  active, onClick, children, small = false,
+  active, onClick, children, small = false, "aria-pressed": ariaPressed,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   small?: boolean;
+  "aria-pressed"?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      aria-pressed={ariaPressed}
       className={[
         "flex-shrink-0 rounded-lg border font-medium transition-all duration-100",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
