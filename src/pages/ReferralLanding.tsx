@@ -2,9 +2,10 @@ import { useEffect, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import posthog from "posthog-js";
 import { saveReferralAttribution } from "@/lib/referralAttribution";
+import { FreeRoundPreviewTable } from "@/components/landing/FreeRoundPreviewTable";
 
 // ── Build marker ──────────────────────────────────────────────────────────────
-const BUILD_MARKER = "referral_landing_v1";
+const BUILD_MARKER = "referral_landing_v2";
 
 // ── Gesture constants ─────────────────────────────────────────────────────────
 const TAP_MOVE_THRESHOLD_PX = 10;
@@ -53,7 +54,7 @@ const CREATOR_REFERRALS: Record<string, CreatorConfig> = {
 };
 
 const FALLBACK_CREATOR: CreatorConfig = {
-  creatorName: "a creator",
+  creatorName: "a Neeko creator",
   referralCode: null,
   headline: "You were referred to Neeko.",
   subheadline: "Check this week's AFL player trends before the round.",
@@ -91,8 +92,6 @@ function getDeviceType(): string {
 }
 
 // ── HardenedTrackedLink ───────────────────────────────────────────────────────
-// WebView-safe anchor. Tracks gesture movement to distinguish real taps from
-// scrolls. Forces navigation via window.location.assign only on confirmed taps.
 
 interface HardenedTrackedLinkProps {
   href: string;
@@ -218,12 +217,14 @@ function HardenedTrackedLink({
       event_type: eventType,
       navigation_method: navMethod,
       gesture_cancelled: false,
+      cancel_reason: "",
     };
 
     try {
       posthog.capture("referral_cta_clicked", props);
       posthog.capture("cta_clicked", props);
       posthog.capture("referral_cta_navigation_started", props);
+      posthog.capture("referral_cta_navigation_attempted", props);
     } catch { /* non-critical */ }
 
     window.location.assign(href);
@@ -246,6 +247,7 @@ function HardenedTrackedLink({
         event_type: "pointer_down",
         navigation_method: "native_anchor",
         gesture_cancelled: false,
+        cancel_reason: "",
         delta_x: 0, delta_y: 0,
         max_delta_x: 0, max_delta_y: 0,
         max_distance: 0, touch_duration_ms: 0,
@@ -422,17 +424,20 @@ export default function ReferralLanding() {
   const firedCTAVisible = useRef(false);
   const ctaRef = useRef<HTMLDivElement>(null);
 
-  const creator = CREATOR_REFERRALS[creatorSlug.toLowerCase()] ?? FALLBACK_CREATOR;
-  const isKnownCreator = creatorSlug.toLowerCase() in CREATOR_REFERRALS;
+  const slug = creatorSlug.toLowerCase();
+  const creator = CREATOR_REFERRALS[slug] ?? FALLBACK_CREATOR;
+  const isKnownCreator = slug in CREATOR_REFERRALS;
 
   const now = new Date().toISOString();
+  const cleanPagePath = location.pathname;
+
   const referralAttrs: Record<string, string | null> = {
-    referral_source: "creator_referral",
-    campaign_type: "influencer",
+    referral_source: "influencer",
+    campaign_type: "creator_referral",
     creator_slug: creatorSlug,
     creator_name: creator.creatorName,
     referral_code: creator.referralCode,
-    referral_landing_path: location.pathname,
+    referral_landing_path: cleanPagePath,
     referral_landing_url: window.location.href,
     referral_first_seen_at: now,
     referral_last_seen_at: now,
@@ -449,36 +454,37 @@ export default function ReferralLanding() {
 
     saveReferralAttribution(referralAttrs as Parameters<typeof saveReferralAttribution>[0]);
 
+    const markerProps = {
+      page: "referral",
+      marker: BUILD_MARKER,
+      build_marker: BUILD_MARKER,
+      clean_page_path: cleanPagePath,
+      creator_slug: creatorSlug,
+      creator_name: creator.creatorName,
+      is_known_creator: isKnownCreator,
+      referral_source: "influencer",
+      campaign_type: "creator_referral",
+      referral_code: creator.referralCode,
+      referral_landing_url: window.location.href,
+      referral_first_seen_at: now,
+      referral_last_seen_at: now,
+      current_href: window.location.href,
+      current_pathname: window.location.pathname,
+      device_type: getDeviceType(),
+      in_app_browser: detectInAppBrowser(),
+      viewport_width: window.innerWidth,
+      viewport_height: window.innerHeight,
+      ...utms,
+    };
+
     try {
-      posthog.capture("referral_landing_build_marker", {
-        page: "referral",
-        marker: BUILD_MARKER,
-        clean_page_path: location.pathname,
-        creator_slug: creatorSlug,
-        creator_name: creator.creatorName,
-        is_known_creator: isKnownCreator,
-        device_type: getDeviceType(),
-        in_app_browser: detectInAppBrowser(),
-        viewport_width: window.innerWidth,
-        viewport_height: window.innerHeight,
-      });
+      posthog.capture("referral_landing_build_marker", markerProps);
     } catch { /* non-critical */ }
 
     try {
       posthog.capture("referral_landing_loaded", {
-        build_marker: BUILD_MARKER,
-        page: "referral",
-        clean_page_path: location.pathname,
-        creator_slug: creatorSlug,
-        creator_name: creator.creatorName,
-        is_known_creator: isKnownCreator,
-        device_type: getDeviceType(),
-        in_app_browser: detectInAppBrowser(),
-        viewport_width: window.innerWidth,
-        viewport_height: window.innerHeight,
+        ...markerProps,
         referrer: document.referrer || null,
-        ...referralAttrs,
-        ...utms,
       });
     } catch { /* non-critical */ }
 
@@ -499,10 +505,17 @@ export default function ReferralLanding() {
             posthog.capture("referral_landing_cta_visible", {
               build_marker: BUILD_MARKER,
               page: "referral",
-              clean_page_path: location.pathname,
+              clean_page_path: cleanPagePath,
               creator_slug: creatorSlug,
               creator_name: creator.creatorName,
-              ...referralAttrs,
+              referral_source: "influencer",
+              campaign_type: "creator_referral",
+              referral_code: creator.referralCode,
+              referral_landing_url: window.location.href,
+              referral_first_seen_at: now,
+              referral_last_seen_at: now,
+              current_href: window.location.href,
+              current_pathname: window.location.pathname,
               ...utms,
             });
           } catch { /* non-critical */ }
@@ -518,14 +531,14 @@ export default function ReferralLanding() {
 
   // ── Destination URLs ──────────────────────────────────────────────────────
   const refParam = { ref: creatorSlug };
-  const freeHref  = appendUtms("/stat-board", utms);
+  const freeHref  = appendUtms("/stat-board/players", utms);
   const paidHref  = appendUtms(`/auth?mode=signup&plan_key=round_pass_7d`, utms, refParam);
   const plansHref = appendUtms(`/neeko-plus?plan=round_pass_7d`, utms, refParam);
 
   const sharedLinkProps = {
     build_marker: BUILD_MARKER,
     page: "referral",
-    clean_page_path: location.pathname,
+    clean_page_path: cleanPagePath,
     referral_attrs: referralAttrs,
     utms,
   };
@@ -620,7 +633,7 @@ export default function ReferralLanding() {
             cta_type="free"
             cta_text="View Free Games"
             cta_location="referral_landing_hero"
-            destination="/stat-board"
+            destination="/stat-board/players"
             {...sharedLinkProps}
             style={{
               ...anchorBase,
@@ -696,9 +709,19 @@ export default function ReferralLanding() {
           </div>
         </div>
 
+        {/* ── Board preview table ── */}
+        <div style={{ marginTop: 32 }}>
+          <FreeRoundPreviewTable
+            utms={utms}
+            cleanPagePath={cleanPagePath}
+            previewLoadedEvent="referral_preview_loaded"
+            previewErrorEvent="referral_preview_error"
+          />
+        </div>
+
         {/* ── 7-Day Round Pass offer ── */}
         <div style={{
-          marginTop: 32,
+          marginTop: 24,
           background: "linear-gradient(150deg, rgba(29,78,216,0.12) 0%, rgba(15,23,42,0.10) 100%)",
           border: "1px solid rgba(96,165,250,0.18)",
           borderRadius: 16,

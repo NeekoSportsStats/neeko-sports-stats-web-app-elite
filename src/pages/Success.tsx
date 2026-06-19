@@ -76,7 +76,16 @@ export default function Success() {
     if (!alreadyFired) {
       if (dedupeKey) localStorage.setItem(dedupeKey, "1");
       const ref = loadReferralAttribution();
-      const refProps = ref ? { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name } : {};
+      const refProps = ref ? {
+        referral_source: ref.referral_source,
+        campaign_type: ref.campaign_type,
+        creator_slug: ref.creator_slug,
+        creator_name: ref.creator_name,
+        referral_code: ref.referral_code,
+        referral_landing_url: ref.referral_landing_url,
+        referral_first_seen_at: ref.referral_first_seen_at,
+        referral_last_seen_at: ref.referral_last_seen_at,
+      } : {};
       track("subscription_activated", { session_id: sessionId ?? undefined, ...refProps });
       const planParam = new URLSearchParams(window.location.search).get("plan");
       const conversionValue = planParam === "weekly"

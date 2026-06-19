@@ -38,10 +38,19 @@ const StartCheckout = () => {
         return;
       }
 
-      track("auth_checkout_resume", { plan_key: plan });
       const ref = loadReferralAttribution();
-      const refProps = ref ? { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name } : {};
-      track("checkout_attempted", { plan_key: plan, source_page: "/start-checkout", ...refProps });
+      const refProps = ref ? {
+        referral_source: ref.referral_source,
+        campaign_type: ref.campaign_type,
+        creator_slug: ref.creator_slug,
+        creator_name: ref.creator_name,
+        referral_code: ref.referral_code,
+        referral_landing_url: ref.referral_landing_url,
+        referral_first_seen_at: ref.referral_first_seen_at,
+        referral_last_seen_at: ref.referral_last_seen_at,
+      } : {};
+      track("auth_checkout_resume", { plan_key: plan });
+      track("checkout_attempted", { plan_key: plan, source_page: "/checkout", ...refProps });
       clearCheckoutIntent();
 
       try {
@@ -64,7 +73,7 @@ const StartCheckout = () => {
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({}));
           const msg = body?.error ?? `Checkout failed (${resp.status})`;
-          track("checkout_error", { plan_key: plan, source_page: "/start-checkout", error: msg });
+          track("checkout_error", { plan_key: plan, source_page: "/checkout", error: msg, ...refProps });
           setError(msg);
           return;
         }
@@ -76,8 +85,8 @@ const StartCheckout = () => {
           return;
         }
 
-        track("checkout_session_created", { plan_key: plan, source_page: "/start-checkout", stripe_session_id: data.sessionId ?? undefined });
-        track("checkout_redirected", { plan_key: plan, source_page: "/start-checkout" });
+        track("checkout_session_created", { plan_key: plan, source_page: "/checkout", stripe_session_id: data.sessionId ?? undefined, ...refProps });
+        track("checkout_redirected", { plan_key: plan, source_page: "/checkout", ...refProps });
         window.location.href = data.url;
       } catch (e: any) {
         const msg = e?.message ?? "Unexpected error";

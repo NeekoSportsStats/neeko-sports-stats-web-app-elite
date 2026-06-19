@@ -183,9 +183,9 @@ const Auth = () => {
   function getPostAuthPath(overridePlan?: string): string {
     const effectivePlan = overridePlan ?? planKey;
     if (effectivePlan) {
-      return `/start-checkout?plan_key=${effectivePlan}`;
+      return `/checkout?plan_key=${effectivePlan}`;
     }
-    if (rawRedirect === "checkout") return "/start-checkout";
+    if (rawRedirect === "checkout") return "/checkout";
     if (rawRedirect === "account") return "/account";
     if (SAFE_REDIRECTS.has(rawRedirect)) return rawRedirect;
     return "/";
@@ -210,7 +210,7 @@ const Auth = () => {
       } else if (isValidPlan(intent.plan_key)) {
         clearCheckoutIntent();
         track("checkout_intent_resumed", { plan_key: intent.plan_key });
-        navigate(`/start-checkout?plan_key=${intent.plan_key}`, { replace: true });
+        navigate(`/checkout?plan_key=${intent.plan_key}`, { replace: true });
         return;
       } else {
         clearCheckoutIntent();
@@ -226,7 +226,16 @@ const Auth = () => {
       track("auth_checkout_viewed", {
         plan_key: planKey,
         mode,
-        ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }),
+        ...(ref && {
+          referral_source: ref.referral_source,
+          campaign_type: ref.campaign_type,
+          creator_slug: ref.creator_slug,
+          creator_name: ref.creator_name,
+          referral_code: ref.referral_code,
+          referral_landing_url: ref.referral_landing_url,
+          referral_first_seen_at: ref.referral_first_seen_at,
+          referral_last_seen_at: ref.referral_last_seen_at,
+        }),
       });
     }
   }, []);
@@ -243,8 +252,26 @@ const Auth = () => {
         if (isPurchaseIntent) {
           const ref = loadReferralAttribution();
           saveCheckoutIntent(planKey!);
-          track("checkout_intent_saved", { plan_key: planKey, trigger: "signin", ...(ref && { creator_slug: ref.creator_slug }) });
-          track("auth_signin_started", { plan_key: planKey, ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }) });
+          track("checkout_intent_saved", { plan_key: planKey, trigger: "signin", ...(ref && {
+            referral_source: ref.referral_source,
+            campaign_type: ref.campaign_type,
+            creator_slug: ref.creator_slug,
+            creator_name: ref.creator_name,
+            referral_code: ref.referral_code,
+            referral_landing_url: ref.referral_landing_url,
+            referral_first_seen_at: ref.referral_first_seen_at,
+            referral_last_seen_at: ref.referral_last_seen_at,
+          }) });
+          track("auth_signin_started", { plan_key: planKey, ...(ref && {
+            referral_source: ref.referral_source,
+            campaign_type: ref.campaign_type,
+            creator_slug: ref.creator_slug,
+            creator_name: ref.creator_name,
+            referral_code: ref.referral_code,
+            referral_landing_url: ref.referral_landing_url,
+            referral_first_seen_at: ref.referral_first_seen_at,
+            referral_last_seen_at: ref.referral_last_seen_at,
+          }) });
         }
 
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -271,8 +298,26 @@ const Auth = () => {
       if (isPurchaseIntent) {
         const ref = loadReferralAttribution();
         saveCheckoutIntent(planKey!);
-        track("checkout_intent_saved", { plan_key: planKey, trigger: "signup", ...(ref && { creator_slug: ref.creator_slug }) });
-        track("auth_signup_started", { plan_key: planKey, ...(ref && { referral_source: ref.referral_source, creator_slug: ref.creator_slug, creator_name: ref.creator_name }) });
+        track("checkout_intent_saved", { plan_key: planKey, trigger: "signup", ...(ref && {
+          referral_source: ref.referral_source,
+          campaign_type: ref.campaign_type,
+          creator_slug: ref.creator_slug,
+          creator_name: ref.creator_name,
+          referral_code: ref.referral_code,
+          referral_landing_url: ref.referral_landing_url,
+          referral_first_seen_at: ref.referral_first_seen_at,
+          referral_last_seen_at: ref.referral_last_seen_at,
+        }) });
+        track("auth_signup_started", { plan_key: planKey, ...(ref && {
+          referral_source: ref.referral_source,
+          campaign_type: ref.campaign_type,
+          creator_slug: ref.creator_slug,
+          creator_name: ref.creator_name,
+          referral_code: ref.referral_code,
+          referral_landing_url: ref.referral_landing_url,
+          referral_first_seen_at: ref.referral_first_seen_at,
+          referral_last_seen_at: ref.referral_last_seen_at,
+        }) });
       }
 
       passwordSchema.parse(password);
