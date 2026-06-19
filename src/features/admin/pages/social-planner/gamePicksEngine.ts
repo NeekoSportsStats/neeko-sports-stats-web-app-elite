@@ -63,6 +63,8 @@ export interface GamePickPlayer {
   publicContentTier: 30 | 25 | 20 | 15 | null;
   /** Admin-only warnings: thin sample, anomalous recent values, etc. Never shown publicly. */
   adminWarnings: string[];
+  /** Full threshold hit-rate map for admin full-range table display. Absent on goal picks. */
+  allThresholdHitRates?: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 
 export interface GamePick {
@@ -140,6 +142,7 @@ function toGamePickPlayer(c: CandidateScore, statFamily: "disposals" | "goals"):
     last5Warning: resolved.warning,
     publicContentTier: c.publicContentTier ?? null,
     adminWarnings,
+    allThresholdHitRates: c.allThresholdHitRates ?? null,
   };
 }
 

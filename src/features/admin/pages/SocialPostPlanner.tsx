@@ -3,7 +3,7 @@
  * Admin-only. No public exposure.
  * All posts target TikTok + Instagram + Facebook simultaneously.
  */
-import { useState, useMemo, useCallback, Component } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, Component } from "react";
 import type { ReactNode, ErrorInfo } from "react";
 import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star, Crosshair, LayoutGrid } from "lucide-react";
 import {
@@ -22,6 +22,7 @@ import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
+import { adminSocialPlanner } from "@/config/disposalThresholds";
 
 // Render-time safety helper — prevents .map()/.join()/.length crashes if a
 // post field was not populated (e.g. rawPost omit-cast, older cached data).
@@ -3532,6 +3533,122 @@ function PostKitSection({
   );
 }
 
+// ─── Disposal full-range threshold table ─────────────────────────────────────
+
+function DisposalThresholdTable({ picks }: { picks: GamePickPlayer[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [atEnd, setAtEnd] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => {
+      setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [picks]);
+
+  const thresholds = adminSocialPlanner;
+
+  return (
+    <div className="relative mt-2">
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto touch-pan-x overscroll-x-contain"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "rgb(63 63 70) transparent" } as React.CSSProperties}
+      >
+        <table className="text-[10px] border-collapse min-w-max">
+          <thead>
+            <tr className="border-b border-zinc-800">
+              <th className="text-left py-1 pr-3 pl-1 text-zinc-500 font-medium whitespace-nowrap sticky left-0 bg-zinc-900/95 z-10 min-w-[120px]">Player</th>
+              <th className="text-left py-1 pr-3 text-zinc-500 font-medium whitespace-nowrap">Team</th>
+              <th className="text-right py-1 pr-3 text-zinc-500 font-medium whitespace-nowrap">L5</th>
+              <th className="text-right py-1 pr-3 text-zinc-500 font-medium whitespace-nowrap">Ssn</th>
+              {thresholds.map(t => (
+                <th key={t} className={`text-right py-1 px-1.5 font-medium whitespace-nowrap ${
+                  t % 5 === 0 ? "text-zinc-400" : "text-zinc-600"
+                }`}>{t}+</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {picks.map(p => (
+              <DisposalThresholdRow key={p.player_id} pick={p} thresholds={thresholds} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!atEnd && (
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-900/90 to-transparent flex items-center justify-end pr-1">
+          <span className="text-[8px] text-zinc-600 rotate-90 origin-right">›</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DisposalThresholdRow({ pick, thresholds }: { pick: GamePickPlayer; thresholds: readonly number[] }) {
+  const cells = useMemo(() => {
+    return thresholds.map(t => {
+      const entry = pick.allThresholdHitRates?.[String(t)];
+      if (!entry || entry.games === 0) return { t, hits: null, games: null, rate: null };
+      const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+      return { t, hits: entry.hits, games: entry.games, rate };
+    });
+  }, [pick.allThresholdHitRates, thresholds]);
+
+  return (
+    <tr className="border-b border-zinc-900/60 hover:bg-zinc-800/20 transition-colors">
+      <td className="py-1 pr-3 pl-1 font-medium text-zinc-200 whitespace-nowrap sticky left-0 bg-zinc-900/95 z-10">
+        <span>{pick.player_name}</span>
+        {pick.adminWarnings && pick.adminWarnings.length > 0 && (
+          <span className="ml-1 text-amber-500/70 text-[9px]">!</span>
+        )}
+      </td>
+      <td className="py-1 pr-3 text-zinc-500 whitespace-nowrap">{pick.team_name}</td>
+      <td className="py-1 pr-3 text-right text-zinc-400 font-mono whitespace-nowrap">
+        {pick.l5_avg !== null ? pick.l5_avg.toFixed(1) : "—"}
+      </td>
+      <td className="py-1 pr-3 text-right text-zinc-400 font-mono whitespace-nowrap">
+        {pick.season_avg !== null ? pick.season_avg.toFixed(1) : "—"}
+      </td>
+      {cells.map(({ t, hits, games, rate }) => (
+        <DisposalThresholdCell key={t} t={t} hits={hits} games={games} rate={rate} />
+      ))}
+    </tr>
+  );
+}
+
+function DisposalThresholdCell({ t, hits, games, rate }: {
+  t: number;
+  hits: number | null;
+  games: number | null;
+  rate: number | null;
+}) {
+  if (rate === null || games === null || hits === null) {
+    return (
+      <td className="py-1 px-1.5 text-right text-zinc-700 font-mono whitespace-nowrap">—</td>
+    );
+  }
+  const pct = Math.round(rate * 100);
+  const colorClass =
+    pct >= 80 ? "text-emerald-400" :
+    pct >= 60 ? "text-sky-400" :
+    pct >= 40 ? "text-amber-400" :
+    "text-zinc-500";
+  const isMilestone = t % 5 === 0;
+
+  return (
+    <td className={`py-1 px-1.5 text-right font-mono whitespace-nowrap ${colorClass} ${isMilestone ? "font-semibold" : "font-normal"}`}
+      title={`${t}+: ${hits}/${games}`}
+    >
+      {pct}%
+    </td>
+  );
+}
+
 function GamePickCard({
   game,
   pack,
@@ -3592,16 +3709,20 @@ function GamePickCard({
             <p className="text-[10px] text-zinc-600 py-2">No qualifying picks for this game with current filters.</p>
           ) : (
             <>
-              <div className="mt-2 space-y-0">
-                {filteredPicks.map(p => (
-                  <GamePickRow
-                    key={p.player_id}
-                    pick={p}
-                    copiedId={copiedId}
-                    onCopy={onCopy}
-                  />
-                ))}
-              </div>
+              {lens === "disposals" ? (
+                <DisposalThresholdTable picks={filteredPicks} />
+              ) : (
+                <div className="mt-2 space-y-0">
+                  {filteredPicks.map(p => (
+                    <GamePickRow
+                      key={p.player_id}
+                      pick={p}
+                      copiedId={copiedId}
+                      onCopy={onCopy}
+                    />
+                  ))}
+                </div>
+              )}
               <button
                 onClick={() => onCopy(copyAllId, formatGamePicksForCopy(game, lens))}
                 className={`mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] border transition-colors ${

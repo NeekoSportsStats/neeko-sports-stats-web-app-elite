@@ -22,6 +22,26 @@ export function normaliseRate(raw: number | null | undefined): number {
   return raw > 1 ? raw / 100 : raw;
 }
 
+/**
+ * Computes a hit rate from raw game values.
+ *
+ * Counts games where `value >= threshold`, excluding BYE/DNP (null values).
+ * Returns { hits, sample, rate } where rate is 0–1.
+ * Returns { hits: 0, sample: 0, rate: 0 } when there are no qualifying games.
+ *
+ * Example: computeHitRateFromValues([23, 24, 24, 25], 24) → { hits: 3, sample: 4, rate: 0.75 }
+ */
+export function computeHitRateFromValues(
+  values: (number | null)[],
+  threshold: number,
+): { hits: number; sample: number; rate: number } {
+  const actual = values.filter((v): v is number => v !== null);
+  const sample = actual.length;
+  if (sample === 0) return { hits: 0, sample: 0, rate: 0 };
+  const hits = actual.filter(v => v >= threshold).length;
+  return { hits, sample, rate: hits / sample };
+}
+
 // ─── Hit-record retrieval ─────────────────────────────────────────────────────
 
 export interface HitRecord {
@@ -326,6 +346,8 @@ export interface CandidateScore {
    * 25+ explicitly excludes 30+ tier players.
    */
   publicContentTier?: 30 | 25 | 20 | 15 | null;
+  /** Full threshold hit-rate map from DB for admin full-range table display. */
+  allThresholdHitRates?: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 
 /**
@@ -430,6 +452,7 @@ export function rankDisposalCandidatesForTeams(
       // ev.threshold is already the highest qualifying threshold, matching getPublicDisposalContentTier's
       // cascade. Cast is safe: selectBestDisposalLine only returns 30|25|20|15 thresholds.
       publicContentTier: ev.threshold as 30 | 25 | 20 | 15,
+      allThresholdHitRates: p.all_threshold_hit_rates ?? null,
     });
   }
 
