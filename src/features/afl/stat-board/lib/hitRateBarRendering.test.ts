@@ -116,7 +116,19 @@ describe("publicExpandedPlayer — disposal 40+ is reachable", () => {
 
 // ─── Kicks expanded profile ───────────────────────────────────────────────────
 
-describe("publicExpandedKicks — extends past 18+", () => {
+describe("publicExpandedKicks — exact range 5–25", () => {
+  it("first threshold is 5", () => {
+    expect(publicExpandedKicks[0]).toBe(5);
+  });
+
+  it("last threshold is 25", () => {
+    expect(publicExpandedKicks[publicExpandedKicks.length - 1]).toBe(25);
+  });
+
+  it("has exactly 21 entries", () => {
+    expect(publicExpandedKicks).toHaveLength(21);
+  });
+
   it("contains 18", () => {
     expect(publicExpandedKicks).toContain(18);
   });
@@ -137,24 +149,77 @@ describe("publicExpandedKicks — extends past 18+", () => {
 // ─── Other expanded profiles ──────────────────────────────────────────────────
 
 describe("publicExpandedMarks — wider than collapsed (5 values)", () => {
+  it("first threshold is 2", () => {
+    expect(publicExpandedMarks[0]).toBe(2);
+  });
+
+  it("last threshold is 12", () => {
+    expect(publicExpandedMarks[publicExpandedMarks.length - 1]).toBe(12);
+  });
+
+  it("has exactly 11 entries (2–12)", () => {
+    expect(publicExpandedMarks).toHaveLength(11);
+  });
+
   it("has more thresholds than collapsed marks profile", () => {
     expect(publicExpandedMarks.length).toBeGreaterThan(5);
   });
 });
 
 describe("publicExpandedTackles — wider than collapsed (4 values)", () => {
+  it("first threshold is 2", () => {
+    expect(publicExpandedTackles[0]).toBe(2);
+  });
+
+  it("last threshold is 10", () => {
+    expect(publicExpandedTackles[publicExpandedTackles.length - 1]).toBe(10);
+  });
+
+  it("has exactly 9 entries (2–10)", () => {
+    expect(publicExpandedTackles).toHaveLength(9);
+  });
+
   it("has more thresholds than collapsed tackles profile", () => {
     expect(publicExpandedTackles.length).toBeGreaterThan(4);
   });
 });
 
-describe("publicExpandedGoals — superset check", () => {
+describe("publicExpandedGoals — exact [1,2,3,4,5,6]", () => {
+  it("is exactly [1, 2, 3, 4, 5, 6]", () => {
+    expect([...publicExpandedGoals]).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
   it("contains 1, 2, 3, 4 (the collapsed thresholds)", () => {
     expect([...publicExpandedGoals]).toEqual(expect.arrayContaining([1, 2, 3, 4]));
   });
+
+  it("contains 5 and 6", () => {
+    expect([...publicExpandedGoals]).toContain(5);
+    expect([...publicExpandedGoals]).toContain(6);
+  });
 });
 
-describe("publicExpandedFantasy — wider than collapsed (5 values)", () => {
+describe("publicExpandedFantasy — exactly 17 values, step 5", () => {
+  it("has exactly 17 values", () => {
+    expect(publicExpandedFantasy).toHaveLength(17);
+  });
+
+  it("starts at 50", () => {
+    expect(publicExpandedFantasy[0]).toBe(50);
+  });
+
+  it("ends at 130", () => {
+    expect(publicExpandedFantasy[publicExpandedFantasy.length - 1]).toBe(130);
+  });
+
+  it("does not contain 51 (step-1 regression guard)", () => {
+    expect([...publicExpandedFantasy]).not.toContain(51);
+  });
+
+  it("does not contain 99 (step-1 regression guard)", () => {
+    expect([...publicExpandedFantasy]).not.toContain(99);
+  });
+
   it("has more thresholds than collapsed fantasy profile", () => {
     expect(publicExpandedFantasy.length).toBeGreaterThan(5);
   });
@@ -299,8 +364,7 @@ describe("row count — no thresholds omitted", () => {
 
   it("kicks rows cover the full expanded range", () => {
     const rows = publicExpandedKicks.map((t) => ({ t }));
-    expect(rows.length).toBeGreaterThan(5);
-    // last threshold must be beyond 18
-    expect(rows[rows.length - 1].t).toBeGreaterThan(18);
+    expect(rows).toHaveLength(21); // 5–25 inclusive
+    expect(rows[rows.length - 1]!.t).toBe(25);
   });
 });

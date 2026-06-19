@@ -363,12 +363,12 @@ export function ExpandedPlayerPanel({
                   — {statDef.label.toLowerCase()} · 2026
                 </span>
               </p>
-              {lens === "disposals" && (
-                <span className="flex items-center gap-1 text-[9px] text-white/45 select-none" aria-label="Scroll to view lines 10+ through 40+">
+              {tableThresholds.length > VISIBLE_ROWS && (
+                <span className="flex items-center gap-1 text-[9px] text-white/45 select-none" aria-label={`Scroll to view all threshold lines`}>
                   <svg width="9" height="12" viewBox="0 0 9 12" fill="none" aria-hidden="true">
                     <path d="M4.5 1v10M1.5 3.5l3-3 3 3M1.5 8.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span>Scroll for lines 10+–40+</span>
+                  <span>{scrollHelperText(lens, tableThresholds)}</span>
                 </span>
               )}
             </div>
@@ -1151,15 +1151,26 @@ interface GameLogRow {
   rowType: string;
 }
 
-// ─── Scrollable disposal hit-rate table (10+–40+) ────────────────────────────
+// ─── Scrollable hit-rate table (all lenses) ──────────────────────────────────
 //
 // Renders exactly VISIBLE_ROWS complete rows in the viewport. A sticky thead
 // sits outside the scroll container. Bottom/top fades indicate more content.
 // On first load the table scrolls to center the player's bestThreshold line.
+// For lenses with ≤ VISIBLE_ROWS thresholds the container is not scrollable.
 
 const ROW_HEIGHT_PX = 32;
 const VISIBLE_ROWS = 5;
 const VIEWPORT_HEIGHT = ROW_HEIGHT_PX * VISIBLE_ROWS; // 160px — exact, no partials
+
+/** Dynamic helper text shown above the scrollable table. */
+function scrollHelperText(lens: StatLens, thresholds: readonly number[]): string {
+  if (thresholds.length === 0) return "";
+  const first = thresholds[0];
+  const last  = thresholds[thresholds.length - 1];
+  const step  = thresholds.length > 1 ? thresholds[1] - thresholds[0] : 1;
+  const stepSuffix = step > 1 ? ` · step ${step}` : "";
+  return `Scroll for lines ${first}+\u2013${last}+${stepSuffix}`;
+}
 
 function DisposalHitRateTable({
   lens,
@@ -1250,52 +1261,22 @@ function DisposalHitRateTable({
     initialScrollDoneRef.current = false;
   }
 
-  // Non-disposal lens: compact non-scrolling table.
-  if (lens !== "disposals") {
-    if (loading) {
-      return (
-        <div className="rounded-lg border border-white/8 overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-8 border-b border-white/5 last:border-0 bg-white/[0.02] animate-pulse" />
-          ))}
-        </div>
-      );
-    }
-    return (
-      <div className="rounded-lg border border-white/8 overflow-hidden">
-        <table className="w-full text-xs" role="table">
-          <thead>
-            <tr className="border-b border-white/8 bg-white/[0.02]">
-              <th className="text-left px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">Line</th>
-              <th className="text-center px-2 py-2 text-white/40 font-medium text-[10px]" scope="col">Hits</th>
-              <th className="px-2 py-2 text-white/40 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
-              <th className="text-right px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ t, hits, games, rate, hasLineData }) => (
-              <HitRateRow key={t} t={t} hits={hits} games={games} rate={rate} hasLineData={hasLineData} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
+  const isScrollable = allThresholds.length > VISIBLE_ROWS;
 
-  // Disposal lens — scrollable, exactly VISIBLE_ROWS complete rows visible.
+  // Loading skeleton
   if (loading) {
     return (
       <div
         className="rounded-lg border border-white/8 overflow-hidden"
-        data-testid="disposal-hit-rate-table"
+        data-testid="hit-rate-table"
       >
         <div className="border-b border-white/8 bg-white/[0.02] px-3 py-2 grid grid-cols-4 gap-2">
           {["Line", "Hits", "", "%"].map((h, i) => (
             <span key={i} className="text-[10px] text-white/40 font-medium">{h}</span>
           ))}
         </div>
-        <div style={{ height: VIEWPORT_HEIGHT }}>
-          {Array.from({ length: VISIBLE_ROWS }).map((_, i) => (
+        <div style={{ height: isScrollable ? VIEWPORT_HEIGHT : ROW_HEIGHT_PX * Math.min(allThresholds.length, VISIBLE_ROWS) }}>
+          {Array.from({ length: Math.min(allThresholds.length, VISIBLE_ROWS) }).map((_, i) => (
             <div
               key={i}
               style={{ height: ROW_HEIGHT_PX }}
@@ -1312,21 +1293,45 @@ function DisposalHitRateTable({
     return (
       <div
         className="rounded-lg border border-white/8 px-3 py-4 text-[11px] text-white/30 italic"
-        data-testid="disposal-hit-rate-table"
+        data-testid="hit-rate-table"
       >
         Unavailable
       </div>
     );
   }
 
+  // Non-scrollable: ≤5 thresholds rendered as a flat table.
+  if (!isScrollable) {
+    return (
+      <div className="rounded-lg border border-white/8 overflow-hidden" data-testid="hit-rate-table">
+        <table className="w-full text-xs" role="table" aria-label={`Season hit rates — ${lens}`}>
+          <thead>
+            <tr className="border-b border-white/8 bg-white/[0.02]">
+              <th className="text-left px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">Line</th>
+              <th className="text-center px-2 py-2 text-white/40 font-medium text-[10px]" scope="col">Hits</th>
+              <th className="px-2 py-2 text-white/40 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
+              <th className="text-right px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ t, hits, games, rate, hasLineData }) => (
+              <HitRateRow key={t} t={t} hits={hits} games={games} rate={rate} hasLineData={hasLineData} isBest={t === bestThreshold} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Scrollable: >5 thresholds — sticky header + windowed scroll body.
   return (
     <div
       className="relative rounded-lg border border-white/8 overflow-hidden"
-      data-testid="disposal-hit-rate-table"
+      data-testid="hit-rate-table"
     >
       {/* Sticky header — outside the scroll area */}
       <div className="border-b border-white/8 bg-white/[0.02]">
-        <table className="w-full text-xs" role="table" aria-label="Season hit rates — disposals">
+        <table className="w-full text-xs" role="table" aria-label={`Season hit rates — ${lens}`}>
           <thead>
             <tr>
               <th className="text-left px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">Line</th>
@@ -1349,7 +1354,7 @@ function DisposalHitRateTable({
         }}
         tabIndex={0}
         aria-label="Threshold hit rates, scroll for all lines"
-        data-testid="disposal-scroll-body"
+        data-testid="hit-rate-scroll-body"
       >
         <table className="w-full text-xs" role="presentation">
           <tbody>

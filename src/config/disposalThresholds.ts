@@ -43,8 +43,8 @@ export const publicExpandedTackles = range(2, 10) as readonly number[];
 /** Integer thresholds for the expanded goals panel (full range). */
 export const publicExpandedGoals = [1, 2, 3, 4, 5, 6] as const;
 
-/** Integer thresholds for the expanded fantasy panel (full range). */
-export const publicExpandedFantasy = range(50, 130) as readonly number[];
+/** Integer thresholds for the expanded fantasy panel (step 5: 50, 55, …, 130 — 17 values). */
+export const publicExpandedFantasy = rangeStep(50, 130, 5) as readonly number[];
 
 /**
  * Returns an array of integers from `start` to `end` inclusive, step 1.
@@ -56,5 +56,21 @@ export function range(start: number, end: number): number[] {
   }
   const out: number[] = [];
   for (let i = start; i <= end; i++) out.push(i);
+  return out;
+}
+
+/**
+ * Returns an array from `start` to `end` inclusive, advancing by `step`.
+ * Both bounds are inclusive when reachable. `start` must be ≤ `end`, `step` must be ≥ 1.
+ */
+export function rangeStep(start: number, end: number, step: number): number[] {
+  if (start > end) {
+    throw new RangeError(`disposalThresholds.rangeStep: start (${start}) must be ≤ end (${end})`);
+  }
+  if (step < 1) {
+    throw new RangeError(`disposalThresholds.rangeStep: step (${step}) must be ≥ 1`);
+  }
+  const out: number[] = [];
+  for (let i = start; i <= end; i += step) out.push(i);
   return out;
 }

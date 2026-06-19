@@ -1,5 +1,5 @@
 /**
- * Tests for the disposal hit-rate scroll table UX invariants.
+ * Tests for the hit-rate scroll table UX invariants (all lenses).
  *
  * Verifies:
  *   1. Exactly VISIBLE_ROWS (5) complete rows in the viewport
@@ -10,10 +10,19 @@
  *   6. Clamping when best threshold is near 10+ (top boundary)
  *   7. Clamping when best threshold is near 40+ (bottom boundary)
  *   8. Non-disposal lenses (goals, marks) use their own thresholds unchanged
+ *   9. Kicks and fantasy initial scroll positioning
+ *   10. Dynamic scroll helper text
  */
 
 import { describe, it, expect } from "vitest";
-import { publicExpandedPlayer } from "@/config/disposalThresholds";
+import {
+  publicExpandedPlayer,
+  publicExpandedKicks,
+  publicExpandedMarks,
+  publicExpandedTackles,
+  publicExpandedGoals,
+  publicExpandedFantasy,
+} from "@/config/disposalThresholds";
 import { getStatDef } from "@/config/statDefinitions";
 
 // ── Constants mirrored from the component ────────────────────────────────────
@@ -243,5 +252,135 @@ describe("Non-disposal lenses: thresholds unchanged", () => {
 
   it("marks thresholds are [3, 4, 5, 6, 7]", () => {
     expect([...getStatDef("marks").collapsedThresholds]).toEqual([3, 4, 5, 6, 7]);
+  });
+});
+
+// ─── 9. Kicks and fantasy initial scroll positioning ──────────────────────────
+
+describe("Kicks scroll table: initial scroll positioning", () => {
+  const thresholds = publicExpandedKicks; // 5–25, 21 values
+
+  it("kicks has 21 thresholds (5–25), which is scrollable (>5)", () => {
+    expect(thresholds).toHaveLength(21);
+    expect(thresholds.length).toBeGreaterThan(VISIBLE_ROWS);
+  });
+
+  it("best=15+: initial view centres 15+ in the 5-row window", () => {
+    const idx = thresholds.indexOf(15);
+    expect(idx).toBe(10);
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    const firstVisibleIdx = Math.floor(scrollTop / ROW_HEIGHT_PX);
+    const visible = thresholds.slice(firstVisibleIdx, firstVisibleIdx + VISIBLE_ROWS);
+    expect(visible).toEqual([13, 14, 15, 16, 17]);
+  });
+
+  it("best=5+: scrollTop clamped to 0 (top boundary)", () => {
+    const idx = thresholds.indexOf(5);
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    expect(scrollTop).toBe(0);
+  });
+
+  it("best=25+: scrollTop clamped to maxScroll (bottom boundary)", () => {
+    const idx = thresholds.indexOf(25);
+    const maxScroll = (thresholds.length - VISIBLE_ROWS) * ROW_HEIGHT_PX;
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    expect(scrollTop).toBe(maxScroll);
+  });
+});
+
+describe("Fantasy scroll table: initial scroll positioning", () => {
+  const thresholds = publicExpandedFantasy; // 50–130 step 5, 17 values
+
+  it("fantasy has 17 thresholds, which is scrollable (>5)", () => {
+    expect(thresholds).toHaveLength(17);
+    expect(thresholds.length).toBeGreaterThan(VISIBLE_ROWS);
+  });
+
+  it("best=75+: initial view centres 75+ in the 5-row window", () => {
+    const idx = thresholds.indexOf(75);
+    expect(idx).toBe(5);
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    const firstVisibleIdx = Math.floor(scrollTop / ROW_HEIGHT_PX);
+    const visible = thresholds.slice(firstVisibleIdx, firstVisibleIdx + VISIBLE_ROWS);
+    expect(visible[2]).toBe(75);
+  });
+
+  it("best=100+: initial view shows 90+–110+", () => {
+    const idx = thresholds.indexOf(100);
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    const firstVisibleIdx = Math.floor(scrollTop / ROW_HEIGHT_PX);
+    const visible = thresholds.slice(firstVisibleIdx, firstVisibleIdx + VISIBLE_ROWS);
+    expect(visible).toEqual([90, 95, 100, 105, 110]);
+  });
+
+  it("best=50+: scrollTop clamped to 0 (top boundary)", () => {
+    const idx = thresholds.indexOf(50);
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    expect(scrollTop).toBe(0);
+  });
+
+  it("best=130+: scrollTop clamped to maxScroll (bottom boundary)", () => {
+    const idx = thresholds.indexOf(130);
+    const maxScroll = (thresholds.length - VISIBLE_ROWS) * ROW_HEIGHT_PX;
+    const scrollTop = computeInitialScrollTop(idx, thresholds.length);
+    expect(scrollTop).toBe(maxScroll);
+  });
+});
+
+// ─── 10. Goals and marks: non-scrollable (≤5 thresholds) ─────────────────────
+
+describe("Goals and marks: non-scrollable (≤5 thresholds)", () => {
+  it("goals expanded has 6 thresholds — scrollable", () => {
+    expect(publicExpandedGoals.length).toBeGreaterThan(VISIBLE_ROWS);
+  });
+
+  it("marks expanded has 11 thresholds — scrollable", () => {
+    expect(publicExpandedMarks.length).toBeGreaterThan(VISIBLE_ROWS);
+  });
+
+  it("tackles expanded has 9 thresholds — scrollable", () => {
+    expect(publicExpandedTackles.length).toBeGreaterThan(VISIBLE_ROWS);
+  });
+});
+
+// ─── 11. Dynamic scroll helper text ──────────────────────────────────────────
+
+/** Mirrors scrollHelperText() from ExpandedPlayerPanel */
+function scrollHelperText(thresholds: readonly number[]): string {
+  if (thresholds.length === 0) return "";
+  const first = thresholds[0];
+  const last = thresholds[thresholds.length - 1];
+  const step = thresholds.length > 1 ? thresholds[1]! - thresholds[0]! : 1;
+  const stepSuffix = step > 1 ? ` · step ${step}` : "";
+  return `Scroll for lines ${first}+\u2013${last}+${stepSuffix}`;
+}
+
+describe("scrollHelperText — dynamic per-lens message", () => {
+  it("disposals (step 1): 'Scroll for lines 10+–40+'", () => {
+    expect(scrollHelperText(publicExpandedPlayer)).toBe("Scroll for lines 10+\u201340+");
+  });
+
+  it("kicks (step 1): 'Scroll for lines 5+–25+'", () => {
+    expect(scrollHelperText(publicExpandedKicks)).toBe("Scroll for lines 5+\u201325+");
+  });
+
+  it("fantasy (step 5): 'Scroll for lines 50+–130+ · step 5'", () => {
+    expect(scrollHelperText(publicExpandedFantasy)).toBe("Scroll for lines 50+\u2013130+ \u00b7 step 5");
+  });
+
+  it("marks (step 1): 'Scroll for lines 2+–12+'", () => {
+    expect(scrollHelperText(publicExpandedMarks)).toBe("Scroll for lines 2+\u201312+");
+  });
+
+  it("tackles (step 1): 'Scroll for lines 2+–10+'", () => {
+    expect(scrollHelperText(publicExpandedTackles)).toBe("Scroll for lines 2+\u201310+");
+  });
+
+  it("goals (step 1): 'Scroll for lines 1+–6+'", () => {
+    expect(scrollHelperText(publicExpandedGoals)).toBe("Scroll for lines 1+\u20136+");
+  });
+
+  it("empty array returns empty string", () => {
+    expect(scrollHelperText([])).toBe("");
   });
 });
