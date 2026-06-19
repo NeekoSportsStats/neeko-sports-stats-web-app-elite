@@ -23,6 +23,7 @@ import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
 import { adminSocialPlanner } from "@/config/disposalThresholds";
+import { buildCopyAllStatsText, copyToClipboard } from "./social-planner/copyAllStats";
 
 // Render-time safety helper — prevents .map()/.join()/.length crashes if a
 // post field was not populated (e.g. rawPost omit-cast, older cached data).
@@ -3778,6 +3779,18 @@ function GamePicksTabContent({
   // (strict 25+ tier — excludes any 30+ tier players from disposal picks)
   const [show25TierOnly, setShow25TierOnly] = useState(false);
 
+  // "Copy All Stats" button state: idle | copying | copied | error
+  const [copyAllStatus, setCopyAllStatus] = useState<"idle" | "copying" | "copied" | "error">("idle");
+
+  const handleCopyAllStats = useCallback(async () => {
+    if (copyAllStatus === "copying") return;
+    setCopyAllStatus("copying");
+    const text = buildCopyAllStatsText(gamePicks, roundLabel);
+    const ok = await copyToClipboard(text);
+    setCopyAllStatus(ok ? "copied" : "error");
+    setTimeout(() => setCopyAllStatus("idle"), ok ? 2200 : 3500);
+  }, [gamePicks, roundLabel, copyAllStatus]);
+
   function applyTierFilter(picks: GamePickPlayer[]): GamePickPlayer[] {
     let result = filterPicksByConsistency(picks, tier);
     if (lens === "disposals" && show25TierOnly) {
@@ -3799,6 +3812,32 @@ function GamePicksTabContent({
           <span className="text-zinc-300 font-medium">Game Picks</span>
           <span>— {roundLabel} · {gamePicks.length} games · {totalPicks} picks</span>
         </div>
+        <button
+          onClick={handleCopyAllStats}
+          disabled={gamePicks.length === 0 || copyAllStatus === "copying"}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+            copyAllStatus === "copied"
+              ? "bg-emerald-900/60 text-emerald-300 border-emerald-700/60"
+              : copyAllStatus === "error"
+              ? "bg-red-900/60 text-red-300 border-red-700/60"
+              : copyAllStatus === "copying"
+              ? "bg-zinc-800 text-zinc-500 border-zinc-700 cursor-wait"
+              : gamePicks.length === 0
+              ? "bg-zinc-900 text-zinc-600 border-zinc-800 cursor-not-allowed"
+              : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+          }`}
+          title={gamePicks.length === 0 ? "No game data loaded" : "Copy all player stats to clipboard"}
+        >
+          {copyAllStatus === "copied" ? (
+            <><Check className="h-3 w-3" /><span>Copied all stats</span></>
+          ) : copyAllStatus === "error" ? (
+            <><AlertTriangle className="h-3 w-3" /><span>Copy failed</span></>
+          ) : copyAllStatus === "copying" ? (
+            <><span>Copying…</span></>
+          ) : (
+            <><Copy className="h-3 w-3" /><span>Copy all stats</span></>
+          )}
+        </button>
       </div>
 
       {/* Controls */}
