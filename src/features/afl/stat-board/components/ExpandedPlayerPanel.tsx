@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useSyncExternalStore, useEffect } from "react";
+import { useState, useRef, useMemo, useSyncExternalStore, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -366,10 +366,11 @@ export function ExpandedPlayerPanel({
                 </span>
               </p>
               {lens === "disposals" && (
-                <span className="flex items-center gap-0.5 text-[8px] text-white/20 select-none" aria-label="Scroll to view lines 10+ through 40+">
-                  <ChevronUp className="h-2.5 w-2.5 opacity-50" aria-hidden />
-                  <ChevronDown className="h-2.5 w-2.5 opacity-50" aria-hidden />
-                  <span>Scroll to view lines 10+–40+</span>
+                <span className="flex items-center gap-1 text-[9px] text-white/45 select-none" aria-label="Scroll to view lines 10+ through 40+">
+                  <svg width="9" height="12" viewBox="0 0 9 12" fill="none" aria-hidden="true">
+                    <path d="M4.5 1v10M1.5 3.5l3-3 3 3M1.5 8.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Scroll for lines 10+–40+</span>
                 </span>
               )}
             </div>
@@ -377,6 +378,8 @@ export function ExpandedPlayerPanel({
               lens={lens}
               allThresholds={tableThresholds}
               hitRates={hitRates}
+              bestThreshold={threshold}
+              loading={loading}
             />
           </section>
         </div>
@@ -1153,33 +1156,40 @@ interface GameLogRow {
 
 // ─── Scrollable disposal hit-rate table (10+–40+) ────────────────────────────
 //
-// Shows exactly 5 complete rows in the visible area; the rest scroll. A sticky
-// thead stays visible while scrolling. A bottom-fade overlay fades away once the
-// user reaches the last row.
+// Renders exactly VISIBLE_ROWS complete rows in the viewport. A sticky thead
+// sits outside the scroll container. Bottom/top fades indicate more content.
+// On first load the table scrolls to center the player's bestThreshold line.
 
-const ROW_HEIGHT_PX = 34; // approximate px height per data row
+const ROW_HEIGHT_PX = 32;
 const VISIBLE_ROWS = 5;
+const VIEWPORT_HEIGHT = ROW_HEIGHT_PX * VISIBLE_ROWS; // 160px — exact, no partials
 
 function DisposalHitRateTable({
   lens,
   allThresholds,
   hitRates,
+  bestThreshold,
+  loading,
 }: {
   lens: StatLens;
   allThresholds: readonly number[];
   hitRates: Record<string, { hits: number; games: number; rate: number }>;
+  bestThreshold: number;
+  loading: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [atTop, setAtTop] = useState(true);
   const [atBottom, setAtBottom] = useState(false);
+  // Track whether the initial scroll has been applied for this player+lens.
+  const initialScrollDoneRef = useRef(false);
+  const prevLoadingRef = useRef(loading);
 
-  // Memoize the row data so re-renders of the parent don't recompute 31 rows.
   const rows = useMemo(() => {
     return allThresholds.map((t) => {
       const key = String(t);
       const data = hitRates[key];
       const hits  = n(data?.hits);
       const games = n(data?.games);
-      // rate from DB is stored as 0–100 percentage
       const rawRate = n(data?.rate);
       const rate = rawRate != null ? rawRate : null;
       const hasLineData = hits !== null && games !== null && games > 0;
@@ -1187,28 +1197,82 @@ function DisposalHitRateTable({
     });
   }, [allThresholds, hitRates]);
 
+  // Scroll position tracking.
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtTop(el.scrollTop <= 2);
+    setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const check = () => {
-      setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
-    };
-    check();
-    el.addEventListener("scroll", check, { passive: true });
-    return () => el.removeEventListener("scroll", check);
-  }, [rows]);
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => el.removeEventListener("scroll", updateScrollState);
+  }, [updateScrollState]);
 
-  // For goals lens keep the original non-scrolling table since there are only 4 rows.
+  // Apply initial scroll to center the bestThreshold row.
+  // Triggered once: either immediately (if data is already loaded) or on the
+  // transition from loading→loaded. After that, user scroll is not overridden.
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = loading;
+
+    // Reset the done flag when lens or player changes (allThresholds identity changes).
+    if (initialScrollDoneRef.current && wasLoading && !loading) {
+      // Just finished loading — apply initial scroll once.
+      initialScrollDoneRef.current = false;
+    }
+
+    if (loading) return;
+    if (initialScrollDoneRef.current) return;
+
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const idx = allThresholds.indexOf(bestThreshold);
+    if (idx < 0) { initialScrollDoneRef.current = true; return; }
+
+    // Target: centre the best-threshold row in the 5-row window.
+    // Desired top of window = idx * ROW_HEIGHT - floor(VISIBLE_ROWS/2) * ROW_HEIGHT
+    const centerOffset = Math.floor(VISIBLE_ROWS / 2);
+    const rawTarget = (idx - centerOffset) * ROW_HEIGHT_PX;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const target = Math.max(0, Math.min(rawTarget, maxScroll));
+    el.scrollTop = target;
+    initialScrollDoneRef.current = true;
+    updateScrollState();
+  }, [loading, allThresholds, bestThreshold, updateScrollState]);
+
+  // Reset initial-scroll flag when allThresholds array identity changes (player changed).
+  const prevThresholdsRef = useRef(allThresholds);
+  if (prevThresholdsRef.current !== allThresholds) {
+    prevThresholdsRef.current = allThresholds;
+    initialScrollDoneRef.current = false;
+  }
+
+  // Non-disposal lens: compact non-scrolling table.
   if (lens !== "disposals") {
+    if (loading) {
+      return (
+        <div className="rounded-lg border border-white/8 overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-8 border-b border-white/5 last:border-0 bg-white/[0.02] animate-pulse" />
+          ))}
+        </div>
+      );
+    }
     return (
       <div className="rounded-lg border border-white/8 overflow-hidden">
         <table className="w-full text-xs" role="table">
           <thead>
             <tr className="border-b border-white/8 bg-white/[0.02]">
-              <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
-              <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
-              <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
-              <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
+              <th className="text-left px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">Line</th>
+              <th className="text-center px-2 py-2 text-white/40 font-medium text-[10px]" scope="col">Hits</th>
+              <th className="px-2 py-2 text-white/40 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
+              <th className="text-right px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">%</th>
             </tr>
           </thead>
           <tbody>
@@ -1221,51 +1285,104 @@ function DisposalHitRateTable({
     );
   }
 
-  // Disposal lens — scrollable container showing 5 rows at a time.
-  const maxVisibleHeight = ROW_HEIGHT_PX * VISIBLE_ROWS;
+  // Disposal lens — scrollable, exactly VISIBLE_ROWS complete rows visible.
+  if (loading) {
+    return (
+      <div
+        className="rounded-lg border border-white/8 overflow-hidden"
+        data-testid="disposal-hit-rate-table"
+      >
+        <div className="border-b border-white/8 bg-white/[0.02] px-3 py-2 grid grid-cols-4 gap-2">
+          {["Line", "Hits", "", "%"].map((h, i) => (
+            <span key={i} className="text-[10px] text-white/40 font-medium">{h}</span>
+          ))}
+        </div>
+        <div style={{ height: VIEWPORT_HEIGHT }}>
+          {Array.from({ length: VISIBLE_ROWS }).map((_, i) => (
+            <div
+              key={i}
+              style={{ height: ROW_HEIGHT_PX }}
+              className="border-b border-white/5 last:border-0 bg-white/[0.015] animate-pulse"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const hasAnyData = rows.some((r) => r.hasLineData);
+  if (!hasAnyData) {
+    return (
+      <div
+        className="rounded-lg border border-white/8 px-3 py-4 text-[11px] text-white/30 italic"
+        data-testid="disposal-hit-rate-table"
+      >
+        Unavailable
+      </div>
+    );
+  }
 
   return (
     <div
       className="relative rounded-lg border border-white/8 overflow-hidden"
       data-testid="disposal-hit-rate-table"
     >
-      {/* Sticky header sits outside the scroll area so it stays visible */}
-      <table className="w-full text-xs" role="table" aria-label="Season hit rates — disposals">
-        <thead>
-          <tr className="border-b border-white/8 bg-white/[0.02]">
-            <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
-            <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
-            <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
-            <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
-          </tr>
-        </thead>
-      </table>
+      {/* Sticky header — outside the scroll area */}
+      <div className="border-b border-white/8 bg-white/[0.02]">
+        <table className="w-full text-xs" role="table" aria-label="Season hit rates — disposals">
+          <thead>
+            <tr>
+              <th className="text-left px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">Line</th>
+              <th className="text-center px-2 py-2 text-white/40 font-medium text-[10px]" scope="col">Hits</th>
+              <th className="px-2 py-2 text-white/40 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
+              <th className="text-right px-3 py-2 text-white/40 font-medium text-[10px]" scope="col">%</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
 
-      {/* Scrollable body — exactly 5 rows visible, overflow scrolls */}
+      {/* Scrollable body — exact 5-row height, no partial sixth row */}
       <div
         ref={scrollRef}
         className="overflow-y-auto overscroll-contain"
         style={{
-          maxHeight: maxVisibleHeight,
+          height: VIEWPORT_HEIGHT,
           WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
           overflowX: "hidden",
         }}
         tabIndex={0}
-        aria-label="Scroll for all threshold lines"
+        aria-label="Threshold hit rates, scroll for all lines"
+        data-testid="disposal-scroll-body"
       >
         <table className="w-full text-xs" role="presentation">
           <tbody>
             {rows.map(({ t, hits, games, rate, hasLineData }) => (
-              <HitRateRow key={t} t={t} hits={hits} games={games} rate={rate} hasLineData={hasLineData} />
+              <HitRateRow
+                key={t}
+                t={t}
+                hits={hits}
+                games={games}
+                rate={rate}
+                hasLineData={hasLineData}
+                isBest={t === bestThreshold}
+              />
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Bottom fade — fades out when user has scrolled to the end */}
+      {/* Top fade — shows after user scrolls down */}
+      {!atTop && (
+        <div
+          className="pointer-events-none absolute top-[30px] left-0 right-0 h-6 bg-gradient-to-b from-[#0c0c0c]/70 to-transparent"
+          aria-hidden
+        />
+      )}
+
+      {/* Bottom fade — covers only the last 18px (below the 5th row's content) */}
       {!atBottom && (
         <div
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#0c0c0c]/90 to-transparent"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-[#0c0c0c]/80 to-transparent"
           aria-hidden
         />
       )}
@@ -1274,21 +1391,26 @@ function DisposalHitRateTable({
 }
 
 function HitRateRow({
-  t, hits, games, rate, hasLineData,
+  t, hits, games, rate, hasLineData, isBest,
 }: {
   t: number;
   hits: number | null;
   games: number | null;
   rate: number | null;
   hasLineData: boolean;
+  isBest?: boolean;
 }) {
   return (
-    <tr className="border-b border-white/5 last:border-0">
-      <td className="px-3 py-2 font-semibold text-[11px] text-white/55">{t}+</td>
-      <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
+    <tr
+      className={`border-b border-white/5 last:border-0 ${isBest ? "bg-white/[0.04]" : ""}`}
+      style={{ height: ROW_HEIGHT_PX }}
+      data-threshold={t}
+    >
+      <td className={`px-3 font-semibold text-[11px] ${isBest ? "text-white/80" : "text-white/55"}`}>{t}+</td>
+      <td className="px-2 text-center tabular-nums text-[11px] text-white/45">
         {hasLineData ? `${hits}/${games}` : "—"}
       </td>
-      <td className="px-2 py-2 w-[60px]">
+      <td className="px-2 w-[60px]">
         <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
           {hasLineData && rate != null && (
             <div
@@ -1299,7 +1421,7 @@ function HitRateRow({
           )}
         </div>
       </td>
-      <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
+      <td className={`px-3 text-right tabular-nums font-semibold text-[11px] ${
         !hasLineData ? "text-white/22"
         : rate != null && rate >= 70 ? "text-emerald-400"
         : rate != null && rate >= 50 ? "text-amber-400"
