@@ -114,6 +114,27 @@ export function aggregateToRows(
     }
   }
 
+  // Backfill missing disposal threshold labels from allThresholdHitRates.
+  // The RPC may only return one threshold row per player (e.g. only threshold=15),
+  // so t20/t25/t30 would stay undefined even though the JSONB map has all values.
+  for (const row of byPlayer.values()) {
+    if (row.statType === "disposals" && row.allThresholdHitRates) {
+      const hr = row.allThresholdHitRates;
+      const backfill = (key: string, set: (label: string, pct: number) => void) => {
+        const entry = hr[key];
+        if (entry && entry.games > 0) {
+          const label = `${entry.hits}/${entry.games}`;
+          const rate = entry.rate > 1 ? entry.rate : entry.rate * 100;
+          set(label, Math.round(rate));
+        }
+      };
+      if (row.t15 === undefined) backfill("15", (l, p) => { row.t15 = l; row.p15 = p; });
+      if (row.t20 === undefined) backfill("20", (l, p) => { row.t20 = l; row.p20 = p; });
+      if (row.t25 === undefined) backfill("25", (l, p) => { row.t25 = l; row.p25 = p; });
+      if (row.t30 === undefined) backfill("30", (l, p) => { row.t30 = l; row.p30 = p; });
+    }
+  }
+
   const result = Array.from(byPlayer.values()).sort(byQuality);
 
   // Debug: log any player named "Logan McDonald" for goals
