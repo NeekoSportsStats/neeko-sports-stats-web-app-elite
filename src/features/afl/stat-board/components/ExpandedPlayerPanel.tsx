@@ -7,7 +7,6 @@ import { trackUnlockAllGames } from "@/lib/analytics";
 import { PlayerIntelligencePanel } from "@/components/afl/PlayerIntelligencePanel";
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
-import { publicExpandedPlayer } from "@/config/disposalThresholds";
 import { getStatDef } from "@/config/statDefinitions";
 
 interface Props {
@@ -23,7 +22,6 @@ interface Props {
   isPremium: boolean;
 }
 
-const DISPOSAL_TABLE_THRESHOLDS = publicExpandedPlayer;
 
 function subscribeMq(cb: () => void) {
   const mq = window.matchMedia("(max-width: 767px)");
@@ -73,10 +71,8 @@ export function ExpandedPlayerPanel({
 
   const statDef = getStatDef(lens);
   const lensKey = statDef.historyColumn;
-  // tableThresholds: full range for the Season Hit Rates table (31 lines for disposals).
-  const tableThresholds: number[] = lens === "disposals"
-    ? [...DISPOSAL_TABLE_THRESHOLDS]
-    : [...statDef.collapsedThresholds];
+  // tableThresholds: full expanded range for the Season Hit Rates table (all lenses).
+  const tableThresholds: number[] = [...statDef.expandedThresholds];
   // chartThresholds: compact set for the Recent form chart — never more than ~5 lines.
   const chartThresholds: number[] = [...statDef.collapsedThresholds];
 
@@ -1413,10 +1409,11 @@ function HitRateRow({
       </td>
       <td className="px-2 w-[60px]">
         <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-          {hasLineData && rate != null && (
+          {hasLineData && (
             <div
-              className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
-              style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+              className={`h-full rounded-full ${rate != null && rate >= 70 ? "bg-emerald-500/70" : rate != null && rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
+              style={{ width: `${rate != null ? Math.min(100, Math.max(0, rate)) : 0}%` }}
+              aria-valuenow={rate != null ? Math.round(rate) : 0}
               role="presentation"
             />
           )}
@@ -1428,7 +1425,7 @@ function HitRateRow({
         : rate != null && rate >= 50 ? "text-amber-400"
         : "text-white/30"
       }`}>
-        {hasLineData && rate != null ? (rate > 0 ? `${Math.round(rate)}%` : "0%") : "—"}
+        {hasLineData ? (rate != null ? `${Math.round(rate)}%` : "0%") : "—"}
       </td>
     </tr>
   );
