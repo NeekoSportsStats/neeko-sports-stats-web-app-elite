@@ -702,8 +702,10 @@ function MatchBoardAggregatedSections({
       { key: "homeGoals",     label: `${post.homeTeam ?? "Home"} — Goals` },
       { key: "awayGoals",     label: `${post.awayTeam ?? "Away"} — Goals` },
     ];
+    const counts: Record<string, number> = {};
     for (const { key, label } of sectionLabels) {
       const sectionRows = rows[key];
+      counts[key] = sectionRows?.length ?? 0;
       lines.push(`### ${label}`);
       if (!sectionRows || sectionRows.length === 0) {
         lines.push("  (no qualifying players)", "");
@@ -720,9 +722,18 @@ function MatchBoardAggregatedSections({
             return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
           });
           lines.push(`    Lines: ${parts.join("; ")}`);
+        } else if (!isDisp) {
+          const goalParts: string[] = [];
+          if (r.t1) goalParts.push(`1+=${r.t1}${r.p1 != null ? ` (${r.p1}%)` : ""}`);
+          if (r.t2) goalParts.push(`2+=${r.t2}${r.p2 != null ? ` (${r.p2}%)` : ""}`);
+          if (r.t3) goalParts.push(`3+=${r.t3}${r.p3 != null ? ` (${r.p3}%)` : ""}`);
+          if (goalParts.length > 0) lines.push(`    Goals: ${goalParts.join("; ")}`);
         }
         lines.push("");
       }
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[CopyAllStats] section counts:", counts);
     }
     return lines.join("\n").trimEnd();
   }
@@ -750,8 +761,10 @@ function MatchBoardAggregatedSections({
       { key: "homeGoals",     label: `${post.homeTeam ?? "Home"} — Goals` },
       { key: "awayGoals",     label: `${post.awayTeam ?? "Away"} — Goals` },
     ];
+    const counts: Record<string, number> = {};
     for (const { key, label } of sectionLabels) {
       const sectionRows = rows[key];
+      counts[key] = sectionRows?.length ?? 0;
       lines.push(`### ${label}`);
       if (!sectionRows || sectionRows.length === 0) {
         lines.push("  (no qualifying players)", "");
@@ -769,9 +782,18 @@ function MatchBoardAggregatedSections({
             return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
           });
           lines.push(`    Lines: ${parts.join("; ")}`);
+        } else if (!isDisp) {
+          const goalParts: string[] = [];
+          if (r.t1) goalParts.push(`1+=${r.t1}${r.p1 != null ? ` (${r.p1}%)` : ""}`);
+          if (r.t2) goalParts.push(`2+=${r.t2}${r.p2 != null ? ` (${r.p2}%)` : ""}`);
+          if (r.t3) goalParts.push(`3+=${r.t3}${r.p3 != null ? ` (${r.p3}%)` : ""}`);
+          if (goalParts.length > 0) lines.push(`    Goals: ${goalParts.join("; ")}`);
         }
         lines.push("");
       }
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[CopyStatsBoard] section counts:", counts);
     }
     return lines.join("\n").trimEnd();
   }
