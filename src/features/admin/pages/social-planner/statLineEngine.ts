@@ -346,7 +346,7 @@ export interface CandidateScore {
    * 25+ explicitly excludes 30+ tier players.
    */
   publicContentTier?: 30 | 25 | 20 | 15 | null;
-  /** Full threshold hit-rate map from DB for admin full-range table display. */
+  /** Full threshold hit-rate map (15–40) from DB for Copy All Stats export. */
   allThresholdHitRates?: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 

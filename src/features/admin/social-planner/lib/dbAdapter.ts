@@ -99,6 +99,7 @@ export interface DbPlayerStat {
   player_status: string | null;
   manual_status: string | null;
   is_available: boolean | null;
+  all_threshold_hit_rates: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 
 // ─── Converters ───────────────────────────────────────────────────────────────
@@ -157,6 +158,7 @@ export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
     availabilityStatus,
     availabilityReason: row.manual_status ?? null,
     expectedToPlay: row.is_available ?? true,
+    allThresholdHitRates: row.all_threshold_hit_rates ?? null,
   };
 }
 

@@ -24,6 +24,7 @@ import {
   checkPromptHealth,
   type PromptMode,
 } from "../lib/carouselPromptBuilder";
+import { adminSocialPlanner } from "@/config/disposalThresholds";
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
 
@@ -677,6 +678,68 @@ function MatchBoardAggregatedSections({
     });
   }
 
+  const [copiedStats, setCopiedStats] = useState(false);
+
+  function buildMatchBoardStatsText(): string {
+    if (!rows) return "(no player data)";
+    const thresholds = adminSocialPlanner;
+    const lines: string[] = [
+      `NEEKO GAME & PLAYERS EXPORT`,
+      `Post: ${post.title}`,
+      `Game: ${post.homeTeam ?? "?"} vs ${post.awayTeam ?? "?"}`,
+      `Exported: ${new Date().toISOString()}`,
+      "─".repeat(60),
+      "",
+    ];
+    const sectionLabels: Array<{ key: keyof NonNullable<SocialPost["matchBoardRows"]>; label: string }> = [
+      { key: "homeDisposals", label: `${post.homeTeam ?? "Home"} — Disposals` },
+      { key: "awayDisposals", label: `${post.awayTeam ?? "Away"} — Disposals` },
+      { key: "homeGoals",     label: `${post.homeTeam ?? "Home"} — Goals` },
+      { key: "awayGoals",     label: `${post.awayTeam ?? "Away"} — Goals` },
+    ];
+    for (const { key, label } of sectionLabels) {
+      const sectionRows = rows[key];
+      lines.push(`### ${label}`);
+      if (!sectionRows || sectionRows.length === 0) {
+        lines.push("  (no qualifying players)", "");
+        continue;
+      }
+      const isDisp = key === "homeDisposals" || key === "awayDisposals";
+      for (const r of sectionRows) {
+        lines.push(`  ${r.playerName} (${r.team}) — L5: ${r.l5Avg.toFixed(1)}`);
+        if (isDisp && r.allThresholdHitRates) {
+          const parts = thresholds.map(t => {
+            const entry = r.allThresholdHitRates?.[String(t)];
+            if (!entry || entry.games === 0) return `${t}+=—`;
+            const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+            return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
+          });
+          lines.push(`    Lines: ${parts.join("; ")}`);
+        }
+        lines.push("");
+      }
+    }
+    return lines.join("\n").trimEnd();
+  }
+
+  async function handleCopyAllStats() {
+    const text = buildMatchBoardStatsText();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopiedStats(true);
+    setTimeout(() => setCopiedStats(false), 2000);
+  }
+
   if (!rows) {
     return (
       <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3 space-y-2">
@@ -746,15 +809,30 @@ function MatchBoardAggregatedSections({
           )}
         </p>
         {allPlayers.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleRefreshPlayerData}
-            className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors pointer-events-auto"
-            title="Re-aggregate player data from the latest fetch — fixes stale threshold values"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Refresh Player Data
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyAllStats}
+              className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border transition-colors pointer-events-auto ${
+                copiedStats
+                  ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                  : "border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500"
+              }`}
+              title="Copy all player stats as plain text (for ChatGPT workflow)"
+            >
+              {copiedStats ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              Copy All Stats
+            </button>
+            <button
+              type="button"
+              onClick={handleRefreshPlayerData}
+              className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors pointer-events-auto"
+              title="Re-aggregate player data from the latest fetch — fixes stale threshold values"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Refresh Player Data
+            </button>
+          </div>
         ) : (
           <span className="text-[10px] text-zinc-600">Load player data first</span>
         )}
@@ -862,9 +940,21 @@ function AggregatedRowSection({
 }) {
   const [filter, setFilter] = useState<SectionFilter>("all");
   const [sort, setSort] = useState<SectionSort>("manual");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollAtEnd, setScrollAtEnd] = useState(false);
+  const isDisposals = statType === "disposals";
+
+  useEffect(() => {
+    if (!isDisposals) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => setScrollAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [isDisposals, rows]);
 
   const selectedCount = rows.filter(r => r.selected).length;
-  const isDisposals = statType === "disposals";
 
   // Build display list
   const displayRows = useMemo(() => {
@@ -1044,21 +1134,19 @@ function AggregatedRowSection({
       {rows.length === 0 ? (
         <p className="text-[10px] text-zinc-600 px-3 py-3">No player data for this section.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-[10px]">
+        <div className="relative">
+        <div ref={scrollRef} className="overflow-x-auto touch-pan-x overscroll-x-contain" style={{ scrollbarWidth: "thin", scrollbarColor: "rgb(63 63 70) transparent" } as React.CSSProperties}>
+          <table className={`w-full text-[10px]${isDisposals ? " min-w-max" : ""}`}>
             <thead>
               <tr className="border-b border-zinc-800/40">
                 <th className="px-1.5 py-1.5 text-zinc-500 font-medium w-6">On</th>
                 <th className="px-1 py-1.5 text-zinc-500 font-medium w-14">Order</th>
-                <th className="text-left px-2 py-1.5 text-zinc-500 font-medium">Player</th>
+                <th className="text-left px-2 py-1.5 text-zinc-500 font-medium sticky left-0 bg-zinc-900 z-10">Player</th>
                 <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
                 {isDisposals ? (
-                  <>
-                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">15+</th>
-                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">20+</th>
-                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">25+</th>
-                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">30+</th>
-                  </>
+                  adminSocialPlanner.map(t => (
+                    <th key={t} className={`text-right py-1.5 px-1 font-medium whitespace-nowrap ${t % 5 === 0 ? "text-zinc-400" : "text-zinc-600"}`}>{t}+</th>
+                  ))
                 ) : (
                   <>
                     <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">1+</th>
@@ -1109,7 +1197,7 @@ function AggregatedRowSection({
                         <span className="text-zinc-700">—</span>
                       )}
                     </td>
-                    <td className="px-2 py-1.5 font-medium whitespace-nowrap">
+                    <td className="px-2 py-1.5 font-medium whitespace-nowrap sticky left-0 bg-zinc-900 z-10" style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.4)" }}>
                       {row.playerName}
                       {row.selected && (
                         <span className="ml-1 text-zinc-600 font-normal">#{row.sortOrder + 1}</span>
@@ -1118,12 +1206,28 @@ function AggregatedRowSection({
                     </td>
                     <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
                     {isDisposals ? (
-                      <>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t15} percent={row.p15} gamesPlayed={row.maxGamesPlayed} /></td>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t20} percent={row.p20} gamesPlayed={row.maxGamesPlayed} /></td>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t25} percent={row.p25} gamesPlayed={row.maxGamesPlayed} /></td>
-                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t30} percent={row.p30} gamesPlayed={row.maxGamesPlayed} /></td>
-                      </>
+                      adminSocialPlanner.map(t => {
+                        const entry = row.allThresholdHitRates?.[String(t)];
+                        if (!entry || entry.games === 0) {
+                          return <td key={t} className="py-1.5 px-1 text-right text-zinc-700 font-mono whitespace-nowrap">—</td>;
+                        }
+                        const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+                        const pct = Math.round(rate * 100);
+                        const colorClass =
+                          pct >= 80 ? "text-emerald-400" :
+                          pct >= 60 ? "text-sky-400" :
+                          pct >= 40 ? "text-amber-400" :
+                          "text-zinc-500";
+                        const isMilestone = t % 5 === 0;
+                        return (
+                          <td key={t}
+                            className={`py-1.5 px-1 text-right font-mono whitespace-nowrap ${colorClass} ${isMilestone ? "font-semibold" : "font-normal"}`}
+                            title={`${t}+: ${entry.hits}/${entry.games}`}
+                          >
+                            {pct}%
+                          </td>
+                        );
+                      })
                     ) : (
                       <>
                         <td className="px-2 py-1.5 text-right"><GradeCell label={row.t1} percent={row.p1} gamesPlayed={row.maxGamesPlayed} /></td>
@@ -1165,6 +1269,10 @@ function AggregatedRowSection({
               })}
             </tbody>
           </table>
+        </div>
+        {isDisposals && !scrollAtEnd && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-900/90 to-transparent" />
+        )}
         </div>
       )}
     </div>

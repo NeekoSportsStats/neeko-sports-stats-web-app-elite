@@ -54,6 +54,8 @@ export interface MatchBoardPlayerRow {
   availabilityReason?: string | null;
   /** True if admin has manually overridden default exclusion */
   manualAvailabilityOverride?: PlayerAvailabilityStatus | null;
+  /** Full disposal threshold hit-rate map (15–40). Null/absent for goal rows. UI-only. */
+  allThresholdHitRates?: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 
 const TIER_RANK: Record<ConfidenceTier, number> = {
@@ -95,6 +97,7 @@ export function aggregateToRows(
         availabilityStatus: p.availabilityStatus ?? "unknown",
         availabilityReason: p.availabilityReason ?? null,
         manualAvailabilityOverride: p.manualAvailabilityOverride ?? null,
+        allThresholdHitRates: p.allThresholdHitRates ?? null,
       };
       setThreshold(row, p.threshold, p.recordLabel, p.percent);
       byPlayer.set(p.playerId, row);

@@ -185,6 +185,8 @@ export interface AFLPlayerStat {
   availabilityReason?: string | null;
   expectedToPlay?: boolean;
   manualAvailabilityOverride?: PlayerAvailabilityStatus | null;
+  /** Full disposal threshold hit-rate map (15–40). Null for goal rows. UI-only; not persisted. */
+  allThresholdHitRates?: Record<string, { hits: number; games: number; rate: number }> | null;
 }
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
