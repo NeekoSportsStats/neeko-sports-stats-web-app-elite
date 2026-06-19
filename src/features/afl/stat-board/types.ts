@@ -204,17 +204,57 @@ export interface StatBoardHistoryRow {
   row_type: TimelineSlotType;
 }
 
-export type StatLens = "disposals" | "goals";
+export type StatLens = "disposals" | "goals" | "marks" | "tackles" | "kicks" | "fantasy";
 
 export type PositionFilter = "ALL" | "MID" | "DEF" | "FWD" | "RUCK";
 
 export const DISPOSAL_THRESHOLDS = [15, 20, 25, 30] as const;
 export const GOALS_THRESHOLDS = [1, 2, 3, 4] as const;
+export const MARKS_THRESHOLDS = [3, 4, 5, 6, 7] as const;
+export const TACKLES_THRESHOLDS = [3, 4, 5, 6] as const;
+export const KICKS_THRESHOLDS = [8, 10, 12, 15, 18] as const;
+export const FANTASY_THRESHOLDS = [60, 70, 80, 90, 100] as const;
 
 export function defaultThreshold(lens: StatLens): number {
-  return lens === "disposals" ? 20 : 1;
+  switch (lens) {
+    case "disposals": return 20;
+    case "goals":     return 1;
+    case "marks":     return 4;
+    case "tackles":   return 4;
+    case "kicks":     return 10;
+    case "fantasy":   return 75;
+  }
 }
 
 export function thresholdsForLens(lens: StatLens): readonly number[] {
-  return lens === "disposals" ? DISPOSAL_THRESHOLDS : GOALS_THRESHOLDS;
+  switch (lens) {
+    case "disposals": return DISPOSAL_THRESHOLDS;
+    case "goals":     return GOALS_THRESHOLDS;
+    case "marks":     return MARKS_THRESHOLDS;
+    case "tackles":   return TACKLES_THRESHOLDS;
+    case "kicks":     return KICKS_THRESHOLDS;
+    case "fantasy":   return FANTASY_THRESHOLDS;
+  }
+}
+
+export function statLabel(lens: StatLens): string {
+  switch (lens) {
+    case "disposals": return "Disposals";
+    case "goals":     return "Goals";
+    case "marks":     return "Marks";
+    case "tackles":   return "Tackles";
+    case "kicks":     return "Kicks";
+    case "fantasy":   return "Fantasy";
+  }
+}
+
+export function statLabelShort(lens: StatLens): string {
+  switch (lens) {
+    case "disposals": return "Disp";
+    case "goals":     return "Goals";
+    case "marks":     return "Marks";
+    case "tackles":   return "Tkls";
+    case "kicks":     return "Kicks";
+    case "fantasy":   return "Fant";
+  }
 }

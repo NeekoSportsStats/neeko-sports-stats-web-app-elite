@@ -8,6 +8,7 @@ import { PlayerIntelligencePanel } from "@/components/afl/PlayerIntelligencePane
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
 import { publicExpandedPlayer } from "@/config/disposalThresholds";
+import { getStatDef } from "@/config/statDefinitions";
 
 interface Props {
   player: StatBoardPlayer;
@@ -24,6 +25,10 @@ interface Props {
 
 const DISPOSAL_THRESHOLDS = publicExpandedPlayer;
 const GOAL_THRESHOLDS = [1, 2, 3, 4];
+const MARKS_THRESHOLDS = [3, 4, 5, 6, 7];
+const TACKLES_THRESHOLDS = [3, 4, 5, 6];
+const KICKS_THRESHOLDS = [8, 10, 12, 15, 18];
+const FANTASY_THRESHOLDS = [60, 70, 80, 90, 100];
 
 function subscribeMq(cb: () => void) {
   const mq = window.matchMedia("(max-width: 767px)");
@@ -71,8 +76,15 @@ export function ExpandedPlayerPanel({
     );
   }
 
-  const lensKey = lens === "disposals" ? "disposals" : "goals";
-  const allThresholds = lens === "disposals" ? DISPOSAL_THRESHOLDS : GOAL_THRESHOLDS;
+  const statDef = getStatDef(lens);
+  const lensKey = statDef.historyColumn;
+  const allThresholds: number[] = lens === "disposals"
+    ? [...DISPOSAL_THRESHOLDS]
+    : lens === "goals"    ? GOAL_THRESHOLDS
+    : lens === "marks"    ? MARKS_THRESHOLDS
+    : lens === "tackles"  ? TACKLES_THRESHOLDS
+    : lens === "kicks"    ? KICKS_THRESHOLDS
+    : FANTASY_THRESHOLDS;
 
   // Sort history oldest→newest, then deduplicate by (week, row_type) to
   // prevent any duplicate BYE/DNP rows that can arise from the UNION ALL CTEs.
@@ -356,7 +368,7 @@ export function ExpandedPlayerPanel({
               <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider">
                 Season hit rates
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-                  — {lens === "disposals" ? "disposals" : "goals"} · 2026
+                  — {statDef.label.toLowerCase()} · 2026
                 </span>
               </p>
               {lens === "disposals" && (
@@ -376,7 +388,8 @@ export function ExpandedPlayerPanel({
         </div>
       )}
 
-      {/* ── 5. AI Insight ─────────────────────────────────────────────────── */}
+      {/* ── 5. AI Insight — only shown for disposal/goals lenses where AI context applies ── */}
+      {(lens === "disposals" || lens === "goals") && (
       <PlayerIntelligencePanel
         intelligence={intelligence}
         loading={intelligenceLoading}
@@ -388,6 +401,7 @@ export function ExpandedPlayerPanel({
         variant="card"
         upgradeHref="/billing"
       />
+      )}
 
       {/* ── View full player analysis link ───────────────────────────────── */}
       <div className="px-3 sm:px-5 pb-2 sm:pb-3">
@@ -913,7 +927,7 @@ function MobileChartTooltip({
   }
 
   const val = slot.value!;
-  const unit = lens === "disposals" ? "disp" : "goals";
+  const unit = lens === "disposals" ? "disp" : lens === "goals" ? "goals" : lens === "fantasy" ? "pts" : lens;
 
   return (
     <div
@@ -1051,7 +1065,7 @@ function ChartTooltip({
             {val}
           </span>
           <span className="text-[10px] text-white/30 leading-none">
-            {lens === "disposals" ? "disp" : "goals"}
+            {lens === "disposals" ? "disp" : lens === "goals" ? "goals" : lens === "fantasy" ? "pts" : lens}
           </span>
         </div>
       </div>
@@ -1336,6 +1350,38 @@ function GameLog({
                   <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
                   <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
                 </>
+              ) : lens === "marks" ? (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Mks</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Gls</th>
+                </>
+              ) : lens === "tackles" ? (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Tkl</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Gls</th>
+                </>
+              ) : lens === "kicks" ? (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Gls</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+                </>
+              ) : lens === "fantasy" ? (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Fant</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Gls</th>
+                </>
               ) : (
                 <>
                   <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Disp</th>
@@ -1388,8 +1434,16 @@ function GameLog({
 
               const dispVal = row.disposals;
               const glsVal  = row.goals;
-              const dispHit = dispVal != null && lens === "disposals" && dispVal >= threshold;
-              const glsHit  = glsVal  != null && lens === "goals"     && glsVal  >= threshold;
+              const mksVal  = row.marks;
+              const tklVal  = row.tackles;
+              const kckVal  = row.kicks;
+              const fantVal = row.fantasy;
+              const dispHit    = dispVal != null && lens === "disposals" && dispVal >= threshold;
+              const glsHit     = glsVal  != null && lens === "goals"     && glsVal  >= threshold;
+              const marksHit   = mksVal  != null && lens === "marks"     && mksVal  >= threshold;
+              const tacklesHit = tklVal  != null && lens === "tackles"   && tklVal  >= threshold;
+              const kicksHit   = kckVal  != null && lens === "kicks"     && kckVal  >= threshold;
+              const fantHit    = fantVal != null && lens === "fantasy"   && fantVal >= threshold;
 
               return (
                 <tr
@@ -1424,6 +1478,78 @@ function GameLog({
                       </td>
                       <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
                         {row.handballs ?? "—"}
+                      </td>
+                    </>
+                  ) : lens === "marks" ? (
+                    <>
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${marksHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {mksVal ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${dispHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.kicks ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {glsVal ?? "—"}
+                      </td>
+                    </>
+                  ) : lens === "tackles" ? (
+                    <>
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${tacklesHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {tklVal ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${dispHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.kicks ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {glsVal ?? "—"}
+                      </td>
+                    </>
+                  ) : lens === "kicks" ? (
+                    <>
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${kicksHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {kckVal ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${dispHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {glsVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.behinds ?? "—"}
+                      </td>
+                    </>
+                  ) : lens === "fantasy" ? (
+                    <>
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${fantHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {fantVal ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${dispHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.kicks ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {glsVal ?? "—"}
                       </td>
                     </>
                   ) : (

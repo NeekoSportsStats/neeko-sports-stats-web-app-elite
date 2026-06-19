@@ -17,7 +17,7 @@ import type {
   StatLens,
   PositionFilter,
 } from "./types";
-import { defaultThreshold, thresholdsForLens } from "./types";
+import { defaultThreshold, thresholdsForLens, statLabel, statLabelShort } from "./types";
 import { MatchSelector } from "./components/MatchSelector";
 import { BoardRow, MobilePlayerCard } from "./components/BoardRow";
 import { MobileMatchBottomSheet } from "./components/MobileMatchBottomSheet";
@@ -37,7 +37,7 @@ function useIsMobile() {
 export type SortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consistency";
 
 function sortOptions(lens: StatLens): { key: SortKey; label: string }[] {
-  const stat = lens === "disposals" ? "Disposal" : "Goal";
+  const stat = statLabel(lens);
   return [
     { key: "projection",  label: `${stat} projection — high to low` },
     { key: "hit_rate",    label: `${stat} hit rate — high to low` },
@@ -505,7 +505,7 @@ export default function StatBoardPlayersPage() {
                 className="flex gap-1.5 overflow-x-auto"
                 style={{ scrollbarWidth: "none", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
               >
-                {(["disposals", "goals"] as StatLens[]).map((l) => (
+                {(["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as StatLens[]).map((l) => (
                   <button
                     key={l}
                     onClick={() => handleLensChange(l)}
@@ -515,7 +515,7 @@ export default function StatBoardPlayersPage() {
                         : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/65"
                     }`}
                   >
-                    {l === "disposals" ? "Disposals" : "Goals"}
+                    {statLabel(l)}
                   </button>
                 ))}
                 <span className="text-white/15 text-[10px] self-center shrink-0">|</span>
@@ -612,7 +612,7 @@ export default function StatBoardPlayersPage() {
               {!playersLoading && selectedMatch && (
                 <div className="flex items-center gap-1 px-0.5 overflow-hidden" style={{ width: "100%", minWidth: 0 }}>
                   <span className="text-[10px] text-white/25 truncate min-w-0 flex-1">
-                    {selectedMatch.match_label} · {lens === "disposals" ? "Disposals" : "Goals"}
+                    {selectedMatch.match_label} · {statLabel(lens)}
                     {players.length > 0 ? ` · ${players.length} players` : ""}
                   </span>
                 </div>
@@ -624,7 +624,7 @@ export default function StatBoardPlayersPage() {
               {/* Row 1: stat toggle + position filters */}
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0">
-                  {(["disposals", "goals"] as StatLens[]).map((l) => (
+                  {(["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as StatLens[]).map((l) => (
                     <button
                       key={l}
                       onClick={() => handleLensChange(l)}
@@ -634,7 +634,7 @@ export default function StatBoardPlayersPage() {
                           : "text-white/50 hover:text-white/80"
                       }`}
                     >
-                      {l === "disposals" ? "Disposals" : "Goals"}
+                      {statLabel(l)}
                     </button>
                   ))}
                 </div>
@@ -710,7 +710,7 @@ export default function StatBoardPlayersPage() {
               <span className="text-white/30 text-[11px]">Viewing:</span>
               {[
                 selectedMatch.match_label,
-                lens === "disposals" ? "Disposals" : "Goals",
+                statLabel(lens),
                 players.length > 0 ? `${players.length} players` : null,
               ]
                 .filter(Boolean)
@@ -888,7 +888,7 @@ function StickyControlsBar({
         <div className="flex items-center gap-1.5 flex-wrap">
           {/* Stat toggle */}
           <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5">
-            {(["disposals", "goals"] as StatLens[]).map((l) => (
+            {(["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as StatLens[]).map((l) => (
               <button
                 key={l}
                 onClick={() => onLensChange(l)}
@@ -898,7 +898,7 @@ function StickyControlsBar({
                     : "text-white/45 hover:text-white/75"
                 }`}
               >
-                {l === "disposals" ? "Disp" : "Goals"}
+                {statLabelShort(l)}
               </button>
             ))}
           </div>
