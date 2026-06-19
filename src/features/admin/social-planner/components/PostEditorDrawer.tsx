@@ -24,7 +24,10 @@ import {
   checkPromptHealth,
   type PromptMode,
 } from "../lib/carouselPromptBuilder";
-import { adminSocialPlanner } from "@/config/disposalThresholds";
+import { adminSocialPlanner, socialPostStatsBoard, range } from "@/config/disposalThresholds";
+
+const FINE_LINE_THRESHOLDS: readonly number[] = range(10, 40);
+const STATS_BOARD_THRESHOLDS: readonly number[] = socialPostStatsBoard;
 import { copyToClipboard } from "../../pages/social-planner/copyAllStats";
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
@@ -680,6 +683,7 @@ function MatchBoardAggregatedSections({
   }
 
   const [copiedStats, setCopiedStats] = useState(false);
+  const [copiedStatsBoard, setCopiedStatsBoard] = useState(false);
 
   function buildMatchBoardStatsText(): string {
     if (!rows) return "(no player data)";
@@ -728,6 +732,55 @@ function MatchBoardAggregatedSections({
     await copyToClipboard(text);
     setCopiedStats(true);
     setTimeout(() => setCopiedStats(false), 2000);
+  }
+
+  function buildMatchBoardStatsBoardText(): string {
+    if (!rows) return "(no player data)";
+    const lines: string[] = [
+      `NEEKO STATS BOARD EXPORT`,
+      `Post: ${post.title}`,
+      `Game: ${post.homeTeam ?? "?"} vs ${post.awayTeam ?? "?"}`,
+      `Exported: ${new Date().toISOString()}`,
+      "─".repeat(60),
+      "",
+    ];
+    const sectionLabels: Array<{ key: keyof NonNullable<SocialPost["matchBoardRows"]>; label: string }> = [
+      { key: "homeDisposals", label: `${post.homeTeam ?? "Home"} — Disposals` },
+      { key: "awayDisposals", label: `${post.awayTeam ?? "Away"} — Disposals` },
+      { key: "homeGoals",     label: `${post.homeTeam ?? "Home"} — Goals` },
+      { key: "awayGoals",     label: `${post.awayTeam ?? "Away"} — Goals` },
+    ];
+    for (const { key, label } of sectionLabels) {
+      const sectionRows = rows[key];
+      lines.push(`### ${label}`);
+      if (!sectionRows || sectionRows.length === 0) {
+        lines.push("  (no qualifying players)", "");
+        continue;
+      }
+      const isDisp = key === "homeDisposals" || key === "awayDisposals";
+      for (const r of sectionRows) {
+        const selState = r.selected ? `selected (${r.displayMode})` : "unselected";
+        lines.push(`  ${r.playerName} (${r.team}) — L5: ${r.l5Avg.toFixed(1)} — ${selState}`);
+        if (isDisp && r.allThresholdHitRates) {
+          const parts = STATS_BOARD_THRESHOLDS.map(t => {
+            const entry = r.allThresholdHitRates?.[String(t)];
+            if (!entry || entry.games === 0) return `${t}+=—`;
+            const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+            return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
+          });
+          lines.push(`    Lines: ${parts.join("; ")}`);
+        }
+        lines.push("");
+      }
+    }
+    return lines.join("\n").trimEnd();
+  }
+
+  async function handleCopyStatsBoard() {
+    const text = buildMatchBoardStatsBoardText();
+    await copyToClipboard(text);
+    setCopiedStatsBoard(true);
+    setTimeout(() => setCopiedStatsBoard(false), 2000);
   }
 
   if (!rows) {
@@ -800,6 +853,19 @@ function MatchBoardAggregatedSections({
         </p>
         {allPlayers.length > 0 ? (
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyStatsBoard}
+              className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border transition-colors pointer-events-auto ${
+                copiedStatsBoard
+                  ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                  : "border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500"
+              }`}
+              title="Copy Stats Board prompt (15+/20+/25+/30+ only)"
+            >
+              {copiedStatsBoard ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              Copy Stats Board Prompt
+            </button>
             <button
               type="button"
               onClick={handleCopyAllStats}
@@ -950,6 +1016,7 @@ const DISPLAY_MODE_LABELS: Record<string, string> = {
 
 type SectionFilter = "all" | "selected" | "visible" | "preview" | "unselected";
 type SectionSort = "manual" | "bestRecord" | "gamesPlayed" | "l5Avg" | "playerName";
+type DisposalViewMode = "stats_board" | "fine_lines";
 
 function AggregatedRowSection({
   label,
@@ -964,9 +1031,14 @@ function AggregatedRowSection({
 }) {
   const [filter, setFilter] = useState<SectionFilter>("all");
   const [sort, setSort] = useState<SectionSort>("manual");
+  const [viewMode, setViewMode] = useState<DisposalViewMode>("stats_board");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollAtEnd, setScrollAtEnd] = useState(false);
   const isDisposals = statType === "disposals";
+
+  const activeThresholds = isDisposals
+    ? (viewMode === "fine_lines" ? FINE_LINE_THRESHOLDS : STATS_BOARD_THRESHOLDS)
+    : [];
 
   useEffect(() => {
     if (!isDisposals) return;
@@ -976,7 +1048,7 @@ function AggregatedRowSection({
     check();
     el.addEventListener("scroll", check, { passive: true });
     return () => el.removeEventListener("scroll", check);
-  }, [isDisposals, rows]);
+  }, [isDisposals, rows, viewMode]);
 
   const selectedCount = rows.filter(r => r.selected).length;
 
@@ -1153,6 +1225,31 @@ function AggregatedRowSection({
             <option value="playerName">Player name</option>
           </select>
         </div>
+        {/* View-mode segmented control — disposals only */}
+        {isDisposals && (
+          <div className="flex items-center gap-2">
+            <div className="flex rounded border border-zinc-700 overflow-hidden text-[9px]">
+              <button
+                onClick={() => setViewMode("stats_board")}
+                className={`px-2 py-0.5 transition-colors ${viewMode === "stats_board" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                Stats Board
+              </button>
+              <button
+                onClick={() => setViewMode("fine_lines")}
+                className={`px-2 py-0.5 border-l border-zinc-700 transition-colors ${viewMode === "fine_lines" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                Fine Lines
+              </button>
+            </div>
+            {viewMode === "stats_board" && (
+              <span className="text-[9px] text-zinc-600">Post 2 uses 15+, 20+, 25+ and 30+.</span>
+            )}
+            {viewMode === "fine_lines" && (
+              <span className="text-[9px] text-amber-500/80">Stats Board prompt remains 15+/20+/25+/30+.</span>
+            )}
+          </div>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -1168,7 +1265,7 @@ function AggregatedRowSection({
                 <th className="text-left px-2 py-1.5 text-zinc-500 font-medium sticky left-0 bg-zinc-900 z-10">Player</th>
                 <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
                 {isDisposals ? (
-                  adminSocialPlanner.map(t => (
+                  activeThresholds.map(t => (
                     <th key={t} className={`text-right py-1.5 px-1 font-medium whitespace-nowrap ${t % 5 === 0 ? "text-zinc-400" : "text-zinc-600"}`}>{t}+</th>
                   ))
                 ) : (
@@ -1230,7 +1327,7 @@ function AggregatedRowSection({
                     </td>
                     <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
                     {isDisposals ? (
-                      adminSocialPlanner.map(t => {
+                      activeThresholds.map(t => {
                         const entry = row.allThresholdHitRates?.[String(t)];
                         if (!entry || entry.games === 0) {
                           return <td key={t} className="py-1.5 px-1 text-right text-zinc-700 font-mono whitespace-nowrap">—</td>;

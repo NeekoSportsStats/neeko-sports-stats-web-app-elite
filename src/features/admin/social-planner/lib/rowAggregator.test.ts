@@ -8,10 +8,12 @@
  * - Cell display: hits/games as primary (pct in tooltip)
  * - postToDb strips allThresholdHitRates from matchBoardRows
  * - buildCopyAllStatsText includes 24+/40+, both teams, all players
+ * - View-mode switch: Stats Board (4 cols) vs Fine Lines (31 cols, 10–40)
+ * - Copy Stats Board Prompt always uses 15/20/25/30 regardless of view mode
  */
 
 import { describe, it, expect } from "vitest";
-import { adminSocialPlanner, socialPostStatsBoard } from "@/config/disposalThresholds";
+import { adminSocialPlanner, socialPostStatsBoard, range } from "@/config/disposalThresholds";
 import { aggregateToRows, rowsToStatBoardRows } from "./rowAggregator";
 import { postToDb } from "./dbAdapter";
 import { buildCopyAllStatsText } from "../../pages/social-planner/copyAllStats";
@@ -533,3 +535,172 @@ describe("Post 2 unchanged — goal record label format in rowsToStatBoardRows",
   });
 });
 
+// ─── View-mode switch — Stats Board vs Fine Lines ─────────────────────────────
+// These tests verify the data layer constants and logic that drive the segmented
+// control. The component uses STATS_BOARD_THRESHOLDS (socialPostStatsBoard) or
+// FINE_LINE_THRESHOLDS (range(10,40)) depending on viewMode state.
+
+const FINE_LINE_THRESHOLDS = range(10, 40);
+const STATS_BOARD_THRESHOLDS_TEST = [...socialPostStatsBoard];
+
+describe("View-mode switch — Stats Board mode (4 columns)", () => {
+  it("Stats Board shows exactly 4 columns", () => {
+    expect(STATS_BOARD_THRESHOLDS_TEST).toHaveLength(4);
+  });
+
+  it("Stats Board columns are exactly 15, 20, 25, 30", () => {
+    expect(STATS_BOARD_THRESHOLDS_TEST).toEqual([15, 20, 25, 30]);
+  });
+
+  it("Stats Board does not include 16, 17, 24, 31", () => {
+    expect(STATS_BOARD_THRESHOLDS_TEST).not.toContain(16);
+    expect(STATS_BOARD_THRESHOLDS_TEST).not.toContain(17);
+    expect(STATS_BOARD_THRESHOLDS_TEST).not.toContain(24);
+    expect(STATS_BOARD_THRESHOLDS_TEST).not.toContain(31);
+  });
+});
+
+describe("View-mode switch — Fine Lines mode (31 columns)", () => {
+  it("Fine Lines shows exactly 31 columns", () => {
+    expect(FINE_LINE_THRESHOLDS).toHaveLength(31);
+  });
+
+  it("Fine Lines starts at 10", () => {
+    expect(FINE_LINE_THRESHOLDS[0]).toBe(10);
+  });
+
+  it("Fine Lines ends at 40", () => {
+    expect(FINE_LINE_THRESHOLDS[FINE_LINE_THRESHOLDS.length - 1]).toBe(40);
+  });
+
+  it("Fine Lines contains 10, 11, 12, 13, 14 (the new thresholds)", () => {
+    for (let t = 10; t <= 14; t++) {
+      expect(FINE_LINE_THRESHOLDS).toContain(t);
+    }
+  });
+
+  it("Fine Lines contains 24+ (intermediate threshold)", () => {
+    expect(FINE_LINE_THRESHOLDS).toContain(24);
+  });
+
+  it("Fine Lines contains every integer from 10 to 40 inclusive", () => {
+    for (let t = 10; t <= 40; t++) {
+      expect(FINE_LINE_THRESHOLDS).toContain(t);
+    }
+  });
+});
+
+describe("View-mode switch — state preservation (data layer)", () => {
+  it("switching view mode does not alter player row selection state", () => {
+    const rates = makeAllThresholdHitRates();
+    const stat = makeDisposalStat({ allThresholdHitRates: rates });
+    const rows = aggregateToRows([stat], "Team A", "disposals");
+    rows[0].selected = true;
+    rows[0].sortOrder = 0;
+    rows[0].displayMode = "visible";
+
+    // Simulate switching view mode — rows are unchanged (mode is local UI state only)
+    const afterSwitch = rows.map(r => ({ ...r }));
+    expect(afterSwitch[0].selected).toBe(true);
+    expect(afterSwitch[0].sortOrder).toBe(0);
+    expect(afterSwitch[0].displayMode).toBe("visible");
+    expect(afterSwitch[0].allThresholdHitRates).toEqual(rates);
+  });
+
+  it("Fine Lines mode has access to all 31 threshold data points when allThresholdHitRates includes 10–14", () => {
+    const fullRates: Record<string, { hits: number; games: number; rate: number }> = {};
+    for (let t = 10; t <= 40; t++) {
+      fullRates[String(t)] = { hits: Math.max(0, 12 - Math.floor((t - 10) / 3)), games: 12, rate: 0.8 };
+    }
+    const stat = makeDisposalStat({ allThresholdHitRates: fullRates });
+    const rows = aggregateToRows([stat], "Team A", "disposals");
+    const hr = rows[0].allThresholdHitRates!;
+    // All fine-line thresholds resolvable from allThresholdHitRates
+    for (const t of FINE_LINE_THRESHOLDS) {
+      expect(hr[String(t)]).toBeDefined();
+      expect(hr[String(t)].games).toBe(12);
+    }
+  });
+});
+
+describe("Copy Stats Board Prompt — always uses 15/20/25/30", () => {
+  it("Stats Board threshold list used for prompt always equals [15,20,25,30]", () => {
+    // The prompt builder uses STATS_BOARD_THRESHOLDS (socialPostStatsBoard), never viewMode
+    expect(STATS_BOARD_THRESHOLDS_TEST).toEqual([15, 20, 25, 30]);
+  });
+
+  it("Stats Board prompt text includes 15+, 20+, 25+, 30+ for a player", () => {
+    const rates: Record<string, { hits: number; games: number; rate: number }> = {};
+    for (let t = 10; t <= 40; t++) {
+      rates[String(t)] = { hits: 8, games: 10, rate: 0.8 };
+    }
+    // Simulate what buildMatchBoardStatsBoardText does for disposal section
+    const sectionThresholds = STATS_BOARD_THRESHOLDS_TEST;
+    const parts = sectionThresholds.map(t => {
+      const entry = rates[String(t)];
+      if (!entry || entry.games === 0) return `${t}+=—`;
+      const rate = entry.rate > 1 ? entry.rate / 100 : entry.rate;
+      return `${t}+=${entry.hits}/${entry.games} (${Math.round(rate * 100)}%)`;
+    });
+    const line = `Lines: ${parts.join("; ")}`;
+    expect(line).toContain("15+=");
+    expect(line).toContain("20+=");
+    expect(line).toContain("25+=");
+    expect(line).toContain("30+=");
+    expect(line).not.toContain("10+=");
+    expect(line).not.toContain("14+=");
+    expect(line).not.toContain("24+=");
+    expect(line).not.toContain("40+=");
+  });
+
+  it("Copy All Stats prompt text includes 24+ (fine-line threshold)", () => {
+    const rates = makeAllThresholdHitRates();
+    // adminSocialPlanner (15–40) includes 24
+    expect(adminSocialPlanner).toContain(24);
+    expect(rates["24"]).toBeDefined();
+    const entry = rates["24"];
+    expect(entry.games).toBe(10);
+  });
+
+  it("Post 2 carousel rows never contain threshold 24 column", () => {
+    const rates = makeAllThresholdHitRates();
+    const stat = makeDisposalStat({ allThresholdHitRates: rates });
+    const rows = aggregateToRows([stat], "Team A", "disposals");
+    rows[0].selected = true;
+    rows[0].displayMode = "visible";
+    rows[0].sortOrder = 0;
+    const boardRows = rowsToStatBoardRows(rows);
+    expect("threshold24" in boardRows[0]).toBe(false);
+    expect("threshold16" in boardRows[0]).toBe(false);
+  });
+});
+
+describe("Goals sections unchanged by view-mode switch", () => {
+  it("goal section has 3 columns (1+/2+/3+) regardless of disposal view mode", () => {
+    const g1 = makeGoalStat({ threshold: 1, id: "p2_g1" });
+    const g2 = makeGoalStat({ threshold: 2, id: "p2_g2" });
+    const g3 = makeGoalStat({ threshold: 3, id: "p2_g3" });
+    const rows = aggregateToRows([g1, g2, g3], "Team A", "goals");
+    expect(rows[0].t1).toBeDefined();
+    expect(rows[0].t2).toBeDefined();
+    expect(rows[0].t3).toBeDefined();
+    // Goals have no allThresholdHitRates — view mode doesn't affect them
+    expect(rows[0].allThresholdHitRates).toBeNull();
+  });
+});
+
+describe("Public expanded-player profiles unchanged by admin view-mode switch", () => {
+  it("socialPostStatsBoard (Post 2) is exactly [15,20,25,30] — unchanged", () => {
+    expect([...socialPostStatsBoard]).toEqual([15, 20, 25, 30]);
+  });
+
+  it("Fine Lines 31-column range does not bleed into socialPostStatsBoard", () => {
+    const fineLinesSet = new Set(FINE_LINE_THRESHOLDS);
+    // All stats board values exist in fine lines (superset)
+    for (const t of socialPostStatsBoard) {
+      expect(fineLinesSet.has(t)).toBe(true);
+    }
+    // But stats board is strictly a 4-value subset
+    expect([...socialPostStatsBoard]).toHaveLength(4);
+  });
+});
