@@ -12,6 +12,7 @@
 
 import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus, SpotlightSelection, ScreenshotRefMode } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
+import { socialPostStatsBoard } from "@/config/disposalThresholds";
 
 export type PromptMode = "full_graphic" | "background_only" | "template_export";
 
@@ -296,7 +297,7 @@ function buildTableSlideSection(
   const hasData = rows.length > 0;
 
   const colHeader = isDisposal
-    ? "Player | L5 Avg | 15+ | 20+ | 25+ | 30+"
+    ? `Player | L5 Avg | ${socialPostStatsBoard.map(t => `${t}+`).join(" | ")}`
     : "Player | L5 Avg | 1+ | 2+ | 3+";
 
   const rowLines = hasData
@@ -687,7 +688,7 @@ COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red
     } else if (rows.length > 0) {
       const isDisposal = isDisposalSlide(slide.slideType);
       if (isDisposal) {
-        lines.push("Player | L5 Avg | 15+ | 20+ | 25+ | 30+");
+        lines.push(`Player | L5 Avg | ${socialPostStatsBoard.map(t => `${t}+`).join(" | ")}`);
       } else {
         lines.push("Player | L5 Avg | 1+ | 2+ | 3+");
       }
