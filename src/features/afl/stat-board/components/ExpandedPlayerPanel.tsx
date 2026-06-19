@@ -1,4 +1,4 @@
-import { useState, useRef, useSyncExternalStore } from "react";
+import { useState, useRef, useMemo, useSyncExternalStore, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -7,6 +7,7 @@ import { trackUnlockAllGames } from "@/lib/analytics";
 import { PlayerIntelligencePanel } from "@/components/afl/PlayerIntelligencePanel";
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
+import { publicExpandedPlayer } from "@/config/disposalThresholds";
 
 interface Props {
   player: StatBoardPlayer;
@@ -21,7 +22,7 @@ interface Props {
   isPremium: boolean;
 }
 
-const DISPOSAL_THRESHOLDS = [15, 20, 25, 30];
+const DISPOSAL_THRESHOLDS = publicExpandedPlayer;
 const GOAL_THRESHOLDS = [1, 2, 3, 4];
 
 function subscribeMq(cb: () => void) {
@@ -351,64 +352,26 @@ export function ExpandedPlayerPanel({
           </section>
 
           <section aria-label="Hit rate by threshold">
-            <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">
-              Season hit rates
-              <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-                — {lens === "disposals" ? "disposals" : "goals"} · 2026
-              </span>
-            </p>
-            <div className="rounded-lg border border-white/8 overflow-hidden">
-              <table className="w-full text-xs" role="table">
-                <thead>
-                  <tr className="border-b border-white/8 bg-white/[0.02]">
-                    <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
-                    <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
-                    <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">
-                      <span className="sr-only">Rate bar</span>
-                    </th>
-                    <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allThresholds.map((t) => {
-                    const key = String(t);
-                    const data = hitRates[key];
-                    const hits  = n(data?.hits);
-                    const games = n(data?.games);
-                    const rate  = n(data?.rate);
-                    const hasLineData = hits !== null && games !== null && games > 0;
-
-                    return (
-                      <tr key={key} className="border-b border-white/5 last:border-0">
-                        <td className="px-3 py-2 font-semibold text-[11px] text-white/55">{t}+</td>
-                        <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
-                          {hasLineData ? `${hits}/${games}` : "—"}
-                        </td>
-                        <td className="px-2 py-2 w-[60px]">
-                          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-                            {hasLineData && rate != null && (
-                              <div
-                                className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
-                                style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
-                                role="presentation"
-                              />
-                            )}
-                          </div>
-                        </td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
-                          !hasLineData ? "text-white/22"
-                          : rate != null && rate >= 70 ? "text-emerald-400"
-                          : rate != null && rate >= 50 ? "text-amber-400"
-                          : "text-white/30"
-                        }`}>
-                          {hasLineData && rate != null ? (rate > 0 ? `${rate}%` : "0%") : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="flex items-baseline gap-2 mb-1.5 sm:mb-2 flex-wrap">
+              <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider">
+                Season hit rates
+                <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
+                  — {lens === "disposals" ? "disposals" : "goals"} · 2026
+                </span>
+              </p>
+              {lens === "disposals" && (
+                <span className="flex items-center gap-0.5 text-[8px] text-white/20 select-none" aria-label="Scroll to view lines 10+ through 40+">
+                  <ChevronUp className="h-2.5 w-2.5 opacity-50" aria-hidden />
+                  <ChevronDown className="h-2.5 w-2.5 opacity-50" aria-hidden />
+                  <span>Scroll to view lines 10+–40+</span>
+                </span>
+              )}
             </div>
+            <DisposalHitRateTable
+              lens={lens}
+              allThresholds={allThresholds}
+              hitRates={hitRates}
+            />
           </section>
         </div>
       )}
@@ -1135,6 +1098,166 @@ interface GameLogRow {
   clearances: number | null;
   fantasy: number | null;
   rowType: string;
+}
+
+// ─── Scrollable disposal hit-rate table (10+–40+) ────────────────────────────
+//
+// Shows exactly 5 complete rows in the visible area; the rest scroll. A sticky
+// thead stays visible while scrolling. A bottom-fade overlay fades away once the
+// user reaches the last row.
+
+const ROW_HEIGHT_PX = 34; // approximate px height per data row
+const VISIBLE_ROWS = 5;
+
+function DisposalHitRateTable({
+  lens,
+  allThresholds,
+  hitRates,
+}: {
+  lens: StatLens;
+  allThresholds: readonly number[];
+  hitRates: Record<string, { hits: number; games: number; rate: number }>;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [atBottom, setAtBottom] = useState(false);
+
+  // Memoize the row data so re-renders of the parent don't recompute 31 rows.
+  const rows = useMemo(() => {
+    return allThresholds.map((t) => {
+      const key = String(t);
+      const data = hitRates[key];
+      const hits  = n(data?.hits);
+      const games = n(data?.games);
+      // rate from DB is stored as 0–100 percentage
+      const rawRate = n(data?.rate);
+      const rate = rawRate != null ? rawRate : null;
+      const hasLineData = hits !== null && games !== null && games > 0;
+      return { t, hits, games, rate, hasLineData };
+    });
+  }, [allThresholds, hitRates]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => {
+      setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [rows]);
+
+  // For goals lens keep the original non-scrolling table since there are only 4 rows.
+  if (lens !== "disposals") {
+    return (
+      <div className="rounded-lg border border-white/8 overflow-hidden">
+        <table className="w-full text-xs" role="table">
+          <thead>
+            <tr className="border-b border-white/8 bg-white/[0.02]">
+              <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
+              <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
+              <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
+              <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ t, hits, games, rate, hasLineData }) => (
+              <HitRateRow key={t} t={t} hits={hits} games={games} rate={rate} hasLineData={hasLineData} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Disposal lens — scrollable container showing 5 rows at a time.
+  const maxVisibleHeight = ROW_HEIGHT_PX * VISIBLE_ROWS;
+
+  return (
+    <div
+      className="relative rounded-lg border border-white/8 overflow-hidden"
+      data-testid="disposal-hit-rate-table"
+    >
+      {/* Sticky header sits outside the scroll area so it stays visible */}
+      <table className="w-full text-xs" role="table" aria-label="Season hit rates — disposals">
+        <thead>
+          <tr className="border-b border-white/8 bg-white/[0.02]">
+            <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
+            <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
+            <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col"><span className="sr-only">Rate bar</span></th>
+            <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
+          </tr>
+        </thead>
+      </table>
+
+      {/* Scrollable body — exactly 5 rows visible, overflow scrolls */}
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto overscroll-contain"
+        style={{
+          maxHeight: maxVisibleHeight,
+          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+          overflowX: "hidden",
+        }}
+        tabIndex={0}
+        aria-label="Scroll for all threshold lines"
+      >
+        <table className="w-full text-xs" role="presentation">
+          <tbody>
+            {rows.map(({ t, hits, games, rate, hasLineData }) => (
+              <HitRateRow key={t} t={t} hits={hits} games={games} rate={rate} hasLineData={hasLineData} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bottom fade — fades out when user has scrolled to the end */}
+      {!atBottom && (
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#0c0c0c]/90 to-transparent"
+          aria-hidden
+        />
+      )}
+    </div>
+  );
+}
+
+function HitRateRow({
+  t, hits, games, rate, hasLineData,
+}: {
+  t: number;
+  hits: number | null;
+  games: number | null;
+  rate: number | null;
+  hasLineData: boolean;
+}) {
+  return (
+    <tr className="border-b border-white/5 last:border-0">
+      <td className="px-3 py-2 font-semibold text-[11px] text-white/55">{t}+</td>
+      <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
+        {hasLineData ? `${hits}/${games}` : "—"}
+      </td>
+      <td className="px-2 py-2 w-[60px]">
+        <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+          {hasLineData && rate != null && (
+            <div
+              className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
+              style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+              role="presentation"
+            />
+          )}
+        </div>
+      </td>
+      <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
+        !hasLineData ? "text-white/22"
+        : rate != null && rate >= 70 ? "text-emerald-400"
+        : rate != null && rate >= 50 ? "text-amber-400"
+        : "text-white/30"
+      }`}>
+        {hasLineData && rate != null ? (rate > 0 ? `${Math.round(rate)}%` : "0%") : "—"}
+      </td>
+    </tr>
+  );
 }
 
 function GameLog({
