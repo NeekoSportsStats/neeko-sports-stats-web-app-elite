@@ -23,12 +23,7 @@ interface Props {
   isPremium: boolean;
 }
 
-const DISPOSAL_THRESHOLDS = publicExpandedPlayer;
-const GOAL_THRESHOLDS = [1, 2, 3, 4];
-const MARKS_THRESHOLDS = [3, 4, 5, 6, 7];
-const TACKLES_THRESHOLDS = [3, 4, 5, 6];
-const KICKS_THRESHOLDS = [8, 10, 12, 15, 18];
-const FANTASY_THRESHOLDS = [60, 70, 80, 90, 100];
+const DISPOSAL_TABLE_THRESHOLDS = publicExpandedPlayer;
 
 function subscribeMq(cb: () => void) {
   const mq = window.matchMedia("(max-width: 767px)");
@@ -78,13 +73,12 @@ export function ExpandedPlayerPanel({
 
   const statDef = getStatDef(lens);
   const lensKey = statDef.historyColumn;
-  const allThresholds: number[] = lens === "disposals"
-    ? [...DISPOSAL_THRESHOLDS]
-    : lens === "goals"    ? GOAL_THRESHOLDS
-    : lens === "marks"    ? MARKS_THRESHOLDS
-    : lens === "tackles"  ? TACKLES_THRESHOLDS
-    : lens === "kicks"    ? KICKS_THRESHOLDS
-    : FANTASY_THRESHOLDS;
+  // tableThresholds: full range for the Season Hit Rates table (31 lines for disposals).
+  const tableThresholds: number[] = lens === "disposals"
+    ? [...DISPOSAL_TABLE_THRESHOLDS]
+    : [...statDef.collapsedThresholds];
+  // chartThresholds: compact set for the Recent form chart — never more than ~5 lines.
+  const chartThresholds: number[] = [...statDef.collapsedThresholds];
 
   // Sort history oldest→newest, then deduplicate by (week, row_type) to
   // prevent any duplicate BYE/DNP rows that can arise from the UNION ALL CTEs.
@@ -339,7 +333,7 @@ export function ExpandedPlayerPanel({
           </div>
           <MultiThresholdChart
             slots={chartSlots}
-            allThresholds={allThresholds}
+            allThresholds={chartThresholds}
             lens={lens}
           />
         </section>
@@ -381,7 +375,7 @@ export function ExpandedPlayerPanel({
             </div>
             <DisposalHitRateTable
               lens={lens}
-              allThresholds={allThresholds}
+              allThresholds={tableThresholds}
               hitRates={hitRates}
             />
           </section>
@@ -506,8 +500,22 @@ function MultiThresholdChart({
 
   if (playedValues.length === 0) return null;
 
-  const maxThresh = Math.max(...allThresholds);
-  const maxVal = Math.max(...playedValues, maxThresh * 1.15, 1);
+  // Dotted line from last actual point to projected point
+  const lastActualSlot = [...slots].reverse().find((s) => s.value != null && s.rowType !== "projected");
+  const projSlot = slots.find((s) => s.rowType === "projected");
+  const lastActualIndex = lastActualSlot ? slots.lastIndexOf(lastActualSlot) : -1;
+  const projIndex = projSlot ? slots.indexOf(projSlot) : -1;
+
+  const maxThresh = allThresholds.length > 0 ? Math.max(...allThresholds) : 0;
+  // y-axis domain: actual values, valid projection, compact chart thresholds + padding.
+  // Never inflate the axis from table threshold ranges (e.g. 31 disposal lines up to 40).
+  const projValue = projSlot?.value ?? null;
+  const domainInputs = [
+    ...playedValues,
+    ...(projValue != null ? [projValue] : []),
+    ...(maxThresh > 0 ? [maxThresh] : []),
+  ];
+  const maxVal = Math.max(...domainInputs, 1) * 1.12;
   const rawMin = Math.min(...playedValues, 0);
   const minVal = Math.max(0, rawMin - (maxVal - rawMin) * 0.08);
   const range = maxVal - minVal || 1;
@@ -539,11 +547,6 @@ function MultiThresholdChart({
   });
   if (current.length > 0) segments.push(current);
 
-  // Dotted line from last actual point to projected point
-  const lastActualSlot = [...slots].reverse().find((s) => s.value != null && s.rowType !== "projected");
-  const projSlot = slots.find((s) => s.rowType === "projected");
-  const lastActualIndex = lastActualSlot ? slots.lastIndexOf(lastActualSlot) : -1;
-  const projIndex = projSlot ? slots.indexOf(projSlot) : -1;
   const projLinePath =
     lastActualIndex >= 0 && projIndex >= 0 && lastActualSlot && projSlot
       ? `M ${xOf(lastActualIndex).toFixed(1)},${yOf(lastActualSlot.value!).toFixed(1)} L ${xOf(projIndex).toFixed(1)},${yOf(projSlot.value!).toFixed(1)}`
@@ -564,8 +567,35 @@ function MultiThresholdChart({
     .map((t) => ({ t, y: yOf(t), inRange: yOf(t) >= PAD.top && yOf(t) <= PAD.top + chartH }))
     .filter((d) => d.inRange);
 
+  // "Best" threshold = highest compact threshold the player's median meets.
   const sortedPlayed = [...playedValues].sort((a, b) => a - b);
   const median = sortedPlayed[Math.floor(sortedPlayed.length / 2)] ?? 0;
+  const bestThreshold = [...allThresholds].reverse().find((t) => median >= t) ?? null;
+
+  // Y-position of the final actual value's label (to avoid overlap with threshold labels).
+  const latestActual = [...slots].filter((s) => s.value != null && s.rowType !== "projected").at(-1);
+  const latestActualY = latestActual?.value != null ? yOf(latestActual.value) : null;
+  const LABEL_MIN_GAP = 10; // px in SVG units
+
+  // Build de-collided label positions: place each label at its natural y, then nudge
+  // up or down to avoid overlap with adjacent labels and with the latest-value label.
+  const labelYMap = new Map<number, number>();
+  const sortedByY = [...thresholdLines].sort((a, b) => a.y - b.y);
+  const placed: number[] = [];
+  for (const { t, y } of sortedByY) {
+    let ly = y + 3.5;
+    // Push down if too close to any already-placed label.
+    for (const py of placed) {
+      if (Math.abs(ly - py) < LABEL_MIN_GAP) ly = py + LABEL_MIN_GAP;
+    }
+    // Avoid overlapping the latest-value label (shown above the last dot).
+    if (latestActualY != null) {
+      const valLabelY = latestActualY - (latestActual?.value != null ? 9 : 0);
+      if (Math.abs(ly - valLabelY) < LABEL_MIN_GAP) ly = valLabelY + LABEL_MIN_GAP;
+    }
+    placed.push(ly);
+    labelYMap.set(t, ly);
+  }
 
   const gradId = `sbHeroGrad-${lens}`;
   const hitW = numSlots > 1 ? chartW / (numSlots - 1) : chartW;
@@ -617,24 +647,31 @@ function MultiThresholdChart({
           </g>
         ))}
 
-        {thresholdLines.map(({ t, y }) => (
-          <g key={t}>
-            <line
-              x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
-              stroke="rgba(245,200,76,0.55)"
-              strokeWidth="0.7"
-              strokeDasharray="4 5"
-            />
-            <text
-              x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
-              fontSize="9"
-              fill="rgba(245,200,76,0.55)"
-              fontWeight="400"
-            >
-              {t}
-            </text>
-          </g>
-        ))}
+        {thresholdLines.map(({ t, y }) => {
+          const isBest = t === bestThreshold;
+          const lineColor = isBest ? "rgba(245,200,76,0.70)" : "rgba(245,200,76,0.30)";
+          const textColor = isBest ? "rgba(245,200,76,0.75)" : "rgba(245,200,76,0.38)";
+          const lw = isBest ? 1.0 : 0.6;
+          const labelY = labelYMap.get(t) ?? (y + 3.5);
+          return (
+            <g key={t}>
+              <line
+                x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
+                stroke={lineColor}
+                strokeWidth={lw}
+                strokeDasharray={isBest ? "5 4" : "3 5"}
+              />
+              <text
+                x={W - PAD.right + 5} y={labelY.toFixed(1)}
+                fontSize="9"
+                fill={textColor}
+                fontWeight={isBest ? "600" : "400"}
+              >
+                {t}
+              </text>
+            </g>
+          );
+        })}
 
         {hovered && (
           <line
