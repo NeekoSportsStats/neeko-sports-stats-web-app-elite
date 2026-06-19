@@ -183,6 +183,106 @@ describe("StatDefinition.expandedThresholds — all lenses have expanded profile
   }
 });
 
+// ─── Bar colour visibility ────────────────────────────────────────────────────
+
+/**
+ * Mirrors HitRateRow colour class selection.
+ * Returns the Tailwind colour class that would be applied to the bar div.
+ */
+function barColourClass(rate: number | null): string {
+  if (rate != null && rate >= 70) return "bg-emerald-500/70";
+  if (rate != null && rate >= 50) return "bg-amber-500/60";
+  return "bg-zinc-500/50";
+}
+
+/**
+ * Mirrors the minWidth logic: rate > 0 → "3px", else undefined.
+ */
+function barMinWidth(rate: number | null): string | undefined {
+  return rate != null && rate > 0 ? "3px" : undefined;
+}
+
+describe("HitRateRow bar colour — low rates use visible muted colour", () => {
+  it("36% rate uses bg-zinc-500/50 (not bg-white/18)", () => {
+    expect(barColourClass(36)).toBe("bg-zinc-500/50");
+    expect(barColourClass(36)).not.toBe("bg-white/18");
+  });
+
+  it("38% rate uses bg-zinc-500/50", () => {
+    expect(barColourClass(38)).toBe("bg-zinc-500/50");
+  });
+
+  it("21% rate uses bg-zinc-500/50", () => {
+    expect(barColourClass(21)).toBe("bg-zinc-500/50");
+  });
+
+  it("1% rate uses bg-zinc-500/50", () => {
+    expect(barColourClass(1)).toBe("bg-zinc-500/50");
+  });
+
+  it("50% rate uses bg-amber-500/60", () => {
+    expect(barColourClass(50)).toBe("bg-amber-500/60");
+  });
+
+  it("70% rate uses bg-emerald-500/70", () => {
+    expect(barColourClass(70)).toBe("bg-emerald-500/70");
+  });
+
+  it("100% rate uses bg-emerald-500/70", () => {
+    expect(barColourClass(100)).toBe("bg-emerald-500/70");
+  });
+
+  it("0% rate uses bg-zinc-500/50 (rate=0 is still a valid colour)", () => {
+    expect(barColourClass(0)).toBe("bg-zinc-500/50");
+  });
+
+  it("null rate uses bg-zinc-500/50 fallback", () => {
+    expect(barColourClass(null)).toBe("bg-zinc-500/50");
+  });
+});
+
+describe("HitRateRow bar minimum width — rate > 0 gets 3px floor", () => {
+  it("36% rate: minWidth is 3px", () => {
+    expect(barMinWidth(36)).toBe("3px");
+  });
+
+  it("1% rate: minWidth is 3px", () => {
+    expect(barMinWidth(1)).toBe("3px");
+  });
+
+  it("100% rate: minWidth is 3px", () => {
+    expect(barMinWidth(100)).toBe("3px");
+  });
+
+  it("0% rate: minWidth is undefined (no minimum for zero)", () => {
+    expect(barMinWidth(0)).toBeUndefined();
+  });
+
+  it("null rate: minWidth is undefined", () => {
+    expect(barMinWidth(null)).toBeUndefined();
+  });
+});
+
+describe("HitRateRow bar fill width — 36% and 38% produce non-zero fill", () => {
+  it("36% rate (Brayshaw 26+): fillWidth is 36", () => {
+    const row = buildRow({ hits: 5, games: 14, rate: 36 });
+    expect(row.hasLineData).toBe(true);
+    expect(fillWidth(row)).toBe(36);
+  });
+
+  it("38% rate (Ryan 18+ kicks): fillWidth is 38", () => {
+    const row = buildRow({ hits: 5, games: 13, rate: 38 });
+    expect(row.hasLineData).toBe(true);
+    expect(fillWidth(row)).toBe(38);
+  });
+
+  it("21% rate: fillWidth is 21", () => {
+    const row = buildRow({ hits: 3, games: 14, rate: 21 });
+    expect(row.hasLineData).toBe(true);
+    expect(fillWidth(row)).toBe(21);
+  });
+});
+
 // ─── No rows omitted ──────────────────────────────────────────────────────────
 
 describe("row count — no thresholds omitted", () => {

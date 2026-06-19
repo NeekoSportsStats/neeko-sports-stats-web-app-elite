@@ -1411,9 +1411,13 @@ function HitRateRow({
         <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
           {hasLineData && (
             <div
-              className={`h-full rounded-full ${rate != null && rate >= 70 ? "bg-emerald-500/70" : rate != null && rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
-              style={{ width: `${rate != null ? Math.min(100, Math.max(0, rate)) : 0}%` }}
+              className={`h-full rounded-full ${rate != null && rate >= 70 ? "bg-emerald-500/70" : rate != null && rate >= 50 ? "bg-amber-500/60" : "bg-zinc-500/50"}`}
+              style={{
+                width: `${rate != null ? Math.min(100, Math.max(0, rate)) : 0}%`,
+                minWidth: rate != null && rate > 0 ? "3px" : undefined,
+              }}
               aria-valuenow={rate != null ? Math.round(rate) : 0}
+              aria-label={`${t} plus: ${hits ?? 0} hits from ${games ?? 0} games, ${rate != null ? Math.round(rate) : 0} percent`}
               role="presentation"
             />
           )}
