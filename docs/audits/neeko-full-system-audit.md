@@ -532,29 +532,118 @@ The `season_games` CTE in `get_stat_board_players` uses `NOT (disposals=0 AND go
 
 ---
 
+## Live Runtime Reconciliation Pass — 2026-06-19 (Session 3)
+
+### Section 1 — Application Identity
+
+| Item | Value |
+|------|-------|
+| Git commit | No `.git` directory — commit identity cannot be verified |
+| Preview URL | Dev server running on localhost (no browser automation available) |
+| Production URL | neekostats.com.au (cannot navigate in this environment) |
+| Latest build asset (sample) | `StatBoardPlayersPage-CH14JAaT.js`, `SocialPlannerPage--KHl3rwh.js`, `index-DXqlErhA.js` |
+| Service worker | Cannot check — no browser |
+| CDN/browser cache | Cannot check — no browser |
+| DB migration (latest) | `20260619040513` — `fix_disposal_threshold_hit_rates_full_range` |
+
+### Section 2 — Admin Route Reconciliation: "Game & Players" tab
+
+**FINDING: The "Game & Players" tab exists in the current source. It is NOT the same as the "Game Picks" top-level planner tab.**
+
+| Item | Finding |
+|------|---------|
+| Component | `PostEditorDrawer.tsx` — `DrawerTab = "players"`, rendered by `function PlayersTab` |
+| Visible label | `"Game & Players"` — `TAB_LABELS.players` at line 34 |
+| Route | `/admin/social-planner` — the drawer opens when editing a post |
+| Other tabs in same drawer | Overview, Carousel Slides, Hook & Caption, Image Prompts, Export / Copy, Safety Check |
+| Source file | `src/features/admin/social-planner/components/PostEditorDrawer.tsx` lines 30–50 |
+
+**This is the exact interface shown in the screenshots.** The drawer opens from any post card in the Social Planner, not from the "Game Picks" top-level tab (which is a separate production flow).
+
+#### Game & Players tab player controls (matches screenshots)
+
+| Control | Present | Source |
+|---------|---------|--------|
+| Checkbox per player | YES | PostEditorDrawer:1085–1093 |
+| Up/down ordering arrows | YES | PostEditorDrawer:1099–1106 |
+| Top 3 / 5 / 8 / 10 buttons | YES | PostEditorDrawer:998–1002 |
+| Clear / Reset | YES | PostEditorDrawer:1004–1011 |
+| Visible / Name only / Blur row / Hidden | YES | PostEditorDrawer:1137–1154 |
+| Save/Mark Ready | In Overview tab (not Players tab) | PostEditorDrawer:383 |
+
+#### Game & Players disposal table
+
+| Item | Finding |
+|------|---------|
+| Disposal thresholds shown | **15+, 20+, 25+, 30+** (4 columns — NOT 15–40) |
+| Goals thresholds | 1+, 2+, 3+ |
+| `allThresholdHitRates` usage | Not used in this file — renders individual t15/t20/t25/t30 columns |
+| Copy All Stats | NOT present in the Players tab. "Copy All" exists only in the Export/Copy tab for image prompts. The `copyAllStats.ts` module is used in `SocialPostPlanner.tsx` (top-level), not in the drawer's Players tab. |
+
+**No version mismatch confirmed.** The "Game & Players" tab in `PostEditorDrawer.tsx` matches what the screenshots show. The previous session's finding that "Game Picks" was the only tab was incorrect — "Game Picks" is a separate top-level tab; "Game & Players" is a drawer tab visible when editing an individual post.
+
+### Section 3 — Source Checks (re-confirmed)
+
+All source behaviours remain confirmed from Session 2. No code changes made in Session 3.
+
+### Section 4 — CI Results (Session 3)
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `tsc --noEmit` | **PASS** | 0 errors |
+| `vitest run` | **PASS** | **248/248 tests**, 10 files |
+| `npm run build` | **PASS** | Exits 0 in 29.9 s |
+| ESLint | 72 errors / 262 warnings | All pre-existing; no new errors |
+
+### Sections 5–9 — Runtime, Browser, Screenshots
+
+**BLOCKED — no browser automation.** The dev server is running; all source and data checks pass. The following items require a human with a browser:
+
+| Check | Status |
+|-------|--------|
+| Brayshaw 10–40 rows rendered in browser | BLOCKED |
+| Chart 4-line verification | BLOCKED |
+| Filter 3-row mobile layout rendered | BLOCKED |
+| Luke Ryan marks UI | BLOCKED |
+| Admin "Game & Players" disposal columns rendered | BLOCKED |
+| Console zero-error confirmation | BLOCKED |
+| Network RPC key inspection | BLOCKED |
+| Screenshot captures | BLOCKED |
+
+---
+
 ## Overall Verdict
 
 **NOT SAFE TO SHIP** (browser verification pending)
 
-### Confirmed fixes shipped in this two-session reconciliation
+### Summary of all reconciliation work across three sessions
 
 | Fix | File | Severity |
 |----|------|---------|
 | Player Intelligence shows fantasy scores under non-fantasy lenses | `PlayerIntelligencePanel.tsx` — early `return null` when `!insightMatchesLens` | **P1 — fixed** |
 | Period labels ambiguous in summary stats tile | `ExpandedPlayerPanel.tsx` — "Std dev" → "L10 dev"; Low/High → "L10 low"/"L10 high" when season data absent | **P2 — fixed** |
 
+### Key clarification from Session 3
+
+The "Game & Players" tab **does exist** in the current source at `PostEditorDrawer.tsx:34`. It is a drawer tab, not a top-level planner tab. It contains:
+- Player checkboxes, ordering, Top N selector, Clear/Reset, visibility toggles (exactly matching screenshots)
+- Disposal columns: 15+, 20+, 25+, 30+ (not a full 15–40 table)
+- No "Copy All Stats" in this tab — that function lives in `SocialPostPlanner.tsx` at the top level
+
+The screenshot evidence and current source are consistent. No version mismatch.
+
 ### No P0 data integrity issues
 
-All 31 disposal threshold keys (10–40) are present in the DB and mathematically correct. All hit-rate denominators are consistent. The Brayshaw and Ryan invariants are mathematically valid.
+All 31 disposal threshold keys (10–40) are present in the DB and mathematically correct.
 
 ### Ship condition
 
 Manual browser QA must confirm:
-1. Player Intelligence panel is blank/hidden under Disposals for a premium user who has an untagged fantasy AI insight
-2. Summary stats tile shows correct period labels ("Low"/"High" vs "L10 low"/"L10 high") depending on season data availability
+1. Player Intelligence panel is blank/hidden under Disposals for a premium user with an untagged fantasy AI insight
+2. Summary stats tile shows "L10 dev" and conditionally "L10 low"/"L10 high"
 3. Chart shows exactly 4 horizontal threshold lines (15/20/25/30)
-4. Expanded disposal table scroll opens near best-threshold row, scrolls to 10+ and 40+, no partial sixth row
+4. Expanded disposal table scrolls to 10+ and 40+, no partial sixth row, opens near best-threshold row
 5. No browser console errors
-6. Admin "Game Picks" tab shows disposal hit-rate table with 15–40 range
+6. Admin "Game & Players" drawer tab shows disposal columns 15+/20+/25+/30+ with player controls intact
 
 **Screenshots and deployment:** Not available in this environment. Dev server is running with all changes applied and build verified.
