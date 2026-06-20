@@ -18,6 +18,10 @@ interface Props {
   teamLabel?: string;
   /** id applied to the scroll container for aria-controls references */
   scrollContainerId?: string;
+  /** Override player column width (px). Defaults to PLAYER_W (200). Use smaller value on mobile. */
+  playerW?: number;
+  /** Override L5 column width (px). Defaults to L5_W (68). Use smaller value on mobile. */
+  l5W?: number;
 }
 
 /*
@@ -62,7 +66,11 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   onPlayerClick,
   teamLabel = "team",
   scrollContainerId,
+  playerW: playerWProp,
+  l5W: l5WProp,
 }: Props) {
+  const playerW = playerWProp ?? PLAYER_W;
+  const l5W     = l5WProp     ?? L5_W;
   const suppressSync = useRef(false);
   const leftFadeRef  = useRef<HTMLDivElement | null>(null);
   const rightFadeRef = useRef<HTMLDivElement | null>(null);
@@ -81,7 +89,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   const centerSelectedColumn = useCallback(() => {
     const container = externalScrollRef.current;
     if (!container) return;
-    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    const totalScrollWidth = playerW + l5W + thresholds.length * THRESH_W;
     if (totalScrollWidth <= container.clientWidth) {
       return;
     }
@@ -89,8 +97,8 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     if (idx < 0) return;
     const target = computeCentreOffset(
       container.clientWidth,
-      PLAYER_W,
-      L5_W,
+      playerW,
+      l5W,
       THRESH_W,
       idx,
       thresholds.length,
@@ -103,7 +111,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
       updateFades();
       onCentered?.(container.scrollLeft);
     });
-  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered]);
+  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered, playerW, l5W]);
 
   // Re-centre when selected line changes
   useEffect(() => {
@@ -141,7 +149,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     );
   }
 
-  const totalMinWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+  const totalMinWidth = playerW + l5W + thresholds.length * THRESH_W;
 
   return (
     <div className="relative">
@@ -178,8 +186,8 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
           aria-label={`${teamLabel} player comparison`}
         >
           <colgroup>
-            <col style={{ width: PLAYER_W }} />
-            <col style={{ width: L5_W }} />
+            <col style={{ width: playerW }} />
+            <col style={{ width: l5W }} />
             {thresholds.map((t) => (
               <col key={t} style={{ width: THRESH_W }} />
             ))}
@@ -222,7 +230,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                   textAlign: "center",
                   verticalAlign: "middle",
                   position: "sticky",
-                  left: PLAYER_W,
+                  left: playerW,
                   zIndex: 21,
                   background: HDR_BG,
                   borderRight: "1px solid rgba(255,255,255,0.06)",
@@ -279,6 +287,8 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 thresholds={thresholds}
                 selectedLine={selectedLine}
                 onPlayerClick={onPlayerClick}
+                playerW={playerW}
+                l5W={l5W}
               />
             ))}
           </tbody>
@@ -305,12 +315,18 @@ const TableRow = memo(function TableRow({
   thresholds,
   selectedLine,
   onPlayerClick,
+  playerW: playerWProp,
+  l5W: l5WProp,
 }: {
   cp: ComparePlayer;
   thresholds: readonly number[];
   selectedLine: number;
   onPlayerClick?: (playerName: string) => void;
+  playerW?: number;
+  l5W?: number;
 }) {
+  const playerW = playerWProp ?? PLAYER_W;
+  const l5W     = l5WProp     ?? L5_W;
   const { player } = cp;
   const hitRates = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates ?? {};
   const isClickable = !!onPlayerClick;
@@ -377,7 +393,7 @@ const TableRow = memo(function TableRow({
       <td
         style={{
           position: "sticky",
-          left: PLAYER_W,
+          left: playerW,
           zIndex: 10,
           background: CELL_BG,
           borderRight: "1px solid rgba(255,255,255,0.06)",

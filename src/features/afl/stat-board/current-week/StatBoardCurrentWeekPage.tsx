@@ -196,6 +196,8 @@ function TeamSection({
   onPlayerClick,
   scrollContainerId,
   scrollButtons,
+  playerW,
+  l5W,
 }: {
   teamName: string;
   side: "HOME" | "AWAY";
@@ -209,6 +211,8 @@ function TeamSection({
   onPlayerClick?: (playerName: string) => void;
   scrollContainerId: string;
   scrollButtons?: React.ReactNode;
+  playerW?: number;
+  l5W?: number;
 }) {
   return (
     <section
@@ -236,6 +240,8 @@ function TeamSection({
         onPlayerClick={onPlayerClick}
         teamLabel={teamName}
         scrollContainerId={scrollContainerId}
+        playerW={playerW}
+        l5W={l5W}
       />
     </section>
   );
@@ -318,6 +324,13 @@ export default function StatBoardCurrentWeekPage() {
   const suppressHomeSync = useRef(false);
   const suppressAwaySync = useRef(false);
 
+  // ── Responsive column widths ──────────────────────────────────────────────
+  // Detect mobile once per render. The table re-centres on resize via ResizeObserver.
+  const isMobile =
+    typeof window !== "undefined" && window.innerWidth < 640;
+  const tablePlayerW = isMobile ? 168 : PLAYER_W;
+  const tableL5W     = isMobile ? 56  : L5_W;
+
   // ── Scroll button state ───────────────────────────────────────────────────
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
@@ -396,7 +409,7 @@ export default function StatBoardCurrentWeekPage() {
   const handleScrollPrev = useCallback(() => {
     const home = homeScrollRef.current;
     if (!home) return;
-    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    const totalScrollWidth = tablePlayerW + tableL5W + thresholds.length * THRESH_W;
     const target = computeScrollTarget(
       "prev",
       home.scrollLeft,
@@ -416,12 +429,12 @@ export default function StatBoardCurrentWeekPage() {
       suppressAwaySync.current = false;
       syncScrollButtonState();
     });
-  }, [thresholds, syncScrollButtonState, prefersReducedMotion]);
+  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion]);
 
   const handleScrollNext = useCallback(() => {
     const home = homeScrollRef.current;
     if (!home) return;
-    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    const totalScrollWidth = tablePlayerW + tableL5W + thresholds.length * THRESH_W;
     const target = computeScrollTarget(
       "next",
       home.scrollLeft,
@@ -441,7 +454,7 @@ export default function StatBoardCurrentWeekPage() {
       suppressAwaySync.current = false;
       syncScrollButtonState();
     });
-  }, [thresholds, syncScrollButtonState, prefersReducedMotion]);
+  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion]);
 
   // ── Other handlers ────────────────────────────────────────────────────────
 
@@ -481,17 +494,18 @@ export default function StatBoardCurrentWeekPage() {
       ? "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6"
       : "flex flex-col gap-0";
 
-  // Scroll buttons node — shared between both team headers
-  const scrollButtonsNode = showScrollButtons ? (
-    <ScrollButtons
-      canScrollPrev={canScrollPrev}
-      canScrollNext={canScrollNext}
-      onScrollPrev={handleScrollPrev}
-      onScrollNext={handleScrollNext}
-      homeTableId={HOME_TABLE_ID}
-      awayTableId={AWAY_TABLE_ID}
-    />
-  ) : null;
+  // Render a fresh ScrollButtons instance for each team header (can't share one React element)
+  const renderScrollButtons = () =>
+    showScrollButtons ? (
+      <ScrollButtons
+        canScrollPrev={canScrollPrev}
+        canScrollNext={canScrollNext}
+        onScrollPrev={handleScrollPrev}
+        onScrollNext={handleScrollNext}
+        homeTableId={HOME_TABLE_ID}
+        awayTableId={AWAY_TABLE_ID}
+      />
+    ) : null;
 
   return (
     <>
@@ -671,7 +685,7 @@ export default function StatBoardCurrentWeekPage() {
           <div
             data-testid="loading-state"
             className={contentGridClass}
-            style={{ paddingBottom: "clamp(24px,4vw,48px)" }}
+            style={{ paddingBottom: "calc(clamp(24px,4vw,48px) + env(safe-area-inset-bottom, 0px))" }}
           >
             <div>
               <div style={{ paddingInline: "var(--page-px)", paddingBottom: 6 }}>
@@ -695,7 +709,7 @@ export default function StatBoardCurrentWeekPage() {
             data-testid="teams-container"
             data-mode={mode}
             className={contentGridClass}
-            style={{ paddingBottom: "clamp(24px,4vw,48px)" }}
+            style={{ paddingBottom: "calc(clamp(24px,4vw,48px) + env(safe-area-inset-bottom, 0px))" }}
           >
             <TeamSection
               teamName={selectedMatch.home_team_name}
@@ -709,7 +723,9 @@ export default function StatBoardCurrentWeekPage() {
               onCentered={handleCentered}
               onPlayerClick={handlePlayerClick}
               scrollContainerId={HOME_TABLE_ID}
-              scrollButtons={scrollButtonsNode}
+              scrollButtons={renderScrollButtons()}
+              playerW={tablePlayerW}
+              l5W={tableL5W}
             />
             <TeamSection
               teamName={selectedMatch.away_team_name}
@@ -723,7 +739,9 @@ export default function StatBoardCurrentWeekPage() {
               onCentered={handleCentered}
               onPlayerClick={handlePlayerClick}
               scrollContainerId={AWAY_TABLE_ID}
-              scrollButtons={scrollButtonsNode}
+              scrollButtons={renderScrollButtons()}
+              playerW={tablePlayerW}
+              l5W={tableL5W}
             />
           </div>
         ) : null}

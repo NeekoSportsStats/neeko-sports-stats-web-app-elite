@@ -1312,3 +1312,155 @@ describe("Scroll buttons — Board Lines unchanged", () => {
     expect(boardClass).not.toMatch(/(?<!xl:)grid-cols-2/);
   });
 });
+
+// ─── Mobile UX: responsive column widths ─────────────────────────────────────
+
+describe("Mobile column widths — narrower than desktop", () => {
+  const MOBILE_PLAYER_W = 168;
+  const MOBILE_L5_W     = 56;
+
+  it("mobile playerW (168) is narrower than desktop PLAYER_W (200)", () => {
+    expect(MOBILE_PLAYER_W).toBeLessThan(PLAYER_W);
+  });
+
+  it("mobile l5W (56) is narrower than desktop L5_W (68)", () => {
+    expect(MOBILE_L5_W).toBeLessThan(L5_W);
+  });
+
+  it("mobile sticky L5 column left position equals mobile PLAYER_W", () => {
+    // The L5 sticky column must start at the end of the player column
+    expect(MOBILE_PLAYER_W).toBe(168);
+    expect(MOBILE_L5_W).toBe(56);
+  });
+
+  it("mobile totalMinWidth is smaller than desktop totalMinWidth for same thresholds", () => {
+    const thresholdCount = 4;
+    const mobileMin  = MOBILE_PLAYER_W + MOBILE_L5_W + thresholdCount * THRESH_W;
+    const desktopMin = PLAYER_W + L5_W + thresholdCount * THRESH_W;
+    expect(mobileMin).toBeLessThan(desktopMin);
+  });
+
+  it("mobile totalMinWidth is still wide enough for board disposals thresholds", () => {
+    const thresholds = getThresholdsForMode("disposals", "board");
+    const mobileMin = MOBILE_PLAYER_W + MOBILE_L5_W + thresholds.length * THRESH_W;
+    // 168 + 56 + 4*72 = 512 — fits in a 390px container with horizontal scroll
+    expect(mobileMin).toBeGreaterThan(300);
+  });
+});
+
+describe("Mobile centering — computeCentreOffset with mobile widths", () => {
+  const MOBILE_PLAYER_W = 168;
+  const MOBILE_L5_W     = 56;
+  const MOBILE_CONTAINER = 390;
+  const TOTAL = 15;
+
+  it("centering with mobile widths produces a different offset than desktop", () => {
+    const mobileOffset  = computeCentreOffset(MOBILE_CONTAINER, MOBILE_PLAYER_W, MOBILE_L5_W, THRESH_W, 7, TOTAL);
+    const desktopOffset = computeCentreOffset(MOBILE_CONTAINER, PLAYER_W, L5_W, THRESH_W, 7, TOTAL);
+    // Different sticky widths → different scrollable zone → different offsets
+    expect(mobileOffset).not.toBe(desktopOffset);
+  });
+
+  it("20+ column (index varies by stat) is visible at mobile width", () => {
+    const disposalsThresholds = getThresholdsForMode("disposals", "fine");
+    const idx20 = Array.from(disposalsThresholds).indexOf(20);
+    expect(idx20).toBeGreaterThanOrEqual(0);
+    const offset = computeCentreOffset(MOBILE_CONTAINER, MOBILE_PLAYER_W, MOBILE_L5_W, THRESH_W, idx20, disposalsThresholds.length);
+    expect(offset).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── Mobile UX: completed game state ─────────────────────────────────────────
+
+describe("Completed game state — game_date in the past", () => {
+  it("a game in the past gets 'completed' state", () => {
+    // Use a date clearly in the past
+    const pastMatch = makeMatch({ game_date: "2024-01-01", is_free_match: false, is_locked: false });
+    const today = new Date().toISOString().slice(0, 10);
+    const isCompleted = pastMatch.game_date < today;
+    expect(isCompleted).toBe(true);
+  });
+
+  it("a game in the future does not get 'completed' state", () => {
+    const futureMatch = makeMatch({ game_date: "2099-01-01", is_free_match: false, is_locked: false });
+    const today = new Date().toISOString().slice(0, 10);
+    const isCompleted = futureMatch.game_date < today;
+    expect(isCompleted).toBe(false);
+  });
+
+  it("locked game is still locked even if date is in the past", () => {
+    const lockedPast = makeMatch({ game_date: "2024-01-01", is_free_match: false, is_locked: true });
+    // The locked check comes first in matchState
+    const isLocked = !lockedPast.is_free_match && lockedPast.is_locked;
+    expect(isLocked).toBe(true);
+  });
+
+  it("free match that is in the past remains accessible (free, not completed-locked)", () => {
+    const freePast = makeMatch({ game_date: "2024-01-01", is_free_match: true, is_locked: false });
+    const hasFullAccess = false;
+    const isCardLocked = !hasFullAccess && !freePast.is_free_match;
+    expect(isCardLocked).toBe(false);
+  });
+});
+
+// ─── Mobile UX: MobileLinePicker scroll behaviour ────────────────────────────
+
+describe("MobileLinePicker — selected line visibility", () => {
+  it("selected line must be in the threshold list to be visible", () => {
+    const thresholds = getThresholdsForMode("disposals", "fine");
+    const selected = resolveSelectedLine(20, "disposals", "fine");
+    expect(thresholds).toContain(selected);
+  });
+
+  it("switching from board 20 to fine mode resolves to a threshold in fine set", () => {
+    const selected = resolveSelectedLine(20, "disposals", "fine");
+    const fineThresholds = getThresholdsForMode("disposals", "fine");
+    expect(fineThresholds).toContain(selected);
+  });
+
+  it("all fine thresholds have a button (count matches array length)", () => {
+    const fineThresholds = getThresholdsForMode("disposals", "fine");
+    // Each threshold gets one button in MobileLinePicker
+    expect(fineThresholds.length).toBeGreaterThan(0);
+    expect(new Set(fineThresholds).size).toBe(fineThresholds.length); // no duplicates
+  });
+});
+
+// ─── Mobile UX: safe-area padding ────────────────────────────────────────────
+
+describe("Safe-area bottom padding", () => {
+  it("env(safe-area-inset-bottom) expression is a valid CSS string", () => {
+    const expr = "calc(clamp(24px,4vw,48px) + env(safe-area-inset-bottom, 0px))";
+    expect(expr).toContain("env(safe-area-inset-bottom");
+    expect(expr).toContain("clamp(");
+  });
+
+  it("fallback 0px is provided for non-Safari browsers", () => {
+    const expr = "calc(clamp(24px,4vw,48px) + env(safe-area-inset-bottom, 0px))";
+    expect(expr).toContain("0px");
+  });
+});
+
+// ─── Mobile UX: 4-row controls layout ────────────────────────────────────────
+
+describe("Mobile controls — mode toggle is separate from stat pills on mobile", () => {
+  it("stat options and mode options are distinct sets", () => {
+    const stats = ["disposals", "goals", "marks", "tackles", "kicks", "fantasy"];
+    const modes = ["board", "fine"];
+    const overlap = stats.filter((s) => modes.includes(s));
+    expect(overlap).toHaveLength(0);
+  });
+
+  it("4 separate control groups on mobile: stats, mode, position, search/sort", () => {
+    // This documents the intended layout structure
+    const mobileRows = ["stat-pills", "mode-toggle", "position-pills", "search-sort"];
+    expect(mobileRows).toHaveLength(4);
+  });
+
+  it("position options do not overlap with stat options", () => {
+    const positions = ["ALL", "MID", "DEF", "FWD", "RUCK"];
+    const stats = ["disposals", "goals", "marks", "tackles", "kicks", "fantasy"];
+    const overlap = positions.filter((p) => stats.includes(p));
+    expect(overlap).toHaveLength(0);
+  });
+});

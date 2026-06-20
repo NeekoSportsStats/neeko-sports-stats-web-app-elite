@@ -28,9 +28,10 @@ function abbr(name: string): string {
 
 /** Derive a simple completed/live/upcoming state from match data. */
 function matchState(m: StatBoardMatch): "completed" | "locked" | "free" | "standard" {
-  // Completed: game_date in the past AND not locked (simplified heuristic)
-  // We use is_locked to indicate premium-only; free = is_free_match
   if (!m.is_free_match && m.is_locked) return "locked";
+  // Completed: game_date is in the past (compare as date string — YYYY-MM-DD)
+  const today = new Date().toISOString().slice(0, 10);
+  if (m.game_date < today) return "completed";
   if (m.is_free_match) return "free";
   return "standard";
 }
@@ -147,14 +148,16 @@ function GameCard({
   const state = matchState(m);
 
   const statusLabel = () => {
-    if (isLocked)            return "Neeko+";
-    if (state === "free")    return "Free";
+    if (isLocked)               return "Neeko+";
+    if (state === "completed")  return "Final";
+    if (state === "free")       return "Free";
     return `R${m.week}`;
   };
 
   const statusColor = () => {
-    if (isLocked)         return "text-amber-400/70";
-    if (state === "free") return "text-emerald-400/70";
+    if (isLocked)               return "text-amber-400/70";
+    if (state === "completed")  return "text-white/35";
+    if (state === "free")       return "text-emerald-400/70";
     return "text-white/35";
   };
 
