@@ -306,10 +306,15 @@ export default function StatBoardCurrentWeekPage() {
 
   const week = matches[0]?.week;
 
+  const documentTitle =
+    typeof week === "number"
+      ? `AFL Matchup Compare — Round ${week} | Neeko's Sports Stats`
+      : "AFL Matchup Compare — Current Round | Neeko's Sports Stats";
+
   return (
     <>
       <Helmet>
-        <title>Matchup Compare — Round {week ?? "…"} | AFL Stat Board | Neeko</title>
+        <title>{documentTitle}</title>
         <meta name="description" content="Compare AFL players head-to-head by stat and threshold for the current round. Filter by team, position and line." />
         <link rel="canonical" href="https://neekostats.com.au/stat-board/current-week" />
         <meta property="og:title" content="AFL Matchup Compare | Stat Board" />

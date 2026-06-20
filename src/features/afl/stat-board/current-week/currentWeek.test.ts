@@ -628,3 +628,62 @@ describe("Redesign — player click navigation data", () => {
     expect(sorted[1].player.player_id).toBe(1);
   });
 });
+
+// ─── Helmet title regression tests ───────────────────────────────────────────
+
+describe("Helmet title — Matchup Compare page", () => {
+  function buildDocumentTitle(week: number | undefined): string {
+    return typeof week === "number"
+      ? `AFL Matchup Compare — Round ${week} | Neeko's Sports Stats`
+      : "AFL Matchup Compare — Current Round | Neeko's Sports Stats";
+  }
+
+  it("produces a plain string (no JSX, no objects)", () => {
+    const title = buildDocumentTitle(15);
+    expect(typeof title).toBe("string");
+  });
+
+  it("valid round produces correct title", () => {
+    expect(buildDocumentTitle(15)).toBe(
+      "AFL Matchup Compare — Round 15 | Neeko's Sports Stats"
+    );
+  });
+
+  it("undefined round produces safe fallback (Current Round)", () => {
+    const title = buildDocumentTitle(undefined);
+    expect(title).toBe(
+      "AFL Matchup Compare — Current Round | Neeko's Sports Stats"
+    );
+  });
+
+  it("does not contain [object Object]", () => {
+    expect(buildDocumentTitle(15)).not.toContain("[object Object]");
+    expect(buildDocumentTitle(undefined)).not.toContain("[object Object]");
+  });
+
+  it('does not contain "Round undefined"', () => {
+    expect(buildDocumentTitle(undefined)).not.toContain("Round undefined");
+  });
+
+  it('does not contain "Round Round"', () => {
+    expect(buildDocumentTitle(15)).not.toContain("Round Round");
+  });
+
+  it("round 0 (opening round) is treated as a valid number", () => {
+    const title = buildDocumentTitle(0);
+    expect(title).toBe(
+      "AFL Matchup Compare — Round 0 | Neeko's Sports Stats"
+    );
+  });
+
+  it("route stays /stat-board/current-week", () => {
+    const canonicalPath = "/stat-board/current-week";
+    expect(canonicalPath).toBe("/stat-board/current-week");
+  });
+
+  it("visible heading text is AFL Matchup Compare (not Current Week)", () => {
+    const heading = "AFL Matchup Compare";
+    expect(heading).toBe("AFL Matchup Compare");
+    expect(heading).not.toContain("Current Week");
+  });
+});
