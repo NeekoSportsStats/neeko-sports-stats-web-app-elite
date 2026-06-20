@@ -342,10 +342,10 @@ export default function StatBoardCurrentWeekPage() {
                 margin: "0 0 3px",
               }}
             >
-              Matchup Compare{week ? ` — Round ${week}` : ""}
+              AFL Matchup Compare
             </h1>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", margin: 0 }}>
-              Pick a game · choose a stat · compare players
+              {typeof week === "number" ? `Round ${week} · ` : ""}Compare player hit rates by game, stat and line.
             </p>
           </div>
 
@@ -442,7 +442,7 @@ export default function StatBoardCurrentWeekPage() {
             className="text-center py-12 text-[12px] text-white/30"
             role="status"
           >
-            No games available this week.
+            No games available for this round.
           </div>
         ) : error ? (
           <div
