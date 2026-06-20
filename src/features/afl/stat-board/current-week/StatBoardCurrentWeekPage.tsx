@@ -8,13 +8,13 @@ import { playerToSlug } from "@/lib/slugs";
 import { parseUrlState, buildUrlParams, getThresholdsForMode, resolveSelectedLine } from "./currentWeekUtils";
 import { useCurrentWeekCompare } from "./useCurrentWeekCompare";
 import { CurrentWeekGameSelector } from "./CurrentWeekGameSelector";
-import { CurrentWeekControls } from "./CurrentWeekControls";
+import { CurrentWeekControls, MobileLinePicker } from "./CurrentWeekControls";
 import { MatchupComparisonTable } from "./MatchupComparisonTable";
 import type { StatBoardMatch } from "../types";
 import type { StatLens, PositionFilter } from "../types";
 import type { CompareMode, SortKey } from "./currentWeekTypes";
 
-// ─── Secondary nav ────────────────────────────────────────────────────────────
+// ─── Secondary nav (mobile only) ─────────────────────────────────────────────
 
 function SecondaryNav() {
   return (
@@ -39,7 +39,7 @@ function SecondaryNav() {
   );
 }
 
-// ─── Locked match overlay ─────────────────────────────────────────────────────
+// ─── Locked match banner ──────────────────────────────────────────────────────
 
 function LockedMatchBanner({ match }: { match: StatBoardMatch }) {
   return (
@@ -73,47 +73,33 @@ function LockedMatchBanner({ match }: { match: StatBoardMatch }) {
 
 function TeamHeader({
   teamName,
+  side,
   playerCount,
-  sort,
-  onSortChange,
 }: {
   teamName: string;
+  side: "HOME" | "AWAY";
   playerCount: number;
-  sort: SortKey;
-  onSortChange: (s: SortKey) => void;
 }) {
-  const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-    { key: "hit_rate",   label: "Hit rate" },
-    { key: "l5_avg",     label: "L5 avg" },
-    { key: "projection", label: "Projection" },
-    { key: "name",       label: "A–Z" },
-  ];
-
   return (
     <div
-      className="flex items-center justify-between gap-3 py-2"
+      className="flex items-center gap-2 py-2"
       style={{ paddingInline: "var(--page-px)" }}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="h-1.5 w-1.5 rounded-full bg-white/25 flex-shrink-0" aria-hidden="true" />
-        <span className="text-[11px] font-semibold text-white/70 truncate">{teamName}</span>
-        <span className="text-[10px] text-white/25 flex-shrink-0">{playerCount} players</span>
-      </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <span className="text-[9px] font-medium text-white/30 hidden sm:inline">Sort:</span>
-        <select
-          value={sort}
-          onChange={(e) => onSortChange(e.target.value as SortKey)}
-          className="text-[10px] font-medium bg-white/[0.04] border border-white/[0.08] text-white/60 rounded-md px-2 py-1 focus:outline-none focus:border-white/20 focus:text-white/80 transition-colors appearance-none cursor-pointer"
-          aria-label={`Sort ${teamName} players`}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.key} value={o.key} style={{ background: "#0d1117" }}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <span
+        className={[
+          "text-[9px] font-bold tracking-widest uppercase rounded px-1.5 py-0.5 border flex-shrink-0",
+          side === "HOME"
+            ? "text-sky-400/70 border-sky-400/20 bg-sky-400/5"
+            : "text-violet-400/70 border-violet-400/20 bg-violet-400/5",
+        ].join(" ")}
+      >
+        {side}
+      </span>
+      <span className="h-1 w-1 rounded-full bg-white/20 flex-shrink-0" aria-hidden="true" />
+      <span className="text-[12px] font-semibold text-white/80 truncate">{teamName}</span>
+      <span className="text-[10px] text-white/25 flex-shrink-0 ml-1">
+        {playerCount} players
+      </span>
     </div>
   );
 }
@@ -122,6 +108,7 @@ function TeamHeader({
 
 function TeamSection({
   teamName,
+  side,
   players,
   thresholds,
   selectedLine,
@@ -129,10 +116,9 @@ function TeamSection({
   scrollRef,
   onScroll,
   onPlayerClick,
-  sort,
-  onSortChange,
 }: {
   teamName: string;
+  side: "HOME" | "AWAY";
   players: import("./currentWeekTypes").ComparePlayer[];
   thresholds: readonly number[];
   selectedLine: number;
@@ -140,17 +126,17 @@ function TeamSection({
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onScroll: (scrollLeft: number) => void;
   onPlayerClick?: (playerName: string) => void;
-  sort: SortKey;
-  onSortChange: (s: SortKey) => void;
 }) {
   return (
-    <section aria-label={`${teamName} player comparison`} className="min-w-0">
-      <TeamHeader
-        teamName={teamName}
-        playerCount={players.length}
-        sort={sort}
-        onSortChange={onSortChange}
-      />
+    <section
+      aria-label={`${teamName} player comparison`}
+      className="min-w-0"
+      style={{
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        paddingTop: 2,
+      }}
+    >
+      <TeamHeader teamName={teamName} side={side} playerCount={players.length} />
       <MatchupComparisonTable
         players={players}
         thresholds={thresholds}
@@ -179,48 +165,8 @@ function TableSkeleton() {
         <div
           key={i}
           className="animate-pulse bg-white/[0.04] rounded"
-          style={{ height: 32 }}
+          style={{ height: 34 }}
         />
-      ))}
-    </div>
-  );
-}
-
-// ─── Line picker (Fine Lines mode) ────────────────────────────────────────────
-
-function LinePicker({
-  thresholds,
-  selectedLine,
-  onSelect,
-}: {
-  thresholds: readonly number[];
-  selectedLine: number;
-  onSelect: (line: number) => void;
-}) {
-  return (
-    <div
-      className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"
-      style={{ paddingInline: "var(--page-px)" }}
-      role="group"
-      aria-label="Select comparison line"
-    >
-      <span className="text-[10px] font-semibold text-white/40 flex-shrink-0">Line:</span>
-      {thresholds.map((t) => (
-        <button
-          key={t}
-          onClick={() => onSelect(t)}
-          aria-pressed={t === selectedLine}
-          aria-label={`Select ${t}+ line`}
-          className={[
-            "flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-100",
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
-            t === selectedLine
-              ? "bg-white/[0.10] border-white/25 text-white"
-              : "bg-transparent border-white/[0.08] text-white/35 hover:border-white/20 hover:text-white/60",
-          ].join(" ")}
-        >
-          {t}+
-        </button>
       ))}
     </div>
   );
@@ -235,11 +181,7 @@ export default function StatBoardCurrentWeekPage() {
   const urlState = parseUrlState(searchParams);
   const { matchId: urlMatchId, stat, mode, line, position, sort, search } = urlState;
 
-  // Per-team independent sort state (desktop only; shared sort from URL is the initial value)
-  const homeSort = sort;
-  const awaySort = sort;
-
-  const thresholds = getThresholdsForMode(stat, mode);
+  const thresholds   = getThresholdsForMode(stat, mode);
   const selectedLine = resolveSelectedLine(line, stat, mode);
 
   useEffect(() => {
@@ -273,11 +215,20 @@ export default function StatBoardCurrentWeekPage() {
     sort,
   });
 
+  // Separate refs — one per team table. Never share a ref between two elements.
   const homeScrollRef = useRef<HTMLDivElement | null>(null);
   const awayScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Suppress flags prevent feedback loops during cross-table sync
   const suppressHomeSync = useRef(false);
   const suppressAwaySync = useRef(false);
 
+  /*
+   * Board Lines mode: synchronise horizontal scroll across both team tables
+   * so the same threshold column is visible in both.
+   * Fine Lines mode: tables are full-width and stacked; no sync needed but we
+   * still keep the same handlers wired so code stays symmetric.
+   */
   const handleHomeScroll = useCallback((scrollLeft: number) => {
     const away = awayScrollRef.current;
     if (!away || suppressHomeSync.current) return;
@@ -311,6 +262,25 @@ export default function StatBoardCurrentWeekPage() {
       ? `AFL Matchup Compare — Round ${week} | Neeko's Sports Stats`
       : "AFL Matchup Compare — Current Round | Neeko's Sports Stats";
 
+  const lineChangeHandler = useCallback((l: number) => {
+    pushState({ line: l });
+    track("current_week_line_selected", { line: l, stat, mode });
+  }, [pushState, stat, mode]);
+
+  /*
+   * Layout decision:
+   *
+   * BOARD LINES  ≥1280px → xl:grid-cols-2 (side-by-side, equal width)
+   * FINE LINES   ALL widths → flex-col (both teams full width, stacked)
+   *
+   * This is enforced by conditionally applying the grid class only when
+   * mode === "board".
+   */
+  const contentGridClass =
+    mode === "board"
+      ? "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6"
+      : "flex flex-col gap-0";
+
   return (
     <>
       <Helmet>
@@ -321,10 +291,6 @@ export default function StatBoardCurrentWeekPage() {
         <meta property="og:description" content="Compare AFL players head-to-head by stat and threshold for the current round." />
       </Helmet>
 
-      {/*
-        CSS custom property for consistent horizontal padding.
-        --page-px is the gutter on both sides; --page-max-w caps the content area.
-      */}
       <style>{`
         :root {
           --page-px: clamp(16px, 3vw, 40px);
@@ -343,8 +309,7 @@ export default function StatBoardCurrentWeekPage() {
           width: "100%",
         }}
       >
-
-        {/* ── Page header ── two-column at desktop ─────────────────────── */}
+        {/* ── Page header ── */}
         <div
           className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
           style={{
@@ -353,7 +318,6 @@ export default function StatBoardCurrentWeekPage() {
             paddingBottom: 6,
           }}
         >
-          {/* Left: title block */}
           <div>
             <p
               style={{
@@ -385,7 +349,7 @@ export default function StatBoardCurrentWeekPage() {
             </p>
           </div>
 
-          {/* Right: segmented nav (hidden on mobile — SecondaryNav below handles it) */}
+          {/* Desktop segmented nav */}
           <nav
             className="hidden md:flex gap-1 flex-shrink-0"
             aria-label="Stat Board sections"
@@ -410,10 +374,9 @@ export default function StatBoardCurrentWeekPage() {
           <SecondaryNav />
         </div>
 
-        {/* Divider */}
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 0 0" }} />
 
-        {/* ── Game selector ────────────────────────────────────────────── */}
+        {/* ── Game selector ── */}
         <div style={{ paddingTop: 12 }}>
           <CurrentWeekGameSelector
             matches={matches}
@@ -431,7 +394,7 @@ export default function StatBoardCurrentWeekPage() {
           />
         </div>
 
-        {/* ── Controls ─────────────────────────────────────────────────── */}
+        {/* ── Controls (Row 1: stat + mode + line; Row 2: position + search + sort) ── */}
         <div style={{ paddingTop: 12, paddingBottom: 6 }}>
           <CurrentWeekControls
             stat={stat}
@@ -439,6 +402,7 @@ export default function StatBoardCurrentWeekPage() {
             position={position}
             sort={sort}
             search={search}
+            selectedLine={selectedLine}
             onStatChange={(s) => {
               pushState({ stat: s as StatLens, line: null });
               track("current_week_stat_selected", { stat: s });
@@ -453,26 +417,24 @@ export default function StatBoardCurrentWeekPage() {
               track("current_week_sort_selected", { sort: s });
             }}
             onSearchChange={(s) => pushState({ search: s })}
+            onLineChange={lineChangeHandler}
           />
         </div>
 
-        {/* Fine Lines picker */}
+        {/* Mobile-only line picker (Fine Lines) */}
         {mode === "fine" && (
           <div style={{ paddingBottom: 8 }}>
-            <LinePicker
+            <MobileLinePicker
               thresholds={thresholds}
               selectedLine={selectedLine}
-              onSelect={(l) => {
-                pushState({ line: l });
-                track("current_week_line_selected", { line: l, stat, mode });
-              }}
+              onSelect={lineChangeHandler}
             />
           </div>
         )}
 
         <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 8 }} />
 
-        {/* ── Content area ─────────────────────────────────────────────── */}
+        {/* ── Content area ── */}
         {isLocked && selectedMatch ? (
           <LockedMatchBanner match={selectedMatch} />
         ) : !selectedMatch && !matchesLoading ? (
@@ -490,9 +452,13 @@ export default function StatBoardCurrentWeekPage() {
             Failed to load player data.
           </div>
         ) : playersLoading ? (
+          /*
+           * Loading skeleton mirrors the live layout:
+           * board → 2 cols on xl; fine → always stacked
+           */
           <div
             data-testid="loading-state"
-            className="flex flex-col xl:grid xl:grid-cols-2 gap-6"
+            className={contentGridClass}
             style={{ paddingBottom: "clamp(24px,4vw,48px)" }}
           >
             <div>
@@ -508,50 +474,38 @@ export default function StatBoardCurrentWeekPage() {
           </div>
         ) : selectedMatch ? (
           /*
-           * ≥1280px: side-by-side grid (2 cols).
-           * <1280px: stacked single column.
+           * BOARD LINES: xl:grid-cols-2 — home left, away right, equal width.
+           * FINE LINES:  flex-col — home full-width, away full-width below.
+           *
+           * The data-mode attribute is used by tests to verify the layout.
            */
           <div
             data-testid="teams-container"
             data-mode={mode}
-            className="flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6"
+            className={contentGridClass}
             style={{ paddingBottom: "clamp(24px,4vw,48px)" }}
           >
             <TeamSection
               teamName={selectedMatch.home_team_name}
+              side="HOME"
               players={homePlayers}
               thresholds={thresholds}
               selectedLine={selectedLine}
-              onSelectLine={(l) => {
-                pushState({ line: l });
-                track("current_week_line_selected", { line: l, stat, mode });
-              }}
+              onSelectLine={lineChangeHandler}
               scrollRef={homeScrollRef}
               onScroll={handleHomeScroll}
               onPlayerClick={handlePlayerClick}
-              sort={homeSort}
-              onSortChange={(s) => {
-                pushState({ sort: s as SortKey });
-                track("current_week_sort_selected", { sort: s });
-              }}
             />
             <TeamSection
               teamName={selectedMatch.away_team_name}
+              side="AWAY"
               players={awayPlayers}
               thresholds={thresholds}
               selectedLine={selectedLine}
-              onSelectLine={(l) => {
-                pushState({ line: l });
-                track("current_week_line_selected", { line: l, stat, mode });
-              }}
+              onSelectLine={lineChangeHandler}
               scrollRef={awayScrollRef}
               onScroll={handleAwayScroll}
               onPlayerClick={handlePlayerClick}
-              sort={awaySort}
-              onSortChange={(s) => {
-                pushState({ sort: s as SortKey });
-                track("current_week_sort_selected", { sort: s });
-              }}
             />
           </div>
         ) : null}

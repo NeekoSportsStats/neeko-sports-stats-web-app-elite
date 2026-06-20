@@ -8,8 +8,8 @@ interface Props {
   thresholds: readonly number[];
   selectedLine: number;
   onSelectLine: (line: number) => void;
-  /** External scroll container ref for synchronisation (optional). */
-  externalScrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** External scroll container ref for synchronisation. Must be a unique ref per table. */
+  externalScrollRef: React.RefObject<HTMLDivElement | null>;
   /** Called when user scrolls so parent can mirror to the other table. */
   onScroll?: (scrollLeft: number) => void;
   onPlayerClick?: (playerName: string) => void;
@@ -17,19 +17,41 @@ interface Props {
 }
 
 /*
- * Column proportion constants (used when the table fits in the viewport).
- * On narrow viewports the table overflows and uses fixed pixel minimums.
+ * Layout constants.
  *
- * Player column: 36% of table width (min 110px)
- * L5 column:     10% of table width (min 36px)
- * Each threshold: remainder / count (min 46px)
+ * Player column: sticky at left=0, ~200px desktop / min 120px
+ * L5 column:     sticky at left=PLAYER_W, ~68px desktop / min 44px
+ * Each threshold cell: 72px desktop minimum
+ *
+ * The L5 column is the SECOND sticky column, positioned immediately after Player.
+ * On mobile (<640px) L5 may lose stickiness when viewport is very narrow; this
+ * is handled by reducing PLAYER_W and L5_W minimums.
  */
-const PLAYER_PCT = 36;
-const L5_PCT = 10;
-const THRESHOLD_MIN_PX = 46;
-const PLAYER_MIN_PX = 110;
-const L5_MIN_PX = 36;
-const ROW_H = 34;
+const PLAYER_W  = 200;  // px, sticky Player column
+const L5_W      = 68;   // px, sticky L5 column
+const THRESH_W  = 72;   // px, each threshold column
+const ROW_H     = 34;
+const HDR_BG    = "#05070A";
+const CELL_BG   = "#05070A";
+
+/** Compute horizontal scroll offset so the selected column is centred. */
+function computeCentreOffset(
+  containerWidth: number,
+  playerW: number,
+  l5W: number,
+  threshW: number,
+  idx: number,
+  totalThresholds: number,
+): number {
+  const stickyWidth = playerW + l5W;
+  const scrollableWidth = containerWidth - stickyWidth;
+  // Left edge of selected cell in the scrollable zone
+  const cellLeft = idx * threshW;
+  // Target: cell centre lands at scrollable centre
+  const target = cellLeft - scrollableWidth / 2 + threshW / 2;
+  const maxScroll = totalThresholds * threshW - scrollableWidth;
+  return Math.max(0, Math.min(target, Math.max(0, maxScroll)));
+}
 
 export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   players,
@@ -41,31 +63,41 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   onPlayerClick,
   teamLabel = "team",
 }: Props) {
-  const innerRef = useRef<HTMLDivElement>(null);
   const suppressSync = useRef(false);
 
-  const scrollContainer = externalScrollRef ?? innerRef;
-
-  // Center selected column when it changes (only relevant when overflowing)
+  // Centre the selected column in the scroll container
   const centerSelectedColumn = useCallback(() => {
-    const container = scrollContainer.current;
+    const container = externalScrollRef.current;
     if (!container) return;
-    // Only scroll if the table is actually overflowing
-    if (container.scrollWidth <= container.clientWidth) return;
+    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    if (totalScrollWidth <= container.clientWidth) {
+      // No overflow — nothing to centre
+      return;
+    }
     const idx = thresholds.indexOf(selectedLine);
     if (idx < 0) return;
-    const leftOfSelected = PLAYER_MIN_PX + L5_MIN_PX + idx * THRESHOLD_MIN_PX;
-    const containerWidth = container.clientWidth;
-    const scrollTarget = leftOfSelected - containerWidth / 2 + THRESHOLD_MIN_PX / 2;
-    container.scrollLeft = Math.max(0, scrollTarget);
-  }, [selectedLine, thresholds, scrollContainer]);
+    const target = computeCentreOffset(
+      container.clientWidth,
+      PLAYER_W,
+      L5_W,
+      THRESH_W,
+      idx,
+      thresholds.length,
+    );
+    // Suppress outgoing scroll events so we don't create a sync loop
+    suppressSync.current = true;
+    container.scrollLeft = target;
+    requestAnimationFrame(() => { suppressSync.current = false; });
+  }, [selectedLine, thresholds, externalScrollRef]);
 
+  // Re-centre when selected line changes
   useEffect(() => {
     centerSelectedColumn();
   }, [centerSelectedColumn]);
 
+  // Forward scroll events to parent for cross-table sync
   useEffect(() => {
-    const el = scrollContainer.current;
+    const el = externalScrollRef.current;
     if (!el || !onScroll) return;
     const handler = () => {
       if (suppressSync.current) return;
@@ -73,20 +105,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     };
     el.addEventListener("scroll", handler, { passive: true });
     return () => el.removeEventListener("scroll", handler);
-  }, [scrollContainer, onScroll]);
-
-  const syncScrollLeft = useCallback((left: number) => {
-    const el = scrollContainer.current;
-    if (!el) return;
-    suppressSync.current = true;
-    el.scrollLeft = left;
-    requestAnimationFrame(() => { suppressSync.current = false; });
-  }, [scrollContainer]);
-
-  useEffect(() => {
-    if (externalScrollRef && "sync" in (externalScrollRef as unknown as { sync?: unknown })) return;
-    (scrollContainer as unknown as { sync: (left: number) => void }).sync = syncScrollLeft;
-  }, [syncScrollLeft, scrollContainer, externalScrollRef]);
+  }, [externalScrollRef, onScroll]);
 
   if (!players.length) {
     return (
@@ -101,21 +120,12 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     );
   }
 
-  /*
-   * The table uses a <table> element with table-layout:fixed and width:100%.
-   * This ensures proper proportional column widths on desktop.
-   * On mobile where thresholds overflow, we wrap in an overflow-x:auto div.
-   *
-   * Column widths:
-   *   Player: max(PLAYER_MIN_PX, PLAYER_PCT%)  — via colgroup
-   *   L5:     max(L5_MIN_PX, L5_PCT%)
-   *   Each threshold: equal share of remaining space
-   */
+  const totalMinWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
 
   return (
     <div
-      ref={externalScrollRef ? undefined : innerRef}
-      {...(externalScrollRef ? { ref: externalScrollRef } : {})}
+      ref={externalScrollRef}
+      data-testid="table-scroll-container"
       className="overflow-x-auto no-scrollbar"
       style={{ WebkitOverflowScrolling: "touch" }}
       role="region"
@@ -127,28 +137,28 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
           width: "100%",
           tableLayout: "fixed",
           borderCollapse: "collapse",
-          minWidth: PLAYER_MIN_PX + L5_MIN_PX + thresholds.length * THRESHOLD_MIN_PX,
+          minWidth: totalMinWidth,
         }}
         role="grid"
         aria-label={`${teamLabel} player comparison`}
       >
         <colgroup>
-          <col style={{ width: `${PLAYER_PCT}%` }} />
-          <col style={{ width: `${L5_PCT}%` }} />
+          <col style={{ width: PLAYER_W }} />
+          <col style={{ width: L5_W }} />
           {thresholds.map((t) => (
-            <col key={t} />
+            <col key={t} style={{ width: THRESH_W }} />
           ))}
         </colgroup>
 
-        {/* Header */}
+        {/* Sticky header row */}
         <thead>
           <tr
             style={{
-              background: "#05070A",
+              background: HDR_BG,
               borderBottom: "1px solid rgba(255,255,255,0.07)",
             }}
           >
-            {/* Player */}
+            {/* Sticky: Player */}
             <th
               scope="col"
               style={{
@@ -156,30 +166,38 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 paddingLeft: "var(--page-px)",
                 paddingRight: 8,
                 textAlign: "left",
-                borderRight: "1px solid rgba(255,255,255,0.06)",
+                verticalAlign: "middle",
                 position: "sticky",
                 left: 0,
-                background: "#05070A",
-                zIndex: 20,
+                zIndex: 22,
+                background: HDR_BG,
+                borderRight: "1px solid rgba(255,255,255,0.06)",
               }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
                 Player
               </span>
             </th>
-            {/* L5 */}
+
+            {/* Sticky: L5 */}
             <th
               scope="col"
               style={{
                 height: ROW_H,
                 textAlign: "center",
                 verticalAlign: "middle",
+                position: "sticky",
+                left: PLAYER_W,
+                zIndex: 21,
+                background: HDR_BG,
+                borderRight: "1px solid rgba(255,255,255,0.06)",
               }}
             >
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
                 L5
               </span>
             </th>
+
             {/* Threshold headers */}
             {thresholds.map((t) => {
               const isSelected = t === selectedLine;
@@ -251,21 +269,21 @@ const TableRow = memo(function TableRow({
 
   return (
     <tr
-      className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-75 group"
+      className="border-b border-white/[0.04] hover:bg-white/[0.025] transition-colors duration-75 group"
       style={{ height: ROW_H }}
       aria-label={`${player.player_name}${player.position_group ? `, ${player.position_group}` : ""}`}
     >
-      {/* Sticky player name */}
+      {/* Sticky: Player name */}
       <td
         style={{
           position: "sticky",
           left: 0,
-          background: "#05070A",
+          zIndex: 11,
+          background: CELL_BG,
           borderRight: "1px solid rgba(255,255,255,0.06)",
           paddingLeft: "var(--page-px)",
           paddingRight: 6,
           verticalAlign: "middle",
-          zIndex: 10,
         }}
       >
         <button
@@ -282,11 +300,12 @@ const TableRow = memo(function TableRow({
           <div className="flex-1 min-w-0">
             <span
               className={[
-                "text-[11px] font-medium leading-none truncate block",
+                "text-[11.5px] font-medium leading-none truncate block",
                 isClickable
-                  ? "text-white/80 group-hover:text-white group-hover:underline underline-offset-2 decoration-white/20 transition-colors"
-                  : "text-white/80",
+                  ? "text-white/85 group-hover:text-white group-hover:underline underline-offset-2 decoration-white/20 transition-colors"
+                  : "text-white/85",
               ].join(" ")}
+              style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {player.player_name}
             </span>
@@ -306,12 +325,23 @@ const TableRow = memo(function TableRow({
         </button>
       </td>
 
-      {/* L5 avg */}
+      {/* Sticky: L5 avg */}
       <td
-        style={{ textAlign: "center", verticalAlign: "middle" }}
+        style={{
+          position: "sticky",
+          left: PLAYER_W,
+          zIndex: 10,
+          background: CELL_BG,
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+          textAlign: "center",
+          verticalAlign: "middle",
+        }}
         aria-label={`${player.player_name} last 5 average: ${fmtAvg(player.last_5_avg)}`}
       >
-        <span className="text-[10px] font-medium text-white/50">
+        <span
+          className="text-[11px] font-medium text-white/55"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
           {fmtAvg(player.last_5_avg)}
         </span>
       </td>
@@ -320,9 +350,9 @@ const TableRow = memo(function TableRow({
       {thresholds.map((t) => {
         const isSelected = t === selectedLine;
         const entry = hitRates[String(t)];
-        const hits = entry?.hits != null ? Number(entry.hits) : null;
+        const hits  = entry?.hits  != null ? Number(entry.hits)  : null;
         const games = entry?.games != null ? Number(entry.games) : null;
-        const rate = entry?.rate != null ? Number(entry.rate) : null;
+        const rate  = entry?.rate  != null ? Number(entry.rate)  : null;
         const hasData = hits !== null && games !== null && games > 0;
         const cellLabel = hasData
           ? `${t}+: ${fmtHitsGames(hits, games, hasData)}, ${fmtRate(rate)}`
@@ -334,15 +364,18 @@ const TableRow = memo(function TableRow({
             style={{
               textAlign: "center",
               verticalAlign: "middle",
-              background: isSelected ? "rgba(255,255,255,0.035)" : undefined,
-              borderLeft: isSelected ? "1px solid rgba(255,255,255,0.08)" : undefined,
+              background: isSelected ? "rgba(255,255,255,0.03)" : undefined,
+              borderLeft:  isSelected ? "1px solid rgba(255,255,255,0.08)" : undefined,
               borderRight: isSelected ? "1px solid rgba(255,255,255,0.08)" : undefined,
             }}
             aria-label={`${player.player_name} ${cellLabel}`}
           >
             <span
-              className="text-[10px] font-semibold leading-none block"
-              style={{ color: cellTextColour(rate, hasData) }}
+              className="text-[10.5px] font-semibold leading-none block"
+              style={{
+                color: cellTextColour(rate, hasData),
+                fontVariantNumeric: "tabular-nums",
+              }}
             >
               {fmtHitsGames(hits, games, hasData)}
             </span>
@@ -361,3 +394,6 @@ const TableRow = memo(function TableRow({
     </tr>
   );
 });
+
+// Export constants for use in centering tests
+export { PLAYER_W, L5_W, THRESH_W, computeCentreOffset };

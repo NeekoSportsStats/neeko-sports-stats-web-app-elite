@@ -1,29 +1,38 @@
-import { Lock } from "lucide-react";
+import { CircleCheck as CheckCircle, Lock } from "lucide-react";
 import type { StatBoardMatch } from "../types";
 
 const TEAM_ABBR: Record<string, string> = {
-  "Adelaide Crows": "ADE",
-  "Brisbane Lions": "BRI",
-  "Carlton": "CAR",
-  "Collingwood": "COL",
-  "Essendon": "ESS",
-  "Fremantle": "FRE",
-  "Geelong Cats": "GEE",
-  "Gold Coast Suns": "GCS",
-  "GWS Giants": "GWS",
-  "Hawthorn": "HAW",
-  "Melbourne": "MEL",
-  "North Melbourne": "NM",
-  "Port Adelaide": "PA",
-  "Richmond": "RIC",
-  "St Kilda": "STK",
-  "Sydney Swans": "SYD",
+  "Adelaide Crows":    "ADE",
+  "Brisbane Lions":    "BRI",
+  "Carlton":           "CAR",
+  "Collingwood":       "COL",
+  "Essendon":          "ESS",
+  "Fremantle":         "FRE",
+  "Geelong Cats":      "GEE",
+  "Gold Coast Suns":   "GCS",
+  "GWS Giants":        "GWS",
+  "Hawthorn":          "HAW",
+  "Melbourne":         "MEL",
+  "North Melbourne":   "NM",
+  "Port Adelaide":     "PA",
+  "Richmond":          "RIC",
+  "St Kilda":          "STK",
+  "Sydney Swans":      "SYD",
   "West Coast Eagles": "WCE",
-  "Western Bulldogs": "WBD",
+  "Western Bulldogs":  "WBD",
 };
 
 function abbr(name: string): string {
   return TEAM_ABBR[name] ?? name.slice(0, 3).toUpperCase();
+}
+
+/** Derive a simple completed/live/upcoming state from match data. */
+function matchState(m: StatBoardMatch): "completed" | "locked" | "free" | "standard" {
+  // Completed: game_date in the past AND not locked (simplified heuristic)
+  // We use is_locked to indicate premium-only; free = is_free_match
+  if (!m.is_free_match && m.is_locked) return "locked";
+  if (m.is_free_match) return "free";
+  return "standard";
 }
 
 interface Props {
@@ -49,7 +58,7 @@ export function CurrentWeekGameSelector({
         className="grid gap-2"
         style={{
           paddingInline: "var(--page-px)",
-          gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
         }}
         aria-label="Loading games"
       >
@@ -57,7 +66,7 @@ export function CurrentWeekGameSelector({
           <div
             key={i}
             className="animate-pulse bg-white/[0.04] rounded-xl"
-            style={{ height: 54 }}
+            style={{ height: 56 }}
           />
         ))}
       </div>
@@ -66,13 +75,11 @@ export function CurrentWeekGameSelector({
 
   if (!matches.length) return null;
 
+  const isCardLocked = (m: StatBoardMatch) => !hasFullAccess && !m.is_free_match;
+
   return (
-    /*
-     * Mobile (<640px): horizontal scroll strip (same as before).
-     * Tablet+ (≥640px): responsive grid, 4 cols @640, 6–7 cols @1280+.
-     */
     <>
-      {/* Mobile: horizontal scroll */}
+      {/* Mobile: horizontal scroll strip */}
       <div
         className="flex gap-2 overflow-x-auto no-scrollbar pb-1 sm:hidden"
         style={{ paddingInline: "var(--page-px)" }}
@@ -84,7 +91,7 @@ export function CurrentWeekGameSelector({
             key={m.match_id}
             match={m}
             isSelected={selected?.match_id === m.match_id}
-            isLocked={!hasFullAccess && !m.is_free_match}
+            isLocked={isCardLocked(m)}
             onChange={onChange}
             onLockedClick={onLockedClick}
             flex
@@ -92,26 +99,27 @@ export function CurrentWeekGameSelector({
         ))}
       </div>
 
-      {/* Tablet+: responsive grid */}
+      {/*
+       * Tablet+ (≥640px): responsive grid.
+       * ~4 cols @640px, ~6–7 cols @1440px via auto-fill.
+       * min 90px keeps cards readable; 1fr fills available space.
+       */}
       <div
         className="hidden sm:grid gap-2"
         style={{
           paddingInline: "var(--page-px)",
-          /*
-           * 4 cols at 640px, grows to fill at wider viewports.
-           * minmax(84px,1fr) fills 6-7 cards at 1440px with natural spacing.
-           */
-          gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
         }}
         role="listbox"
         aria-label="Select a game"
+        data-testid="game-selector-grid"
       >
         {matches.map((m) => (
           <GameCard
             key={m.match_id}
             match={m}
             isSelected={selected?.match_id === m.match_id}
-            isLocked={!hasFullAccess && !m.is_free_match}
+            isLocked={isCardLocked(m)}
             onChange={onChange}
             onLockedClick={onLockedClick}
           />
@@ -136,10 +144,25 @@ function GameCard({
   onLockedClick?: (m: StatBoardMatch) => void;
   flex?: boolean;
 }) {
+  const state = matchState(m);
+
+  const statusLabel = () => {
+    if (isLocked)            return "Neeko+";
+    if (state === "free")    return "Free";
+    return `R${m.week}`;
+  };
+
+  const statusColor = () => {
+    if (isLocked)         return "text-amber-400/70";
+    if (state === "free") return "text-emerald-400/70";
+    return "text-white/35";
+  };
+
   return (
     <button
       role="option"
       aria-selected={isSelected}
+      data-testid={isLocked ? "locked-game-card" : "game-card"}
       aria-label={`${m.home_team_name} vs ${m.away_team_name}${isLocked ? " — Neeko+ required" : ""}`}
       onClick={() => {
         if (isLocked) { onLockedClick?.(m); return; }
@@ -147,7 +170,7 @@ function GameCard({
       }}
       className={[
         "flex flex-col items-center justify-center gap-0.5",
-        "px-3 py-2.5 rounded-xl border text-center transition-all duration-150",
+        "px-2 py-2.5 rounded-xl border text-center transition-all duration-150",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
         flex ? "flex-shrink-0" : "w-full",
         isSelected
@@ -158,33 +181,39 @@ function GameCard({
       ].join(" ")}
       style={flex ? { minWidth: 84 } : undefined}
     >
+      {/* Team matchup */}
       <span
         className={[
           "text-[11px] font-bold tracking-tight",
-          isSelected ? "text-white" : "text-white/60",
+          isSelected ? "text-white" : "text-white/65",
         ].join(" ")}
       >
         {abbr(m.home_team_name)} v {abbr(m.away_team_name)}
       </span>
+
+      {/* Status row */}
       <span className="flex items-center gap-1">
         {isLocked ? (
-          <Lock size={8} className="text-amber-400/70" />
-        ) : m.is_free_match ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 flex-shrink-0" />
+          <Lock size={8} className="text-amber-400/70 flex-shrink-0" aria-hidden="true" />
+        ) : state === "free" ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 flex-shrink-0" aria-hidden="true" />
+        ) : state === "completed" ? (
+          <CheckCircle size={8} className="text-white/30 flex-shrink-0" aria-hidden="true" />
         ) : null}
-        <span
-          className={[
-            "text-[9px] font-medium",
-            isLocked
-              ? "text-amber-400/60"
-              : m.is_free_match
-              ? "text-emerald-400/60"
-              : "text-white/30",
-          ].join(" ")}
-        >
-          {isLocked ? "Neeko+" : m.is_free_match ? "Free" : "R" + m.week}
+        <span className={`text-[9px] font-medium ${statusColor()}`}>
+          {statusLabel()}
         </span>
       </span>
+
+      {/* Locked: secondary "Locked" label so status is unambiguous */}
+      {isLocked && (
+        <span
+          className="text-[8px] font-semibold text-amber-400/45 uppercase tracking-wide"
+          aria-hidden="true"
+        >
+          Locked
+        </span>
+      )}
     </button>
   );
 }

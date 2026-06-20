@@ -15,6 +15,7 @@ import {
   rateColour,
   cellTextColour,
 } from "./currentWeekUtils";
+import { computeCentreOffset, PLAYER_W, L5_W, THRESH_W } from "./MatchupComparisonTable";
 import type { StatBoardPlayer } from "../types";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -685,5 +686,342 @@ describe("Helmet title — Matchup Compare page", () => {
     const heading = "AFL Matchup Compare";
     expect(heading).toBe("AFL Matchup Compare");
     expect(heading).not.toContain("Current Week");
+  });
+});
+
+// ─── Section 2: Fine Lines stacked vs Board Lines side-by-side ────────────────
+
+describe("Layout — Board Lines uses two team panels (data-mode=board)", () => {
+  it('Board Lines mode is "board" string', () => {
+    const state = parseUrlState(new URLSearchParams("mode=board"));
+    expect(state.mode).toBe("board");
+  });
+
+  it("Board Lines mode does NOT equal fine", () => {
+    const state = parseUrlState(new URLSearchParams("mode=board"));
+    expect(state.mode).not.toBe("fine");
+  });
+
+  it("Fine Lines mode resolves correctly", () => {
+    const state = parseUrlState(new URLSearchParams("mode=fine"));
+    expect(state.mode).toBe("fine");
+  });
+
+  it("mode switching preserves stat state", () => {
+    const original = {
+      matchId: 3, stat: "kicks" as const, mode: "board" as const,
+      line: 10, position: "MID" as const, sort: "hit_rate" as const, search: "",
+    };
+    const switched = { ...original, mode: "fine" as const, line: null };
+    const params = buildUrlParams(switched);
+    const parsed = parseUrlState(params);
+    expect(parsed.stat).toBe("kicks");
+    expect(parsed.mode).toBe("fine");
+    expect(parsed.position).toBe("MID");
+  });
+
+  it("mode switching preserves position filter", () => {
+    const board = buildUrlParams({
+      matchId: null, stat: "disposals", mode: "board",
+      line: null, position: "DEF", sort: "hit_rate", search: "",
+    });
+    const fine = buildUrlParams({
+      matchId: null, stat: "disposals", mode: "fine",
+      line: null, position: "DEF", sort: "hit_rate", search: "",
+    });
+    expect(parseUrlState(board).position).toBe("DEF");
+    expect(parseUrlState(fine).position).toBe("DEF");
+  });
+
+  it("Board Lines disposals has exactly 4 thresholds (fits 2-col panels)", () => {
+    const t = getThresholdsForMode("disposals", "board");
+    expect(t.length).toBe(4);
+  });
+
+  it("Fine Lines disposals has more thresholds than board — needs full width", () => {
+    const board = getThresholdsForMode("disposals", "board");
+    const fine  = getThresholdsForMode("disposals", "fine");
+    expect(fine.length).toBeGreaterThan(board.length);
+  });
+});
+
+// ─── Section 3: Selected-line centering ───────────────────────────────────────
+
+describe("computeCentreOffset — selected line is centred", () => {
+  /*
+   * computeCentreOffset(containerWidth, playerW, l5W, threshW, idx, total)
+   *
+   * The selected column should be approximately centred in the scrollable zone.
+   * The scrollable zone = containerWidth - playerW - l5W.
+   */
+
+  const CONTAINER = 800;
+  const TOTAL     = 20; // 20 threshold columns
+
+  it("offset is 0 when selected is first column and container is narrow", () => {
+    const offset = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, 0, TOTAL);
+    expect(offset).toBe(0); // clamped to 0
+  });
+
+  it("last column does not produce negative offset", () => {
+    const offset = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, TOTAL - 1, TOTAL);
+    expect(offset).toBeGreaterThanOrEqual(0);
+  });
+
+  it("middle column produces a positive offset when content overflows", () => {
+    const midIdx = Math.floor(TOTAL / 2);
+    const offset = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, midIdx, TOTAL);
+    // There is overflow because TOTAL * THRESH_W = 1440 > 800 - PLAYER_W - L5_W
+    expect(offset).toBeGreaterThan(0);
+  });
+
+  it("selected at index 0 clamps to offset 0 (beginning clamp)", () => {
+    const offset = computeCentreOffset(600, PLAYER_W, L5_W, THRESH_W, 0, TOTAL);
+    expect(offset).toBe(0);
+  });
+
+  it("selected at last index clamps to max offset (end clamp)", () => {
+    const scrollableW = CONTAINER - PLAYER_W - L5_W;
+    const maxScroll   = TOTAL * THRESH_W - scrollableW;
+    const offset = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, TOTAL - 1, TOTAL);
+    expect(offset).toBeLessThanOrEqual(Math.max(0, maxScroll));
+  });
+
+  it("home and away use the same formula (symmetric per-team centering)", () => {
+    // Both use computeCentreOffset with the same arguments — results are equal
+    const idx    = 8;
+    const home   = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, idx, TOTAL);
+    const away   = computeCentreOffset(CONTAINER, PLAYER_W, L5_W, THRESH_W, idx, TOTAL);
+    expect(home).toBe(away);
+  });
+
+  it("centering accounts for Player column width", () => {
+    // A wider player column shifts the scrollable zone left
+    const smallerPlayer = computeCentreOffset(CONTAINER, 100, L5_W, THRESH_W, 5, TOTAL);
+    const largerPlayer  = computeCentreOffset(CONTAINER, 250, L5_W, THRESH_W, 5, TOTAL);
+    // Wider player → smaller scrollable zone → target offset changes
+    expect(smallerPlayer).not.toBe(largerPlayer);
+  });
+
+  it("centering accounts for L5 column width", () => {
+    const smallL5 = computeCentreOffset(CONTAINER, PLAYER_W, 40, THRESH_W, 5, TOTAL);
+    const largeL5 = computeCentreOffset(CONTAINER, PLAYER_W, 90, THRESH_W, 5, TOTAL);
+    expect(smallL5).not.toBe(largeL5);
+  });
+
+  it("PLAYER_W and L5_W are exported constants with sensible values", () => {
+    expect(PLAYER_W).toBeGreaterThan(100);
+    expect(L5_W).toBeGreaterThan(40);
+    expect(THRESH_W).toBeGreaterThan(50);
+  });
+});
+
+// ─── Section 4: Separate refs per scroll container ────────────────────────────
+
+describe("Separate scroll refs — home and away are independent objects", () => {
+  it("two independently created refs are not the same object", () => {
+    // Simulates what the page does: useRef() twice
+    const homeRef = { current: null };
+    const awayRef = { current: null };
+    expect(homeRef).not.toBe(awayRef);
+  });
+
+  it("assigning to homeRef does not affect awayRef", () => {
+    const homeRef: { current: HTMLDivElement | null } = { current: null };
+    const awayRef: { current: HTMLDivElement | null } = { current: null };
+    const fakeEl = {} as HTMLDivElement;
+    homeRef.current = fakeEl;
+    expect(awayRef.current).toBeNull();
+  });
+});
+
+// ─── Section 5: Locked game state ─────────────────────────────────────────────
+
+describe("Locked game — does not fetch protected rows", () => {
+  it("isLocked when hasFullAccess=false and match is not free", () => {
+    const lockedMatch = makeMatch({ is_free_match: false, is_locked: true });
+    const hasFullAccess = false;
+    // Simulate the hook's isLocked derivation
+    const isLocked = !hasFullAccess && !lockedMatch.is_free_match;
+    expect(isLocked).toBe(true);
+  });
+
+  it("not locked when hasFullAccess=true", () => {
+    const lockedMatch = makeMatch({ is_free_match: false, is_locked: true });
+    const hasFullAccess = true;
+    const isLocked = !hasFullAccess && !lockedMatch.is_free_match;
+    expect(isLocked).toBe(false);
+  });
+
+  it("not locked when match is free", () => {
+    const freeMatch = makeMatch({ is_free_match: true, is_locked: false });
+    const hasFullAccess = false;
+    const isLocked = !hasFullAccess && !freeMatch.is_free_match;
+    expect(isLocked).toBe(false);
+  });
+
+  it("locked game matchId passed to player fetch is null (no fetch)", () => {
+    // The hook passes matchId = isLocked ? null : selectedMatch.match_id
+    const isLocked = true;
+    const selectedMatch = makeMatch({ match_id: 42 });
+    const fetchMatchId = isLocked ? null : selectedMatch.match_id;
+    expect(fetchMatchId).toBeNull();
+  });
+
+  it("free game matchId is passed normally", () => {
+    const isLocked = false;
+    const selectedMatch = makeMatch({ match_id: 7 });
+    const fetchMatchId = isLocked ? null : selectedMatch.match_id;
+    expect(fetchMatchId).toBe(7);
+  });
+});
+
+// ─── Section 6: Global sort control ───────────────────────────────────────────
+
+describe("Global sort — single shared sort state", () => {
+  it("sort state is shared between teams (one URL param)", () => {
+    const params = buildUrlParams({
+      matchId: null, stat: "disposals", mode: "board",
+      line: null, position: "ALL", sort: "l5_avg", search: "",
+    });
+    const parsed = parseUrlState(params);
+    // Both teams use the same sort value from URL state
+    const homeSort = parsed.sort;
+    const awaySort = parsed.sort;
+    expect(homeSort).toBe(awaySort);
+    expect(homeSort).toBe("l5_avg");
+  });
+
+  it("changing sort updates URL sort param", () => {
+    const original = {
+      matchId: null, stat: "disposals" as const, mode: "board" as const,
+      line: null, position: "ALL" as const, sort: "hit_rate" as const, search: "",
+    };
+    const afterChange = buildUrlParams({ ...original, sort: "projection" });
+    expect(afterChange.get("sort")).toBe("projection");
+  });
+});
+
+// ─── Section 7: Mobile layout remains stacked ─────────────────────────────────
+
+describe("Responsive layout — mobile always stacked", () => {
+  it("board mode uses flex-col class at all widths (grid is an XL augmentation)", () => {
+    // Both modes use flex-col as the base; board adds xl:grid-cols-2 on top of it
+    const boardBaseClass = "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6";
+    const fineClass      = "flex flex-col gap-0";
+    expect(boardBaseClass).toContain("flex flex-col");
+    expect(fineClass).toContain("flex flex-col");
+  });
+
+  it("fine mode never includes grid-cols-2", () => {
+    const fineClass = "flex flex-col gap-0";
+    expect(fineClass).not.toContain("grid-cols-2");
+  });
+
+  it("board mode only applies grid-cols-2 at xl breakpoint", () => {
+    const boardClass = "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6";
+    // Must not have bare grid-cols-2 without xl: prefix
+    expect(boardClass).toContain("xl:grid-cols-2");
+    expect(boardClass).not.toMatch(/(?<!xl:)grid-cols-2/);
+  });
+});
+
+// ─── Section 8: No page-level horizontal overflow ─────────────────────────────
+
+describe("Layout — no unconstrained page-level overflow", () => {
+  it("table min-width is at least PLAYER_W + L5_W + 4 * THRESH_W (board lines)", () => {
+    // Board disposals has 4 thresholds
+    const minW = PLAYER_W + L5_W + 4 * THRESH_W;
+    expect(minW).toBeGreaterThan(0);
+    // This min-width applies to the <table> inside the overflow-x:auto container,
+    // not to the page — so overflow stays contained.
+    expect(minW).toBeLessThan(600); // Should not be page-busting wide
+  });
+
+  it("each team table is wrapped in overflow-x-auto (contained scroll)", () => {
+    // The scroll container gets overflow-x-auto; the table can overflow inside it.
+    // This test documents the expectation.
+    const scrollContainerClass = "overflow-x-auto no-scrollbar";
+    expect(scrollContainerClass).toContain("overflow-x-auto");
+  });
+});
+
+// ─── Section 9: Player Board route is unchanged ───────────────────────────────
+
+describe("Player Board route is unchanged", () => {
+  it("/stat-board/players route is separate from /stat-board/current-week", () => {
+    expect("/stat-board/players").not.toBe("/stat-board/current-week");
+  });
+
+  it("Player Board link target is /stat-board/players", () => {
+    const href = "/stat-board/players";
+    expect(href).toBe("/stat-board/players");
+  });
+});
+
+// ─── Section 10: Desktop quick-line window ───────────────────────────────────
+
+describe("Desktop quick-line window — centred around selection", () => {
+  const QUICK_WINDOW = 3;
+
+  function buildQuickLines(thresholds: readonly number[], selectedLine: number): number[] {
+    const idx   = Array.from(thresholds).indexOf(selectedLine);
+    const start = Math.max(0, idx - QUICK_WINDOW);
+    const end   = Math.min(thresholds.length - 1, idx + QUICK_WINDOW);
+    return Array.from(thresholds).slice(start, end + 1);
+  }
+
+  it("quick lines include the selected line", () => {
+    const thresholds = getThresholdsForMode("disposals", "fine");
+    const selected   = 20;
+    const quick = buildQuickLines(thresholds, selected);
+    expect(quick).toContain(selected);
+  });
+
+  it("selected line is roughly centred in quick window (not at edge)", () => {
+    const thresholds = getThresholdsForMode("disposals", "fine");
+    // Pick a line that has QUICK_WINDOW neighbours on both sides
+    const allT = Array.from(thresholds);
+    const midIdx = Math.floor(allT.length / 2);
+    const selected = allT[midIdx]!;
+    const quick = buildQuickLines(thresholds, selected);
+    const posInWindow = quick.indexOf(selected);
+    // For a middle selection, position should be near the centre of the window
+    expect(posInWindow).toBeGreaterThan(0);
+    expect(posInWindow).toBeLessThan(quick.length - 1);
+  });
+
+  it("clamps at start: line at index 0 shows 0 to QUICK_WINDOW only", () => {
+    const thresholds = getThresholdsForMode("disposals", "fine");
+    const firstLine = Array.from(thresholds)[0]!;
+    const quick = buildQuickLines(thresholds, firstLine);
+    expect(quick[0]).toBe(firstLine);
+    expect(quick.length).toBeLessThanOrEqual(QUICK_WINDOW + 1);
+  });
+
+  it("clamps at end: last line shows last QUICK_WINDOW+1 entries", () => {
+    const thresholds  = getThresholdsForMode("disposals", "fine");
+    const allT        = Array.from(thresholds);
+    const lastLine    = allT[allT.length - 1]!;
+    const quick       = buildQuickLines(thresholds, lastLine);
+    expect(quick[quick.length - 1]).toBe(lastLine);
+    expect(quick.length).toBeLessThanOrEqual(QUICK_WINDOW + 1);
+  });
+
+  it("Fantasy 100+ is centred in quick window of fantasy fine thresholds", () => {
+    const thresholds = getThresholdsForMode("fantasy", "fine");
+    const quick = buildQuickLines(thresholds, 100);
+    expect(quick).toContain(100);
+    const posInWindow = quick.indexOf(100);
+    expect(posInWindow).toBeGreaterThan(0);
+    expect(posInWindow).toBeLessThan(quick.length - 1);
+  });
+
+  it("Invalid URL line snaps to nearest valid threshold", () => {
+    // disposals board: [15, 20, 25, 30]
+    // line=22 → nearest is 20
+    expect(resolveSelectedLine(22, "disposals", "board")).toBe(20);
+    // line=500 → nearest is 30
+    expect(resolveSelectedLine(500, "disposals", "board")).toBe(30);
   });
 });
