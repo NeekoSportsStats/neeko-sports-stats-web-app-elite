@@ -16,33 +16,26 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Crown, Star, TableProperties, Shield, Users, CircleHelp as HelpCircle, FileText, Mail, LogIn, User, LogOut, ChevronDown, ChevronRight, ChartBar as BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { STAT_BOARD_CHILDREN, FANTASY_CHILDREN } from "@/components/navConfig";
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 
-const EXPANDABLE_GROUPS = [
+export const EXPANDABLE_GROUPS = [
   {
     key: "stat-board",
     label: "Stats Hub",
     to: "/stat-board",
     icon: TableProperties,
-    children: [
-      { label: "Player Stats",  to: "/stat-board/players"      },
-      { label: "Team Stats",    to: "/stat-board/teams"         },
-      { label: "Match Centre",  to: "/stat-board/match-centre"  },
-    ],
+    children: STAT_BOARD_CHILDREN.map(({ title, url }) => ({ label: title, to: url })),
   },
   {
     key: "fantasy",
     label: "Fantasy Hub",
     to: "/fantasy",
     icon: Star,
-    children: [
-      { label: "Current Week",  to: "/fantasy/current-week"  },
-      { label: "Rankings",      to: "/fantasy/rankings"      },
-      { label: "Market Watch",  to: "/fantasy/market-watch"  },
-    ],
+    children: FANTASY_CHILDREN.map(({ title, url }) => ({ label: title, to: url })),
   },
-] as const;
+];
 
 const SIMPLE_NAV = [
   { label: "Players", to: "/sports/afl/players", icon: Users  },

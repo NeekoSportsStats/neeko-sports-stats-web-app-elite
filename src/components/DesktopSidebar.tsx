@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { STAT_BOARD_CHILDREN, FANTASY_CHILDREN } from "@/components/navConfig";
 
 // ── Width token — update one place if sidebar width changes ──────────────────
 export const DESKTOP_SIDEBAR_WIDTH = 220;
@@ -50,28 +51,20 @@ export function DesktopSidebarProvider({ children }: { children: React.ReactNode
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 
-const EXPANDABLE_GROUPS = [
+export const EXPANDABLE_GROUPS = [
   {
     key: "stat-board",
     title: "Stat Board",
     url: "/stat-board",
     icon: TableProperties,
-    children: [
-      { title: "Player Stats",  url: "/stat-board/players"      },
-      { title: "Team Stats",    url: "/stat-board/teams"        },
-      { title: "Match Centre",  url: "/stat-board/match-centre" },
-    ],
+    children: STAT_BOARD_CHILDREN,
   },
   {
     key: "fantasy",
     title: "Fantasy Hub",
     url: "/fantasy",
     icon: Star,
-    children: [
-      { title: "Current Week", url: "/fantasy/current-week" },
-      { title: "Rankings",     url: "/fantasy/rankings"     },
-      { title: "Market Watch", url: "/fantasy/market-watch" },
-    ],
+    children: FANTASY_CHILDREN,
   },
 ] as const;
 

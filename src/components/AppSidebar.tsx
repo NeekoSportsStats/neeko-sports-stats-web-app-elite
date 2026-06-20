@@ -30,31 +30,24 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Separator } from "@/components/ui/separator";
+import { STAT_BOARD_CHILDREN, FANTASY_CHILDREN } from "@/components/navConfig";
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 
-const EXPANDABLE_GROUPS = [
+export const EXPANDABLE_GROUPS = [
   {
     key:      "stat-board",
     title:    "Stats Hub",
     url:      "/stat-board",
     icon:     TableProperties,
-    children: [
-      { title: "Player Stats",  url: "/stat-board/players"      },
-      { title: "Team Stats",    url: "/stat-board/teams"        },
-      { title: "Match Centre",  url: "/stat-board/match-centre" },
-    ],
+    children: STAT_BOARD_CHILDREN,
   },
   {
     key:      "fantasy",
     title:    "Fantasy Hub",
     url:      "/fantasy",
     icon:     Star,
-    children: [
-      { title: "Current Week",  url: "/fantasy/current-week"  },
-      { title: "Rankings",      url: "/fantasy/rankings"      },
-      { title: "Market Watch",  url: "/fantasy/market-watch"  },
-    ],
+    children: FANTASY_CHILDREN,
   },
 ] as const;
 
