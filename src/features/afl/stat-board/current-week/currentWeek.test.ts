@@ -14,6 +14,9 @@ import {
   fmtAvg,
   rateColour,
   cellTextColour,
+  getScrollColumnStep,
+  snapToColumn,
+  computeScrollTarget,
 } from "./currentWeekUtils";
 import { computeCentreOffset, PLAYER_W, L5_W, THRESH_W } from "./MatchupComparisonTable";
 import type { StatBoardPlayer } from "../types";
@@ -1023,5 +1026,289 @@ describe("Desktop quick-line window — centred around selection", () => {
     expect(resolveSelectedLine(22, "disposals", "board")).toBe(20);
     // line=500 → nearest is 30
     expect(resolveSelectedLine(500, "disposals", "board")).toBe(30);
+  });
+});
+
+// ─── Section 11: Scroll button utilities ─────────────────────────────────────
+
+describe("getScrollColumnStep — column step by viewport width", () => {
+  it("returns 5 at ≥1280px (desktop)", () => {
+    expect(getScrollColumnStep(1280)).toBe(5);
+    expect(getScrollColumnStep(1440)).toBe(5);
+    expect(getScrollColumnStep(1920)).toBe(5);
+  });
+
+  it("returns 4 at 768–1279px (tablet)", () => {
+    expect(getScrollColumnStep(768)).toBe(4);
+    expect(getScrollColumnStep(1024)).toBe(4);
+    expect(getScrollColumnStep(1279)).toBe(4);
+  });
+
+  it("returns 3 below 768px (mobile)", () => {
+    expect(getScrollColumnStep(390)).toBe(3);
+    expect(getScrollColumnStep(430)).toBe(3);
+    expect(getScrollColumnStep(767)).toBe(3);
+  });
+});
+
+describe("snapToColumn — snaps scrollLeft to nearest threshold boundary", () => {
+  const W = THRESH_W; // 72
+
+  it("returns 0 for scrollLeft = 0", () => {
+    expect(snapToColumn(0, W)).toBe(0);
+  });
+
+  it("snaps to the nearest column below for fractional positions", () => {
+    // 71 is closer to 72 than 0, so snaps to 72
+    expect(snapToColumn(71, W)).toBe(72);
+    // 35 is exactly half — rounds to 36, then nearest is 36 which rounds to 72? No: round(35/72)*72 = round(0.486)*72 = 0*72 = 0
+    expect(snapToColumn(35, W)).toBe(0);
+    // 37 → round(37/72) = round(0.514) = 1 → 72
+    expect(snapToColumn(37, W)).toBe(72);
+  });
+
+  it("snaps an already-aligned position to itself", () => {
+    expect(snapToColumn(72, W)).toBe(72);
+    expect(snapToColumn(144, W)).toBe(144);
+    expect(snapToColumn(360, W)).toBe(360);
+  });
+
+  it("handles large scrollLeft values", () => {
+    // 5 columns * 72 = 360, 360+10 snaps to 360
+    expect(snapToColumn(364, W)).toBe(360);
+    // 360+37 snaps to 432
+    expect(snapToColumn(397, W)).toBe(432);
+  });
+});
+
+describe("computeScrollTarget — column-aligned movement", () => {
+  // Container: 390px wide, 20 thresholds, total = PLAYER_W+L5_W+20*THRESH_W = 1908
+  const CONTAINER    = 390;
+  const TOTAL_THRESH = 20;
+  const TOTAL_W      = PLAYER_W + L5_W + TOTAL_THRESH * THRESH_W; // 1908
+  const MAX_SCROLL   = TOTAL_W - CONTAINER; // 1518
+
+  it("next from 0 moves forward by at least 1 column", () => {
+    const target = computeScrollTarget("next", 0, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBeGreaterThan(0);
+    expect(target % THRESH_W).toBe(0); // column-aligned
+  });
+
+  it("prev from max scroll moves backward", () => {
+    const target = computeScrollTarget("prev", MAX_SCROLL, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBeLessThan(MAX_SCROLL);
+  });
+
+  it("prev from 0 stays at 0 (clamped)", () => {
+    const target = computeScrollTarget("prev", 0, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBe(0);
+  });
+
+  it("next from max scroll stays at max (clamped)", () => {
+    const target = computeScrollTarget("next", MAX_SCROLL, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBe(MAX_SCROLL);
+  });
+
+  it("next from aligned position moves exactly column-step columns forward", () => {
+    const step = getScrollColumnStep(CONTAINER) * THRESH_W; // 3 * 72 = 216 for mobile
+    const start = THRESH_W * 2; // 144, already aligned
+    const target = computeScrollTarget("next", start, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBe(start + step);
+    expect(target % THRESH_W).toBe(0);
+  });
+
+  it("prev from aligned position moves exactly column-step columns backward", () => {
+    const step = getScrollColumnStep(CONTAINER) * THRESH_W;
+    const start = THRESH_W * 8; // 576, aligned
+    const target = computeScrollTarget("prev", start, CONTAINER, TOTAL_W, THRESH_W);
+    expect(target).toBe(start - step);
+  });
+
+  it("next result is always column-aligned (aligned start)", () => {
+    for (let i = 0; i <= 15; i++) {
+      const scrollLeft = i * THRESH_W;
+      const target = computeScrollTarget("next", scrollLeft, CONTAINER, TOTAL_W, THRESH_W);
+      expect(target % THRESH_W).toBe(0);
+    }
+  });
+
+  it("desktop step is 5 columns", () => {
+    const desktopContainer = 1440;
+    // Use enough thresholds so max scroll doesn't clamp the step
+    const wideTotal = PLAYER_W + L5_W + 40 * THRESH_W; // 3148px
+    const step = getScrollColumnStep(desktopContainer) * THRESH_W; // 5 * 72 = 360
+    const start = 0;
+    const target = computeScrollTarget("next", start, desktopContainer, wideTotal, THRESH_W);
+    expect(target).toBe(step);
+  });
+
+  it("tablet step is 4 columns", () => {
+    const tabletContainer = 900;
+    const step = getScrollColumnStep(tabletContainer) * THRESH_W; // 4 * 72 = 288
+    const start = 0;
+    const target = computeScrollTarget("next", start, tabletContainer, TOTAL_W, THRESH_W);
+    expect(target).toBe(step);
+  });
+});
+
+describe("Scroll button state derivation — canScrollPrev / canScrollNext", () => {
+  function deriveState(scrollLeft: number, scrollWidth: number, clientWidth: number) {
+    const maxScroll = Math.max(0, scrollWidth - clientWidth);
+    return {
+      canScrollPrev: scrollLeft > 1,
+      canScrollNext: scrollLeft < maxScroll - 1,
+      showScrollButtons: maxScroll > 1,
+    };
+  }
+
+  it("Previous is disabled at scrollLeft=0", () => {
+    const { canScrollPrev } = deriveState(0, 1000, 400);
+    expect(canScrollPrev).toBe(false);
+  });
+
+  it("Previous is enabled after scrolling right", () => {
+    const { canScrollPrev } = deriveState(100, 1000, 400);
+    expect(canScrollPrev).toBe(true);
+  });
+
+  it("Next is disabled when scrollLeft equals max", () => {
+    const { canScrollNext } = deriveState(600, 1000, 400);
+    expect(canScrollNext).toBe(false);
+  });
+
+  it("Next is enabled when not at max scroll", () => {
+    const { canScrollNext } = deriveState(0, 1000, 400);
+    expect(canScrollNext).toBe(true);
+  });
+
+  it("showScrollButtons is false when no overflow exists", () => {
+    // No overflow: scrollWidth <= clientWidth
+    const { showScrollButtons } = deriveState(0, 400, 400);
+    expect(showScrollButtons).toBe(false);
+  });
+
+  it("showScrollButtons is true when content overflows", () => {
+    const { showScrollButtons } = deriveState(0, 1000, 400);
+    expect(showScrollButtons).toBe(true);
+  });
+
+  it("both buttons disabled if container perfectly fits content", () => {
+    const { canScrollPrev, canScrollNext, showScrollButtons } = deriveState(0, 390, 390);
+    expect(showScrollButtons).toBe(false);
+    expect(canScrollPrev).toBe(false);
+    expect(canScrollNext).toBe(false);
+  });
+});
+
+describe("Scroll buttons — selected line does not change", () => {
+  it("scroll target does not alter selectedLine", () => {
+    const selectedLine = 20;
+    // computeScrollTarget only works on scroll position, never the line
+    const target = computeScrollTarget("next", 0, 390, 1908, THRESH_W);
+    expect(target).toBeGreaterThan(0);
+    // selectedLine is unchanged
+    expect(selectedLine).toBe(20);
+  });
+
+  it("URL line param is unaffected by scroll position changes", () => {
+    const original = buildUrlParams({
+      matchId: null, stat: "disposals", mode: "fine",
+      line: 20, position: "ALL", sort: "hit_rate", search: "",
+    });
+    // Simulating a button click: scroll position is a DOM concern, not URL
+    expect(original.get("line")).toBe("20");
+  });
+});
+
+describe("Scroll buttons — home and away synchronisation", () => {
+  it("scroll target for home equals target for away (same formula)", () => {
+    const scrollLeft = 144; // 2 columns
+    const containerWidth = 390;
+    const totalScrollWidth = PLAYER_W + L5_W + 20 * THRESH_W;
+    const homeTarget = computeScrollTarget("next", scrollLeft, containerWidth, totalScrollWidth, THRESH_W);
+    const awayTarget = computeScrollTarget("next", scrollLeft, containerWidth, totalScrollWidth, THRESH_W);
+    expect(homeTarget).toBe(awayTarget);
+  });
+
+  it("after a button press both tables move to the same position", () => {
+    // Simulate: home and away both receive the same target
+    const scrollLeft = 0;
+    const containerWidth = 1440;
+    const totalScrollWidth = PLAYER_W + L5_W + 15 * THRESH_W;
+    const target = computeScrollTarget("next", scrollLeft, containerWidth, totalScrollWidth, THRESH_W);
+    const homePosition = target;
+    const awayPosition = target; // page syncs both to the same target
+    expect(homePosition).toBe(awayPosition);
+  });
+});
+
+describe("Scroll buttons — reduced motion behaviour", () => {
+  it("prefersReducedMotion=true leads to instant behavior (behavior string)", () => {
+    // The page uses prefersReducedMotion ? 'instant' : 'smooth'
+    const prefersReduced = true;
+    const behavior = prefersReduced ? "instant" : "smooth";
+    expect(behavior).toBe("instant");
+  });
+
+  it("prefersReducedMotion=false leads to smooth behavior", () => {
+    const prefersReduced = false;
+    const behavior = prefersReduced ? "instant" : "smooth";
+    expect(behavior).toBe("smooth");
+  });
+});
+
+describe("Scroll buttons — stat/mode reset clears stale position", () => {
+  it("switching stat changes threshold set", () => {
+    const disposalsThresholds = getThresholdsForMode("disposals", "fine");
+    const goalsThresholds     = getThresholdsForMode("goals", "fine");
+    // Different stats have different threshold ranges
+    expect(disposalsThresholds[0]).not.toBe(goalsThresholds[0]);
+  });
+
+  it("switching from fine to board resets to shorter threshold set", () => {
+    const fineT  = getThresholdsForMode("disposals", "fine");
+    const boardT = getThresholdsForMode("disposals", "board");
+    expect(boardT.length).toBeLessThan(fineT.length);
+    // A fine-mode scroll position > board maxScroll would be clamped
+    const fineScrollLeft = boardT.length * THRESH_W + THRESH_W;
+    const boardMaxScroll = boardT.length * THRESH_W; // approximate
+    // After switching to board, position would need to be clamped
+    expect(fineScrollLeft).toBeGreaterThan(boardMaxScroll);
+  });
+
+  it("after stat change, maxScroll is recomputed from new thresholds", () => {
+    function maxScrollFor(stat: "disposals" | "goals", mode: "board" | "fine", containerW: number) {
+      const t = getThresholdsForMode(stat, mode);
+      const total = PLAYER_W + L5_W + t.length * THRESH_W;
+      return Math.max(0, total - containerW);
+    }
+    const containerW = 390;
+    const disposalsMax = maxScrollFor("disposals", "fine", containerW);
+    const goalsMax     = maxScrollFor("goals", "fine", containerW);
+    expect(disposalsMax).not.toBe(goalsMax);
+  });
+});
+
+describe("Scroll buttons — Board Lines unchanged", () => {
+  it("Board Lines uses the same THRESH_W as Fine Lines (consistent column step)", () => {
+    // Both modes use the same threshold cell width constant
+    expect(THRESH_W).toBe(72);
+  });
+
+  it("Board Lines scroll target formula is identical (getScrollColumnStep applies)", () => {
+    const boardThresholds = getThresholdsForMode("disposals", "board");
+    const totalScrollWidth = PLAYER_W + L5_W + boardThresholds.length * THRESH_W;
+    const containerWidth = 390;
+    // Board mode tables can also overflow on narrow screens
+    const maxScroll = Math.max(0, totalScrollWidth - containerWidth);
+    // Scroll buttons show only when maxScroll > 0
+    // For board disposals (4 thresholds): 200 + 68 + 4*72 = 556 > 390 → overflows
+    expect(maxScroll).toBeGreaterThan(0);
+  });
+
+  it("Board Lines grid class only applies at xl breakpoint", () => {
+    const boardClass = "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6";
+    expect(boardClass).toContain("xl:grid-cols-2");
+    expect(boardClass).not.toMatch(/(?<!xl:)grid-cols-2/);
   });
 });

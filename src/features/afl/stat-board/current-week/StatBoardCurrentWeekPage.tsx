@@ -1,15 +1,18 @@
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, ArrowRight } from "lucide-react";
+import { Lock, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { playerToSlug } from "@/lib/slugs";
 
-import { parseUrlState, buildUrlParams, getThresholdsForMode, resolveSelectedLine } from "./currentWeekUtils";
+import {
+  parseUrlState, buildUrlParams, getThresholdsForMode, resolveSelectedLine,
+  computeScrollTarget, getScrollColumnStep,
+} from "./currentWeekUtils";
 import { useCurrentWeekCompare } from "./useCurrentWeekCompare";
 import { CurrentWeekGameSelector } from "./CurrentWeekGameSelector";
 import { CurrentWeekControls, MobileLinePicker } from "./CurrentWeekControls";
-import { MatchupComparisonTable } from "./MatchupComparisonTable";
+import { MatchupComparisonTable, PLAYER_W, L5_W, THRESH_W } from "./MatchupComparisonTable";
 import type { StatBoardMatch } from "../types";
 import type { StatLens, PositionFilter } from "../types";
 import type { CompareMode, SortKey } from "./currentWeekTypes";
@@ -69,16 +72,85 @@ function LockedMatchBanner({ match }: { match: StatBoardMatch }) {
   );
 }
 
+// ─── Scroll arrow buttons ─────────────────────────────────────────────────────
+
+function ScrollButtons({
+  canScrollPrev,
+  canScrollNext,
+  onScrollPrev,
+  onScrollNext,
+  homeTableId,
+  awayTableId,
+}: {
+  canScrollPrev: boolean;
+  canScrollNext: boolean;
+  onScrollPrev: () => void;
+  onScrollNext: () => void;
+  homeTableId: string;
+  awayTableId: string;
+}) {
+  // aria-controls lists both tables so screen readers know what each button affects
+  const controls = `${homeTableId} ${awayTableId}`;
+
+  return (
+    <div
+      className="flex items-center gap-0.5 flex-shrink-0"
+      data-testid="scroll-buttons"
+    >
+      <button
+        onClick={onScrollPrev}
+        disabled={!canScrollPrev}
+        aria-label="Show previous threshold lines"
+        aria-controls={controls}
+        title="Previous lines"
+        data-testid="scroll-prev"
+        className={[
+          "flex items-center justify-center rounded transition-colors duration-100",
+          "border border-white/[0.08] bg-white/[0.03]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
+          canScrollPrev
+            ? "text-white/55 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.14]"
+            : "text-white/15 cursor-not-allowed border-white/[0.04]",
+        ].join(" ")}
+        style={{ width: 28, height: 28, minWidth: 40, minHeight: 40, padding: "6px 0" }}
+      >
+        <ChevronLeft size={11} aria-hidden="true" />
+      </button>
+      <button
+        onClick={onScrollNext}
+        disabled={!canScrollNext}
+        aria-label="Show next threshold lines"
+        aria-controls={controls}
+        title="Next lines"
+        data-testid="scroll-next"
+        className={[
+          "flex items-center justify-center rounded transition-colors duration-100",
+          "border border-white/[0.08] bg-white/[0.03]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
+          canScrollNext
+            ? "text-white/55 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.14]"
+            : "text-white/15 cursor-not-allowed border-white/[0.04]",
+        ].join(" ")}
+        style={{ width: 28, height: 28, minWidth: 40, minHeight: 40, padding: "6px 0" }}
+      >
+        <ChevronRight size={11} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Team section header ──────────────────────────────────────────────────────
 
 function TeamHeader({
   teamName,
   side,
   playerCount,
+  scrollButtons,
 }: {
   teamName: string;
   side: "HOME" | "AWAY";
   playerCount: number;
+  scrollButtons?: React.ReactNode;
 }) {
   return (
     <div
@@ -100,6 +172,11 @@ function TeamHeader({
       <span className="text-[10px] text-white/25 flex-shrink-0 ml-1">
         {playerCount} players
       </span>
+      {scrollButtons && (
+        <div className="ml-auto flex-shrink-0">
+          {scrollButtons}
+        </div>
+      )}
     </div>
   );
 }
@@ -115,7 +192,10 @@ function TeamSection({
   onSelectLine,
   scrollRef,
   onScroll,
+  onCentered,
   onPlayerClick,
+  scrollContainerId,
+  scrollButtons,
 }: {
   teamName: string;
   side: "HOME" | "AWAY";
@@ -125,7 +205,10 @@ function TeamSection({
   onSelectLine: (line: number) => void;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onScroll: (scrollLeft: number) => void;
+  onCentered?: (scrollLeft: number) => void;
   onPlayerClick?: (playerName: string) => void;
+  scrollContainerId: string;
+  scrollButtons?: React.ReactNode;
 }) {
   return (
     <section
@@ -136,7 +219,12 @@ function TeamSection({
         paddingTop: 2,
       }}
     >
-      <TeamHeader teamName={teamName} side={side} playerCount={players.length} />
+      <TeamHeader
+        teamName={teamName}
+        side={side}
+        playerCount={players.length}
+        scrollButtons={scrollButtons}
+      />
       <MatchupComparisonTable
         players={players}
         thresholds={thresholds}
@@ -144,8 +232,10 @@ function TeamSection({
         onSelectLine={onSelectLine}
         externalScrollRef={scrollRef}
         onScroll={onScroll}
+        onCentered={onCentered}
         onPlayerClick={onPlayerClick}
         teamLabel={teamName}
+        scrollContainerId={scrollContainerId}
       />
     </section>
   );
@@ -171,6 +261,11 @@ function TableSkeleton() {
     </div>
   );
 }
+
+// ─── Constant table IDs ───────────────────────────────────────────────────────
+
+const HOME_TABLE_ID = "matchup-home-scroll";
+const AWAY_TABLE_ID = "matchup-away-scroll";
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -223,6 +318,34 @@ export default function StatBoardCurrentWeekPage() {
   const suppressHomeSync = useRef(false);
   const suppressAwaySync = useRef(false);
 
+  // ── Scroll button state ───────────────────────────────────────────────────
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
+
+  // Detect prefers-reduced-motion once at mount
+  const prefersReducedMotion = useRef(
+    typeof window !== "undefined"
+      ? (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false)
+      : false,
+  );
+
+  /** Read current scroll state from the DOM and push to React state. */
+  const syncScrollButtonState = useCallback((scrollLeft?: number) => {
+    const el = homeScrollRef.current ?? awayScrollRef.current;
+    if (!el) {
+      setCanScrollPrev(false);
+      setCanScrollNext(false);
+      setShowScrollButtons(false);
+      return;
+    }
+    const pos      = scrollLeft ?? el.scrollLeft;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    setCanScrollPrev(pos > 1);
+    setCanScrollNext(pos < maxScroll - 1);
+    setShowScrollButtons(maxScroll > 1);
+  }, []);
+
   /*
    * Board Lines mode: synchronise horizontal scroll across both team tables
    * so the same threshold column is visible in both.
@@ -230,20 +353,97 @@ export default function StatBoardCurrentWeekPage() {
    * still keep the same handlers wired so code stays symmetric.
    */
   const handleHomeScroll = useCallback((scrollLeft: number) => {
+    syncScrollButtonState(scrollLeft);
     const away = awayScrollRef.current;
     if (!away || suppressHomeSync.current) return;
     suppressAwaySync.current = true;
     away.scrollLeft = scrollLeft;
     requestAnimationFrame(() => { suppressAwaySync.current = false; });
-  }, []);
+  }, [syncScrollButtonState]);
 
   const handleAwayScroll = useCallback((scrollLeft: number) => {
+    syncScrollButtonState(scrollLeft);
     const home = homeScrollRef.current;
     if (!home || suppressAwaySync.current) return;
     suppressHomeSync.current = true;
     home.scrollLeft = scrollLeft;
     requestAnimationFrame(() => { suppressHomeSync.current = false; });
-  }, []);
+  }, [syncScrollButtonState]);
+
+  /** Called by each table after its centering animation settles. */
+  const handleCentered = useCallback((scrollLeft: number) => {
+    syncScrollButtonState(scrollLeft);
+  }, [syncScrollButtonState]);
+
+  // Re-evaluate scroll button availability when thresholds / mode / match change
+  useEffect(() => {
+    // Defer to let the DOM reflect any layout changes
+    const raf = requestAnimationFrame(() => syncScrollButtonState());
+    return () => cancelAnimationFrame(raf);
+  }, [thresholds, mode, stat, selectedMatch, syncScrollButtonState]);
+
+  // ResizeObserver: keep button states correct when the viewport resizes
+  useEffect(() => {
+    const el = homeScrollRef.current ?? awayScrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => syncScrollButtonState());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [syncScrollButtonState, selectedMatch]);
+
+  // ── Scroll button click handlers ──────────────────────────────────────────
+
+  const handleScrollPrev = useCallback(() => {
+    const home = homeScrollRef.current;
+    if (!home) return;
+    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    const target = computeScrollTarget(
+      "prev",
+      home.scrollLeft,
+      home.clientWidth,
+      totalScrollWidth,
+      THRESH_W,
+    );
+    const behavior = prefersReducedMotion.current ? ("instant" as const) : ("smooth" as const);
+    suppressHomeSync.current = true;
+    suppressAwaySync.current = true;
+    home.scrollTo({ left: target, behavior });
+    awayScrollRef.current?.scrollTo({ left: target, behavior });
+    setCanScrollPrev(target > 1);
+    setCanScrollNext(target < Math.max(0, home.scrollWidth - home.clientWidth) - 1);
+    requestAnimationFrame(() => {
+      suppressHomeSync.current = false;
+      suppressAwaySync.current = false;
+      syncScrollButtonState();
+    });
+  }, [thresholds, syncScrollButtonState, prefersReducedMotion]);
+
+  const handleScrollNext = useCallback(() => {
+    const home = homeScrollRef.current;
+    if (!home) return;
+    const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
+    const target = computeScrollTarget(
+      "next",
+      home.scrollLeft,
+      home.clientWidth,
+      totalScrollWidth,
+      THRESH_W,
+    );
+    const behavior = prefersReducedMotion.current ? ("instant" as const) : ("smooth" as const);
+    suppressHomeSync.current = true;
+    suppressAwaySync.current = true;
+    home.scrollTo({ left: target, behavior });
+    awayScrollRef.current?.scrollTo({ left: target, behavior });
+    setCanScrollPrev(target > 1);
+    setCanScrollNext(target < Math.max(0, home.scrollWidth - home.clientWidth) - 1);
+    requestAnimationFrame(() => {
+      suppressHomeSync.current = false;
+      suppressAwaySync.current = false;
+      syncScrollButtonState();
+    });
+  }, [thresholds, syncScrollButtonState, prefersReducedMotion]);
+
+  // ── Other handlers ────────────────────────────────────────────────────────
 
   const handlePlayerClick = useCallback((playerName: string) => {
     const slug = playerToSlug(playerName);
@@ -280,6 +480,18 @@ export default function StatBoardCurrentWeekPage() {
     mode === "board"
       ? "flex flex-col xl:grid xl:grid-cols-2 gap-0 xl:gap-6"
       : "flex flex-col gap-0";
+
+  // Scroll buttons node — shared between both team headers
+  const scrollButtonsNode = showScrollButtons ? (
+    <ScrollButtons
+      canScrollPrev={canScrollPrev}
+      canScrollNext={canScrollNext}
+      onScrollPrev={handleScrollPrev}
+      onScrollNext={handleScrollNext}
+      homeTableId={HOME_TABLE_ID}
+      awayTableId={AWAY_TABLE_ID}
+    />
+  ) : null;
 
   return (
     <>
@@ -494,7 +706,10 @@ export default function StatBoardCurrentWeekPage() {
               onSelectLine={lineChangeHandler}
               scrollRef={homeScrollRef}
               onScroll={handleHomeScroll}
+              onCentered={handleCentered}
               onPlayerClick={handlePlayerClick}
+              scrollContainerId={HOME_TABLE_ID}
+              scrollButtons={scrollButtonsNode}
             />
             <TeamSection
               teamName={selectedMatch.away_team_name}
@@ -505,7 +720,10 @@ export default function StatBoardCurrentWeekPage() {
               onSelectLine={lineChangeHandler}
               scrollRef={awayScrollRef}
               onScroll={handleAwayScroll}
+              onCentered={handleCentered}
               onPlayerClick={handlePlayerClick}
+              scrollContainerId={AWAY_TABLE_ID}
+              scrollButtons={scrollButtonsNode}
             />
           </div>
         ) : null}
@@ -513,3 +731,6 @@ export default function StatBoardCurrentWeekPage() {
     </>
   );
 }
+
+// Export for testing
+export { getScrollColumnStep };

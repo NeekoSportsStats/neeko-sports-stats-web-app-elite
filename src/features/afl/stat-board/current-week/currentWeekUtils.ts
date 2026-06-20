@@ -211,6 +211,52 @@ export function fmtAvg(val: number | null): string {
   return val.toFixed(1);
 }
 
+// ─── Scroll button helpers ────────────────────────────────────────────────────
+
+/**
+ * Number of threshold columns to move per scroll-button press.
+ * Calibrated to container width so the step feels proportionate.
+ */
+export function getScrollColumnStep(containerWidth: number): number {
+  if (containerWidth >= 1280) return 5;
+  if (containerWidth >= 768)  return 4;
+  return 3;
+}
+
+/**
+ * Snap an arbitrary scrollLeft to the nearest column boundary so the first
+ * visible threshold always aligns cleanly to the left edge of its cell.
+ */
+export function snapToColumn(scrollLeft: number, threshW: number): number {
+  if (threshW <= 0) return 0;
+  return Math.round(scrollLeft / threshW) * threshW;
+}
+
+/**
+ * Compute the target scrollLeft for a scroll-button press.
+ *
+ * @param direction       'prev' or 'next'
+ * @param scrollLeft      current scrollLeft of the scroll container
+ * @param containerWidth  visible width of the scroll container (clientWidth)
+ * @param totalScrollWidth full width of scrollable content
+ * @param threshW         width of one threshold column in pixels
+ */
+export function computeScrollTarget(
+  direction: 'prev' | 'next',
+  scrollLeft: number,
+  containerWidth: number,
+  totalScrollWidth: number,
+  threshW: number,
+): number {
+  const colStep  = getScrollColumnStep(containerWidth) * threshW;
+  const snapped  = snapToColumn(scrollLeft, threshW);
+  const maxScroll = Math.max(0, totalScrollWidth - containerWidth);
+  if (direction === 'next') {
+    return Math.min(snapped + colStep, maxScroll);
+  }
+  return Math.max(0, snapped - colStep);
+}
+
 // ─── Re-export useful stat helpers ───────────────────────────────────────────
 
 export { getThresholdsForMode as thresholdsForMode, defaultThreshold, thresholdsForLens };

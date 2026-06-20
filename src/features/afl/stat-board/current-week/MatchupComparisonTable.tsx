@@ -12,8 +12,12 @@ interface Props {
   externalScrollRef: React.RefObject<HTMLDivElement | null>;
   /** Called when user scrolls so parent can mirror to the other table. */
   onScroll?: (scrollLeft: number) => void;
+  /** Called after the selected-line centering settles, with the final scrollLeft. */
+  onCentered?: (scrollLeft: number) => void;
   onPlayerClick?: (playerName: string) => void;
   teamLabel?: string;
+  /** id applied to the scroll container for aria-controls references */
+  scrollContainerId?: string;
 }
 
 /*
@@ -22,10 +26,6 @@ interface Props {
  * Player column: sticky at left=0, ~200px desktop / min 120px
  * L5 column:     sticky at left=PLAYER_W, ~68px desktop / min 44px
  * Each threshold cell: 72px desktop minimum
- *
- * The L5 column is the SECOND sticky column, positioned immediately after Player.
- * On mobile (<640px) L5 may lose stickiness when viewport is very narrow; this
- * is handled by reducing PLAYER_W and L5_W minimums.
  */
 const PLAYER_W  = 200;  // px, sticky Player column
 const L5_W      = 68;   // px, sticky L5 column
@@ -45,9 +45,7 @@ function computeCentreOffset(
 ): number {
   const stickyWidth = playerW + l5W;
   const scrollableWidth = containerWidth - stickyWidth;
-  // Left edge of selected cell in the scrollable zone
   const cellLeft = idx * threshW;
-  // Target: cell centre lands at scrollable centre
   const target = cellLeft - scrollableWidth / 2 + threshW / 2;
   const maxScroll = totalThresholds * threshW - scrollableWidth;
   return Math.max(0, Math.min(target, Math.max(0, maxScroll)));
@@ -60,10 +58,24 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   onSelectLine,
   externalScrollRef,
   onScroll,
+  onCentered,
   onPlayerClick,
   teamLabel = "team",
+  scrollContainerId,
 }: Props) {
   const suppressSync = useRef(false);
+  const leftFadeRef  = useRef<HTMLDivElement | null>(null);
+  const rightFadeRef = useRef<HTMLDivElement | null>(null);
+
+  /** Update fade overlays via direct DOM mutation to avoid re-renders. */
+  const updateFades = useCallback(() => {
+    const el = externalScrollRef.current;
+    if (!el) return;
+    const atStart = el.scrollLeft <= 1;
+    const atEnd   = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1;
+    if (leftFadeRef.current)  leftFadeRef.current.style.opacity  = atStart ? "0" : "1";
+    if (rightFadeRef.current) rightFadeRef.current.style.opacity = atEnd   ? "0" : "1";
+  }, [externalScrollRef]);
 
   // Centre the selected column in the scroll container
   const centerSelectedColumn = useCallback(() => {
@@ -71,7 +83,6 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     if (!container) return;
     const totalScrollWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
     if (totalScrollWidth <= container.clientWidth) {
-      // No overflow — nothing to centre
       return;
     }
     const idx = thresholds.indexOf(selectedLine);
@@ -87,25 +98,35 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     // Suppress outgoing scroll events so we don't create a sync loop
     suppressSync.current = true;
     container.scrollLeft = target;
-    requestAnimationFrame(() => { suppressSync.current = false; });
-  }, [selectedLine, thresholds, externalScrollRef]);
+    requestAnimationFrame(() => {
+      suppressSync.current = false;
+      updateFades();
+      onCentered?.(container.scrollLeft);
+    });
+  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered]);
 
   // Re-centre when selected line changes
   useEffect(() => {
     centerSelectedColumn();
   }, [centerSelectedColumn]);
 
+  // Refresh fades when threshold set changes (overflow may change)
+  useEffect(() => {
+    updateFades();
+  }, [thresholds, updateFades]);
+
   // Forward scroll events to parent for cross-table sync
   useEffect(() => {
     const el = externalScrollRef.current;
-    if (!el || !onScroll) return;
+    if (!el) return;
     const handler = () => {
+      updateFades();
       if (suppressSync.current) return;
-      onScroll(el.scrollLeft);
+      onScroll?.(el.scrollLeft);
     };
     el.addEventListener("scroll", handler, { passive: true });
     return () => el.removeEventListener("scroll", handler);
-  }, [externalScrollRef, onScroll]);
+  }, [externalScrollRef, onScroll, updateFades]);
 
   if (!players.length) {
     return (
@@ -123,131 +144,158 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   const totalMinWidth = PLAYER_W + L5_W + thresholds.length * THRESH_W;
 
   return (
-    <div
-      ref={externalScrollRef}
-      data-testid="table-scroll-container"
-      className="overflow-x-auto no-scrollbar"
-      style={{ WebkitOverflowScrolling: "touch" }}
-      role="region"
-      aria-label={`${teamLabel} player comparison table`}
-    >
-      <table
-        data-testid="comparison-table"
+    <div className="relative">
+      {/* Left overflow fade — visible after scrolling away from start */}
+      <div
+        ref={leftFadeRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 bottom-0 z-30 transition-opacity duration-150"
         style={{
-          width: "100%",
-          tableLayout: "fixed",
-          borderCollapse: "collapse",
-          minWidth: totalMinWidth,
+          width: 48,
+          opacity: 0,
+          background: `linear-gradient(to right, ${CELL_BG} 0%, transparent 100%)`,
         }}
-        role="grid"
-        aria-label={`${teamLabel} player comparison`}
+      />
+
+      <div
+        id={scrollContainerId}
+        ref={externalScrollRef}
+        data-testid="table-scroll-container"
+        className="overflow-x-auto no-scrollbar"
+        style={{ WebkitOverflowScrolling: "touch" }}
+        role="region"
+        aria-label={`${teamLabel} player comparison table`}
       >
-        <colgroup>
-          <col style={{ width: PLAYER_W }} />
-          <col style={{ width: L5_W }} />
-          {thresholds.map((t) => (
-            <col key={t} style={{ width: THRESH_W }} />
-          ))}
-        </colgroup>
+        <table
+          data-testid="comparison-table"
+          style={{
+            width: "100%",
+            tableLayout: "fixed",
+            borderCollapse: "collapse",
+            minWidth: totalMinWidth,
+          }}
+          role="grid"
+          aria-label={`${teamLabel} player comparison`}
+        >
+          <colgroup>
+            <col style={{ width: PLAYER_W }} />
+            <col style={{ width: L5_W }} />
+            {thresholds.map((t) => (
+              <col key={t} style={{ width: THRESH_W }} />
+            ))}
+          </colgroup>
 
-        {/* Sticky header row */}
-        <thead>
-          <tr
-            style={{
-              background: HDR_BG,
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
-            }}
-          >
-            {/* Sticky: Player */}
-            <th
-              scope="col"
+          {/* Sticky header row */}
+          <thead>
+            <tr
               style={{
-                height: ROW_H,
-                paddingLeft: "var(--page-px)",
-                paddingRight: 8,
-                textAlign: "left",
-                verticalAlign: "middle",
-                position: "sticky",
-                left: 0,
-                zIndex: 22,
                 background: HDR_BG,
-                borderRight: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: "1px solid rgba(255,255,255,0.07)",
               }}
             >
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
-                Player
-              </span>
-            </th>
+              {/* Sticky: Player */}
+              <th
+                scope="col"
+                style={{
+                  height: ROW_H,
+                  paddingLeft: "var(--page-px)",
+                  paddingRight: 8,
+                  textAlign: "left",
+                  verticalAlign: "middle",
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 22,
+                  background: HDR_BG,
+                  borderRight: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
+                  Player
+                </span>
+              </th>
 
-            {/* Sticky: L5 */}
-            <th
-              scope="col"
-              style={{
-                height: ROW_H,
-                textAlign: "center",
-                verticalAlign: "middle",
-                position: "sticky",
-                left: PLAYER_W,
-                zIndex: 21,
-                background: HDR_BG,
-                borderRight: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
-                L5
-              </span>
-            </th>
+              {/* Sticky: L5 */}
+              <th
+                scope="col"
+                style={{
+                  height: ROW_H,
+                  textAlign: "center",
+                  verticalAlign: "middle",
+                  position: "sticky",
+                  left: PLAYER_W,
+                  zIndex: 21,
+                  background: HDR_BG,
+                  borderRight: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
+                  L5
+                </span>
+              </th>
 
-            {/* Threshold headers */}
-            {thresholds.map((t) => {
-              const isSelected = t === selectedLine;
-              return (
-                <th
-                  key={t}
-                  scope="col"
-                  style={{ height: ROW_H, padding: 0 }}
-                >
-                  <button
-                    onClick={() => onSelectLine(t)}
-                    className={[
-                      "w-full h-full flex items-center justify-center transition-colors duration-100",
-                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
-                      isSelected
-                        ? "text-white bg-white/[0.07]"
-                        : "text-white/30 hover:text-white/60 hover:bg-white/[0.03]",
-                    ].join(" ")}
-                    style={{
-                      fontSize: 9,
-                      fontWeight: 700,
-                      letterSpacing: "0.03em",
-                      borderBottom: isSelected
-                        ? "2px solid rgba(255,255,255,0.35)"
-                        : "2px solid transparent",
-                      minHeight: ROW_H,
-                    }}
-                    aria-label={`Select line ${t}+`}
-                    aria-pressed={isSelected}
+              {/* Threshold headers */}
+              {thresholds.map((t) => {
+                const isSelected = t === selectedLine;
+                return (
+                  <th
+                    key={t}
+                    scope="col"
+                    style={{ height: ROW_H, padding: 0 }}
                   >
-                    {t}+
-                  </button>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
+                    <button
+                      onClick={() => onSelectLine(t)}
+                      className={[
+                        "w-full h-full flex items-center justify-center transition-colors duration-100",
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
+                        isSelected
+                          ? "text-white bg-white/[0.07]"
+                          : "text-white/30 hover:text-white/60 hover:bg-white/[0.03]",
+                      ].join(" ")}
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.03em",
+                        borderBottom: isSelected
+                          ? "2px solid rgba(255,255,255,0.35)"
+                          : "2px solid transparent",
+                        minHeight: ROW_H,
+                      }}
+                      aria-label={`Select line ${t}+`}
+                      aria-pressed={isSelected}
+                    >
+                      {t}+
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
 
-        <tbody>
-          {players.map((cp) => (
-            <TableRow
-              key={cp.player.player_id}
-              cp={cp}
-              thresholds={thresholds}
-              selectedLine={selectedLine}
-              onPlayerClick={onPlayerClick}
-            />
-          ))}
-        </tbody>
-      </table>
+          <tbody>
+            {players.map((cp) => (
+              <TableRow
+                key={cp.player.player_id}
+                cp={cp}
+                thresholds={thresholds}
+                selectedLine={selectedLine}
+                onPlayerClick={onPlayerClick}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Right overflow fade — hidden when at the rightmost position */}
+      <div
+        ref={rightFadeRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 bottom-0 z-30 transition-opacity duration-150"
+        style={{
+          width: 48,
+          opacity: 1,
+          background: `linear-gradient(to left, ${CELL_BG} 0%, transparent 100%)`,
+        }}
+      />
     </div>
   );
 });
