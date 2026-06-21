@@ -170,6 +170,7 @@ function App() {
         <Route path="/neeko-plus-purchase" element={<RequireAuth><S fallback={Generic}><NeekoPlusPurchase /></S></RequireAuth>} />
 
         <Route path="/checkout" element={<RequireAuth><S fallback={Generic}><StartCheckout /></S></RequireAuth>} />
+        <Route path="/start-checkout" element={<S fallback={Generic}><StartCheckout /></S>} />
         <Route path="/success" element={<RequireAuth><S fallback={Generic}><Success /></S></RequireAuth>} />
         <Route path="/cancel" element={<RequireAuth><S fallback={Generic}><Cancel /></S></RequireAuth>} />
 
