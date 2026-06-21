@@ -31,8 +31,8 @@ export default function MobileUpgradeBar({ state }: Props) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
       <div
-        className="flex items-center gap-2 px-3 py-2.5 bg-[#0d0d0d] border-t border-white/[0.08]"
-        style={{ boxShadow: "0 -8px 32px rgba(0,0,0,0.7)", paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
+        className="flex items-center gap-2 px-3 py-2 bg-[#0d0d0d] border-t border-white/[0.08]"
+        style={{ boxShadow: "0 -8px 32px rgba(0,0,0,0.7)", paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
       >
         {/* Dismiss */}
         <button

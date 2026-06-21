@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { X, Lock, Check } from "lucide-react";
+import { track } from "@/lib/analytics";
 import type { StatBoardMatch } from "../types";
 
 interface Props {
@@ -143,12 +144,12 @@ export function MobileMatchBottomSheet({ matches, selected, hasFullAccess, onSel
             <div className="mt-2 flex items-center gap-3">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-                <span className="text-[10px] text-white/38">Free Board</span>
+                <span className="text-[10px] text-white/38">Free Game</span>
               </span>
               <span className="text-white/12">·</span>
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" aria-hidden />
-                <span className="text-[10px] text-white/38">Preview Board</span>
+                <span className="text-[10px] text-white/38">Limited Preview</span>
               </span>
               <span className="text-white/12">·</span>
               <span className="flex items-center gap-1.5">
@@ -203,7 +204,11 @@ export function MobileMatchBottomSheet({ matches, selected, hasFullAccess, onSel
                     role="option"
                     aria-selected={isSelected}
                     data-selected={isSelected ? "true" : undefined}
-                    onClick={() => { onSelect(match); onClose(); }}
+                    onClick={() => {
+                      if (isLocked) track("locked_match_clicked", { source: "locked_match_selector", match_id: match.match_id });
+                      onSelect(match);
+                      onClose();
+                    }}
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 text-left
                       transition-colors duration-75 focus:outline-none focus-visible:bg-white/8
