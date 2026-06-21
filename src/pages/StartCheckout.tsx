@@ -152,7 +152,7 @@ const StartCheckout = () => {
           animation: "spin 0.8s linear infinite",
           margin: "0 auto 14px",
         }} />
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>Starting checkout...</p>
+        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>Taking you to secure checkout...</p>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

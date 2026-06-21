@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { FreeRoundPreviewTable } from "@/components/landing/FreeRoundPreviewTable";
 
 // ── Build marker — proves this exact code is running in production ────────────
-const BUILD_MARKER = "cta_hotfix_v5";
+const BUILD_MARKER = "cta_hotfix_v6";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 const ENABLE_TIKTOK_STICKY_CTA = false;
@@ -604,7 +604,7 @@ export default function TikTokLanding() {
           <HardenedTikTokLink
             href={paidHref}
             cta_type="paid"
-            cta_text="Start 7-Day Access — A$7.99"
+            cta_text="7-Day Round Pass — $7.99 once"
             cta_location="tiktok_landing_hero"
             destination="/auth?mode=signup&plan_key=round_pass_7d"
             {...PAID_TRACKING}
@@ -618,7 +618,7 @@ export default function TikTokLanding() {
               boxShadow: "0 5px 20px rgba(224,174,45,0.24)",
             }}
           >
-            Start 7-Day Access — A$7.99
+            7-Day Round Pass — $7.99 once
           </HardenedTikTokLink>
 
           <div style={{
@@ -715,7 +715,7 @@ export default function TikTokLanding() {
           <HardenedTikTokLink
             href={paidHref}
             cta_type="paid"
-            cta_text="Start 7-Day Access"
+            cta_text="Get 7-Day Round Pass — $7.99 once"
             cta_location="tiktok_landing_round_pass_section"
             destination="/auth?mode=signup&plan_key=round_pass_7d"
             {...PAID_TRACKING}
@@ -731,7 +731,7 @@ export default function TikTokLanding() {
               marginBottom: 14,
             }}
           >
-            Start 7-Day Access
+            Get 7-Day Round Pass — $7.99 once
           </HardenedTikTokLink>
 
           {/* Trust chips */}
@@ -867,7 +867,7 @@ export default function TikTokLanding() {
                 pointerEvents: "auto",
               }}
             >
-              7-Day Access — A$7.99
+              7-Day Pass — $7.99 once
             </a>
           </div>
         </div>

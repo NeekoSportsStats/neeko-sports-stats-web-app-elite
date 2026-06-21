@@ -438,15 +438,17 @@ const Auth = () => {
               <h2 className="text-xl font-semibold">
                 {isPurchaseIntent
                   ? mode === "signup"
-                    ? "Create account to continue"
-                    : "Sign in to continue"
+                    ? "Create a free account to continue"
+                    : "Sign in to continue to checkout"
                   : mode === "login"
                     ? "Welcome Back"
                     : "Create Account"}
               </h2>
               {isPurchaseIntent && (
                 <p className="text-sm text-muted-foreground">
-                  You&apos;ll be taken straight to checkout after {mode === "signup" ? "signing up" : "signing in"}.
+                  {mode === "signup"
+                    ? "We need an account to issue your access and manage your purchase."
+                    : "You'll be taken straight to checkout after signing in."}
                 </p>
               )}
             </div>
@@ -570,8 +572,14 @@ const Auth = () => {
                   ? "Loading..."
                   : mode === "login"
                     ? isPurchaseIntent ? "Sign In & Continue to Checkout" : "Sign In"
-                    : isPurchaseIntent ? "Create Account & Continue" : "Sign Up"}
+                    : isPurchaseIntent ? "Continue to Secure Checkout" : "Sign Up"}
               </Button>
+
+              {isPurchaseIntent && !loading && (
+                <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.28)", marginTop: 8 }}>
+                  Secure checkout via Stripe. No card saved until checkout.
+                </p>
+              )}
 
               {/* INLINE ERROR MESSAGE */}
               {formError && (
