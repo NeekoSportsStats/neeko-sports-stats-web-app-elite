@@ -119,7 +119,7 @@ function PlayerPreviewHeader() {
       background: "rgba(255,255,255,0.018)",
     }}>
       <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.10em" }}>Player</span>
-      <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "center" }}>Proj</span>
+      <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "center" }}>Avg</span>
       <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "center" }}>Hit</span>
       <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "center" }}>Conf</span>
     </div>
@@ -279,7 +279,7 @@ function FreeRoundPreview() {
   if (matches.length === 0) {
     return (
       <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "20px 16px", textAlign: "center" }}>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.30)" }}>Preview updates before each round. Check back closer to lockout.</p>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.30)" }}>Preview updates before each round. Check back closer to the bounce.</p>
       </div>
     );
   }
@@ -298,8 +298,7 @@ function FreeRoundPreview() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span className="live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.70)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Round Preview</span>
-        </div>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.70)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Round Preview</span>        </div>
         {weekNum != null && (
           <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Week {weekNum}</span>
         )}
@@ -385,7 +384,7 @@ function FreeRoundPreview() {
       {!playersLoading && players.length === 0 ? (
         <div style={{ padding: "18px 14px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>
-            No data yet for this game. Check back closer to lockout.
+            No data yet for this game. Check back closer to the bounce.
           </p>
         </div>
       ) : (
@@ -502,7 +501,7 @@ function TeamTotalOutlook() {
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <UnlockIcon size={12} style={{ color: "rgba(34,197,94,0.60)", flexShrink: 0 }} />
           <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.65)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {hasProjections ? "Team Projection Outlook" : "Free Game Access"}
+            {hasProjections ? "Matchup Outlook" : "Free Game Access"}
           </span>
         </div>
         <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.30)", letterSpacing: "0.08em", textTransform: "uppercase" }}>2 games this week</span>
@@ -516,7 +515,7 @@ function TeamTotalOutlook() {
         </div>
       ) : games.length === 0 ? (
         <div style={{ padding: "16px 14px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Free games available closer to lockout.</p>
+          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Free games available closer to the bounce.</p>
         </div>
       ) : (
         <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -556,7 +555,7 @@ function TeamTotalOutlook() {
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
                   }}>
-                    Free Preview
+                    Free Game
                   </span>
                 </div>
 
@@ -574,7 +573,7 @@ function TeamTotalOutlook() {
                       <p style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
                         {g.homeProjection != null ? Math.round(g.homeProjection) : "—"}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>avg</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", color: "rgba(255,255,255,0.20)", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>v</div>
                     <div style={{
@@ -588,7 +587,7 @@ function TeamTotalOutlook() {
                       <p style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
                         {g.awayProjection != null ? Math.round(g.awayProjection) : "—"}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>avg</p>
                     </div>
                   </div>
                 )}
@@ -659,7 +658,7 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
             <Lock size={11} style={{ color: "rgba(224,174,45,0.90)" }} />
           </div>
           <span style={{ fontSize: 13, fontWeight: 900, color: "rgba(224,174,45,0.92)", letterSpacing: "-0.01em" }}>
-            Unlock Every Match
+            Unlock every match
           </span>
           <span style={{
             marginLeft: "auto",
@@ -794,10 +793,10 @@ function useFantasyHubPlayers(): { slots: FantasySlot[]; loading: boolean } {
           ?? byProj.find(p => !usedIds2.has(p.player_id)) ?? null;
 
         setSlots([
-          { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: target?.player_name ?? null,  team: target?.team ?? null,  projection: target?.projection ?? null },
-          { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: trap?.player_name ?? null,    team: trap?.team ?? null,    projection: trap?.projection ?? null },
-          { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", playerName: captain?.player_name ?? null, team: captain?.team ?? null, projection: captain?.projection ?? null },
-          { label: "Value Watch",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: value?.player_name ?? null,   team: value?.team ?? null,   projection: value?.projection ?? null },
+          { label: "Form Leader",  icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: target?.player_name ?? null,  team: target?.team ?? null,  projection: target?.projection ?? null },
+          { label: "Form Watch",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: trap?.player_name ?? null,    team: trap?.team ?? null,    projection: trap?.projection ?? null },
+          { label: "Top Scorer",   icon: <Star size={11} />,          color: "#E0AE2D", playerName: captain?.player_name ?? null, team: captain?.team ?? null, projection: captain?.projection ?? null },
+          { label: "Trending Up",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: value?.player_name ?? null,   team: value?.team ?? null,   projection: value?.projection ?? null },
         ]);
         setLoading(false);
       });
@@ -822,18 +821,18 @@ function FantasyHubTeaser() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Star size={12} style={{ color: "rgba(244,197,66,0.70)", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(244,197,66,0.72)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Fantasy Hub</span>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(244,197,66,0.72)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Extra Fantasy Tools</span>
         </div>
-        <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.30)", fontStyle: "italic" }}>This week's intel</span>
+        <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.30)", fontStyle: "italic" }}>Optional extras for fantasy users.</span>
       </div>
 
       {/* Tiles grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "10px 12px 10px" }}>
         {(hasData ? slots : [
-          { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: null, team: null, projection: null },
-          { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: null, team: null, projection: null },
-          { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", playerName: null, team: null, projection: null },
-          { label: "Value Watch",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: null, team: null, projection: null },
+          { label: "Form Leader",  icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: null, team: null, projection: null },
+          { label: "Form Watch",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: null, team: null, projection: null },
+          { label: "Top Scorer",   icon: <Star size={11} />,          color: "#E0AE2D", playerName: null, team: null, projection: null },
+          { label: "Trending Up",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: null, team: null, projection: null },
         ]).map(({ label, icon, color, playerName, team, projection }) => (
           <div key={label} style={{
             background: "rgba(255,255,255,0.025)", border: `1px solid ${color}22`,
@@ -876,10 +875,10 @@ function FantasyHubTeaser() {
               </>
             ) : (
               <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.32)", lineHeight: 1.4 }}>
-                {label === "Top Target"   ? "Best value plays this week."        :
-                 label === "Trap Alert"   ? "Players to avoid this round."       :
-                 label === "Captain Pick" ? "Highest scoring projection."        :
-                                           "Priced below their output."}
+                {label === "Form Leader"  ? "Strongest form this week."           :
+                 label === "Form Watch"   ? "Players with declining form."        :
+                 label === "Top Scorer"   ? "Highest scoring projection."         :
+                                           "Improving output this round."}
               </p>
             )}
           </div>
@@ -907,7 +906,7 @@ function FantasyHubTeaser() {
 
 const PRODUCT_TILES = [
   { label: "Stats Hub",    to: "/stat-board/players", icon: BarChart2Icon, desc: "Disposals, goals and team outlooks.", color: "#22c55e" },
-  { label: "Fantasy",      to: "/fantasy",            icon: Star,           desc: "Targets, traps, captains and value picks.", color: "#E0AE2D" },
+  { label: "Fantasy",      to: "/fantasy",            icon: Star,           desc: "Form leaders, top scorers and trending players.", color: "#E0AE2D" },
   { label: "Players",      to: "/sports/afl/players", icon: Users,          desc: "Player profiles, projections and history.", color: "#60a5fa" },
   { label: "Teams",        to: "/sports/afl/teams",   icon: Shield,         desc: "Team pages, fixtures and matchup context.", color: "#f87171" },
 ] as const;
@@ -960,7 +959,7 @@ function PricingBlock() {
         <h2 style={{ fontSize: "1.15rem", fontWeight: 900, letterSpacing: "-0.022em", color: "#F0F0F0", lineHeight: 1.2, margin: "0 0 4px" }}>
           Unlock Neeko+
         </h2>
-        <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.38)", margin: 0 }}>Get the full round before lockout.</p>
+        <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.38)", margin: 0 }}>Get the full round before the bounce.</p>
       </div>
 
       {/* Free vs Neeko+ comparison */}
@@ -1015,16 +1014,16 @@ function PricingBlock() {
           </span>
         </div>
 
-        {/* Primary — season */}
+        {/* Primary — 7-day round pass */}
         <div style={{ marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 1 }}>
-            <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
+            <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.round_pass_7d.price}</span>
             <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>AUD · one-time</span>
           </div>
-          <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.38)" }}>Full season · best value</p>
+          <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.38)" }}>7-Day Round Pass · no subscription</p>
         </div>
 
-        {/* Secondary — weekly */}
+        {/* Secondary — full season */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: "rgba(255,255,255,0.04)",
@@ -1034,12 +1033,12 @@ function PricingBlock() {
         }}>
           <div>
             <span style={{ fontSize: 15, fontWeight: 800, color: "rgba(255,255,255,0.65)", letterSpacing: "-0.02em" }}>
-              ${NEEKO_PRICING.weekly.price}
+              ${NEEKO_PRICING.season.price}
             </span>
-            <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>/week</span>
+            <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>AUD</span>
           </div>
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", fontStyle: "italic" }}>
-            Weekly · flexible option
+            Full season · best value
           </span>
         </div>
 
@@ -1119,9 +1118,8 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
             fontWeight: 900, lineHeight: 1.16, letterSpacing: "-0.028em",
             color: "#ffffff", marginBottom: 12, textAlign: "center",
           }}>
-            Get 2 full games free every week.{" "}
-            <span style={{ color: "#34d96a" }}>Unlock every matchup</span>{" "}
-            with Neeko+.
+            Research AFL player stats{" "}
+            <span style={{ color: "#34d96a" }}>before the bounce.</span>
           </h1>
 
           <p style={{
@@ -1129,7 +1127,7 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
             textAlign: "center", marginBottom: 22,
             maxWidth: 310, marginLeft: "auto", marginRight: "auto",
           }}>
-            Pick a match, choose a stat, and see projections, form and hit rates before lockout.
+            Check form, hit rates, disposals, goals and matchup trends. Two game boards are free every week.
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -1143,20 +1141,39 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
             }}>
               View free games <ArrowRight size={15} />
             </Link>
-            <Link to="/neeko-plus" onClick={() => trackUnlockAllGames({ source: "mobile_landing_hero", button_text: "Unlock every game", section: "hero" })} style={{
+            <Link to="/neeko-plus" onClick={() => trackUnlockAllGames({ source: "mobile_landing_hero", button_text: "Unlock full round", section: "hero" })} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
               color: "rgba(255,255,255,0.65)", fontWeight: 600, fontSize: 13,
               padding: "10px 20px", borderRadius: 11, textDecoration: "none", minHeight: 40,
             }}>
-              Unlock every game <ChevronRight size={12} />
+              Unlock full round <ChevronRight size={12} />
             </Link>
+          </div>
+
+          {/* Trust chips */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+            {["2 free games weekly", "No subscription for round pass", "Updated each round"].map(chip => (
+              <span key={chip} style={{
+                fontSize: 9.5, fontWeight: 600,
+                color: "rgba(255,255,255,0.38)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 999, padding: "4px 9px",
+                whiteSpace: "nowrap",
+              }}>
+                {chip}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
       <section style={{ padding: "36px 14px 0" }}>
+        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.30)", textAlign: "center", marginBottom: 10, fontStyle: "italic" }}>
+          Sample from this week's free games
+        </p>
         <FreeRoundPreview />
       </section>
 
@@ -1172,17 +1189,17 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
         </section>
       )}
 
-      {/* ─── FANTASY HUB ─── */}
-      <section style={{ padding: "36px 14px 0" }}>
-        <FantasyHubTeaser />
-      </section>
-
       {/* ─── EXPLORE PRODUCT TILES ─── */}
       <section style={{ padding: "36px 14px 0" }}>
         <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14, textAlign: "center" }}>
           Explore Neeko
         </p>
         <ExploreProductTiles />
+      </section>
+
+      {/* ─── FANTASY HUB ─── */}
+      <section style={{ padding: "36px 14px 0" }}>
+        <FantasyHubTeaser />
       </section>
 
       {/* ─── PRICING ─── */}
