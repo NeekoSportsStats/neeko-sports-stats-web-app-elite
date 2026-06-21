@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { playerToSlug } from "@/lib/slugs";
-import { trackUnlockAllGames } from "@/lib/analytics";
+import { trackUnlockAllGames, track } from "@/lib/analytics";
 import { PlayerIntelligencePanel } from "@/components/afl/PlayerIntelligencePanel";
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
@@ -397,13 +397,13 @@ export function ExpandedPlayerPanel({
         upgradeHref="/billing"
       />
 
-      {/* ── View full player analysis link ───────────────────────────────── */}
+      {/* ── Player profile link ──────────────────────────────────────────── */}
       <div className="px-3 sm:px-5 pb-2 sm:pb-3">
         <Link
           to={`/sports/afl/players/${playerToSlug(player.player_name, player.team_name)}`}
           className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
         >
-          View full player analysis
+          Open player profile
         </Link>
       </div>
 
@@ -411,11 +411,11 @@ export function ExpandedPlayerPanel({
       {!isPremium && (
         <div className="px-4 sm:px-5 py-3 border-t border-white/[0.06] flex items-center justify-between gap-3 bg-white/[0.015]">
           <p className="text-[11px] text-white/38 leading-snug">
-            You're viewing a free game. Want the full round?
+            This match is free. Want every match this round?
           </p>
           <Link
             to="/neeko-plus"
-            onClick={() => trackUnlockAllGames({ source: "stat_board_players", button_text: "Unlock full round", section: "after_free_cta" })}
+            onClick={() => { trackUnlockAllGames({ source: "stat_board_players", button_text: "Unlock full round", section: "after_free_cta" }); track("inline_unlock_clicked", { source: "after_free_cta" }); }}
             className="shrink-0 text-[11px] font-semibold text-[#F5C84C] hover:text-[#f7d36a] transition-colors whitespace-nowrap"
           >
             Unlock full round

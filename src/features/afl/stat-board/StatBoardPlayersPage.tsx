@@ -90,7 +90,7 @@ function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPla
 
 function sortButtonLabel(sortKey: SortKey): string {
   switch (sortKey) {
-    case "projection":  return "Projection ↓";
+    case "projection":  return "Projected";
     case "hit_rate":    return "Hit rate ↓";
     case "recent_avg":  return "Recent avg ↓";
     case "name":        return "Name A–Z";
@@ -202,12 +202,14 @@ export default function StatBoardPlayersPage() {
     setSortKey("projection");
     setExpandedPlayerId(null);
     track("stat_board_filter_used", { filter_type: "lens", value: newLens });
+    track("stat_tab_changed", { lens: newLens });
   }
 
   function handleMatchChange(match: StatBoardMatch) {
     setSelectedMatch(match);
     setExpandedPlayerId(null);
     track("Stat Board Match Change", { match_id: match.match_id, match_label: match.match_label });
+    track("match_changed", { match_id: match.match_id });
   }
 
   function handleSortChange(k: SortKey) {
@@ -237,7 +239,10 @@ export default function StatBoardPlayersPage() {
   // Stable callback — prevents TeamBoard memo from busting on every render
   const handleToggleExpand = useCallback((id: number | null) => {
     setExpandedPlayerId(id);
-    if (id !== null) track("stat_board_player_expand", { player_id: id });
+    if (id !== null) {
+      track("stat_board_player_expand", { player_id: id });
+      track("player_card_expanded", { player_id: id });
+    }
   }, []);
 
   // Debounced search tracking via useDeferredValue
@@ -259,6 +264,13 @@ export default function StatBoardPlayersPage() {
       trackGateInteraction({ source: "stat_board_players", section: "locked_match_banner", action: "viewed" });
     }
   }, [isLocked, isMobile]);
+
+  // Track when a free match board is first viewed on mobile
+  useEffect(() => {
+    if (isMobile && accessMode === "free" && selectedMatch) {
+      track("free_board_viewed", { match_id: selectedMatch.match_id });
+    }
+  }, [isMobile, accessMode, selectedMatch?.match_id]);
 
   return (
     <>
@@ -342,11 +354,11 @@ export default function StatBoardPlayersPage() {
           <div className="mb-3 sm:mb-5">
             <h1 className="text-[18px] sm:text-xl font-bold tracking-tight text-white leading-tight">AFL Player Stat Board</h1>
             <p className="mt-0.5 text-[11px] sm:text-sm text-white/45 sm:max-w-xl leading-relaxed">
-              <span className="sm:hidden">Pick a game, choose a stat, compare trends.</span>
+              <span className="sm:hidden">Pick a match and stat to see form, hit rates and recent results.</span>
               <span className="hidden sm:inline">Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.</span>
             </p>
-            {/* Secondary nav */}
-            <div className="flex gap-2 mt-3 flex-wrap">
+            {/* Secondary nav — desktop only */}
+            <div className="hidden sm:flex gap-2 mt-3 flex-wrap">
               <Link
                 to="/stat-board/current-week"
                 className="px-3 py-1.5 rounded-lg text-[11px] font-medium border bg-white/[0.02] border-white/[0.08] text-white/50 hover:bg-white/[0.05] hover:text-white/75 hover:border-white/15 transition-colors"
@@ -406,10 +418,10 @@ export default function StatBoardPlayersPage() {
 
                 {/* Change match button — min 44px tap target */}
                 <button
-                  onClick={() => setMatchSheetOpen(true)}
+                  onClick={() => { setMatchSheetOpen(true); track("match_changed", { source: "mobile_change_button" }); }}
                   className="shrink-0 flex items-center gap-1 rounded-lg bg-white/8 border border-white/12 px-3 py-2 text-[11px] font-semibold text-white/70 hover:bg-white/12 hover:text-white/90 active:bg-white/15 transition-colors min-h-[44px]"
                 >
-                  Change
+                  Change match
                   <ChevronRight className="h-3 w-3 text-white/40" />
                 </button>
               </div>
@@ -435,15 +447,20 @@ export default function StatBoardPlayersPage() {
 
             {/* Access context banner — free game */}
             {!hasFullAccess && accessMode === "free" && (
-              <div ref={bannerRef} className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.05] px-3 py-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 shrink-0" />
-                <p className="text-[10px] text-emerald-400 font-semibold flex-1">Free Board — full stats visible</p>
-                <button
-                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access", section: "free_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
-                  className="shrink-0 text-[9px] font-semibold text-[#60a5fa]/80 hover:text-[#60a5fa] transition-colors whitespace-nowrap"
-                >
-                  Start 7-Day Access
-                </button>
+              <div ref={bannerRef} className="mt-2 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] px-3 py-2" onClick={() => track("free_board_viewed", { match_id: selectedMatch?.match_id })}>
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-emerald-400 font-semibold leading-tight">Free game unlocked</p>
+                    <p className="text-[9px] text-emerald-400/55 mt-0.5 leading-tight">Disposals and goals are open for this match.</p>
+                  </div>
+                  <button
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access", section: "free_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); track("inline_unlock_clicked", { source: "free_banner" }); window.location.href = "/neeko-plus"; }}
+                    className="shrink-0 text-[9px] font-semibold text-[#60a5fa]/80 hover:text-[#60a5fa] transition-colors whitespace-nowrap"
+                  >
+                    Unlock full round
+                  </button>
+                </div>
               </div>
             )}
 
@@ -514,13 +531,13 @@ export default function StatBoardPlayersPage() {
             {/* Mobile controls — compact pill style */}
             <div className="sm:hidden space-y-1.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
-              {/* ROW 1 — STAT FAMILY: independent horizontal scroll */}
+              {/* ROW 1 — STAT FAMILY: independent horizontal scroll; Fantasy hidden under More on mobile */}
               <PillScrollRow aria-label="Filter by stat family">
-                {(["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as StatLens[]).map((l) => (
+                {(["disposals", "goals", "marks", "tackles", "kicks"] as StatLens[]).map((l) => (
                   <button
                     key={l}
                     data-active={lens === l ? "" : undefined}
-                    onClick={() => handleLensChange(l)}
+                    onClick={() => { handleLensChange(l); track("stat_tab_changed", { lens: l }); }}
                     aria-pressed={lens === l}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors border shrink-0 ${
                       lens === l
@@ -531,6 +548,19 @@ export default function StatBoardPlayersPage() {
                     {statLabel(l)}
                   </button>
                 ))}
+                {/* More — reveals Fantasy */}
+                <button
+                  data-active={lens === "fantasy" ? "" : undefined}
+                  onClick={() => { handleLensChange("fantasy"); track("stat_tab_changed", { lens: "fantasy" }); }}
+                  aria-pressed={lens === "fantasy"}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors border shrink-0 ${
+                    lens === "fantasy"
+                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                      : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/65"
+                  }`}
+                >
+                  {lens === "fantasy" ? "Fantasy" : "More"}
+                </button>
               </PillScrollRow>
 
               {/* ROW 2 — POSITION: independent horizontal scroll */}
@@ -1416,10 +1446,10 @@ const TeamBoard = memo(function TeamBoard({
                 </p>
               </div>
               <button
-                onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $7.99", section: "preview_mid_board", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
+                onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Pass — $7.99", section: "preview_mid_board", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); track("upgrade_bar_clicked", { source: "preview_mid_board" }); window.location.href = "/neeko-plus"; }}
                 className="shrink-0 text-[10px] font-semibold text-[#60a5fa] bg-blue-500/10 border border-blue-500/22 rounded-lg px-2.5 py-1.5 hover:bg-blue-500/16 transition-colors whitespace-nowrap min-h-[36px] flex items-center"
               >
-                Start 7-Day Access — $7.99
+                Start 7-Day Pass — $7.99
               </button>
             </div>
 

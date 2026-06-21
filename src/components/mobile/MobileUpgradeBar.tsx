@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Crown, X } from "lucide-react";
-import { trackMobileStickyCTA } from "@/lib/analytics";
+import { trackMobileStickyCTA, track } from "@/lib/analytics";
 
 interface Props {
   state?: "free" | "locked";
@@ -17,16 +17,16 @@ export default function MobileUpgradeBar({ state }: Props) {
   const heading = isLocked
     ? "Locked matchup"
     : isFree
-    ? "2 games free this week"
+    ? "Free game unlocked"
     : "Unlock Full Edge";
 
   const subtext = isLocked
     ? "Upgrade to unlock every match"
     : isFree
-    ? "Upgrade to unlock the full round"
+    ? "Unlock every match this round"
     : "600+ players · projections · trade signals";
 
-  const ctaLabel = isLocked || isFree ? "Start 7-Day Access — $7.99" : "Start 7-Day Access";
+  const ctaLabel = isLocked || isFree ? "Start 7-Day Pass — $7.99" : "Start 7-Day Access";
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
@@ -36,7 +36,7 @@ export default function MobileUpgradeBar({ state }: Props) {
       >
         {/* Dismiss */}
         <button
-          onClick={() => setDismissed(true)}
+          onClick={() => { setDismissed(true); track("upgrade_bar_dismissed", { state: isLocked ? "locked" : "free" }); }}
           aria-label="Dismiss upgrade prompt"
           className="shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-white/22 hover:text-white/50 hover:bg-white/[0.06] transition-colors"
         >
@@ -55,12 +55,13 @@ export default function MobileUpgradeBar({ state }: Props) {
 
         <Link
           to="/start-checkout?plan_key=round_pass_7d"
-          onClick={() =>
+          onClick={() => {
             trackMobileStickyCTA({
               button_text: ctaLabel,
               state: isLocked ? "locked" : "free",
-            })
-          }
+            });
+            track("upgrade_bar_clicked", { state: isLocked ? "locked" : "free", button_text: ctaLabel });
+          }}
           className="flex items-center gap-1.5 bg-[#F5C84C] text-black font-bold text-[12px] px-4 py-2 rounded-xl hover:brightness-110 active:scale-95 transition-all shrink-0 min-h-[40px]"
         >
           {ctaLabel}

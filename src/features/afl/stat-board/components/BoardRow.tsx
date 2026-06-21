@@ -301,7 +301,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           </div>
           {/* Blurred projection placeholder */}
           <div className="text-right shrink-0 select-none" aria-hidden>
-            <p className="text-[7px] text-white/20 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+            <p className="text-[7px] text-white/20 uppercase tracking-wider leading-none mb-0.5">Est</p>
             <span className="text-[17px] font-bold text-white/15 blur-[5px] tabular-nums leading-none">28</span>
           </div>
         </div>
@@ -354,10 +354,10 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
             <div className="flex items-center gap-1 mt-0.5 min-w-0">
               <span className="text-[10px] text-white/35 truncate">{player.team_name || "—"}</span>
               {player.is_home === true && (
-                <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
+                <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">Home</span>
               )}
               {player.is_home === false && (
-                <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>
+                <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">Away</span>
               )}
             </div>
           </div>
@@ -365,7 +365,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           {/* Projection + expand */}
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="text-right">
-              <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+              <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Est</p>
               {isPlayerLocked ? (
                 <span className="text-[14px] font-bold text-white/20 select-none" aria-hidden>••</span>
               ) : projDisplay != null ? (
@@ -390,6 +390,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
 
         {/* ── Row 2: recent chips — wrap safely, smaller on tiny screens ── */}
+        <p className="text-[7px] text-white/22 uppercase tracking-wider leading-none mb-1">Recent results</p>
         <div className="flex items-center gap-[3px] mb-2 flex-wrap" role="list" aria-label="Recent results">
           {timeline != null ? (
             <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
@@ -427,7 +428,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
               {/* Best-line highlight pill — only shown when a meaningful line exists */}
               {bestLineT != null && bestLineRate != null && bestLineHits != null && bestLineGames != null && (
                 <div className="flex items-center gap-1 mb-1.5 min-w-0">
-                  <span className="text-[8px] text-white/30 shrink-0">Best line:</span>
+                  <span className="text-[8px] text-white/30 shrink-0">Best threshold:</span>
                   <span className="text-[8px] font-bold text-emerald-400 shrink-0 tabular-nums">
                     {bestLineT}+ — {bestLineHits}/{bestLineGames} ({bestLineRate}%)
                   </span>
