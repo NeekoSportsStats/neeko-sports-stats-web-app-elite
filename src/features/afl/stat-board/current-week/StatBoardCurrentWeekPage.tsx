@@ -745,6 +745,57 @@ export default function StatBoardCurrentWeekPage() {
             />
           </div>
         ) : null}
+
+        {/* Free-user upgrade prompt — shown below tables after they've browsed */}
+        {!hasFullAccess && !accessLoading && selectedMatch && !isLocked && (
+          <div
+            style={{
+              margin: "8px 0 0",
+              paddingInline: "var(--page-px)",
+              paddingBottom: "calc(clamp(16px,3vw,24px) + env(safe-area-inset-bottom, 0px))",
+            }}
+          >
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+              flexWrap: "wrap",
+              padding: "14px 16px",
+              borderRadius: 12,
+              background: "rgba(96,165,250,0.05)",
+              border: "1px solid rgba(96,165,250,0.15)",
+            }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>
+                  Viewing a free game
+                </p>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>
+                  Unlock every matchup this round — 7-day access, one payment.
+                </p>
+              </div>
+              <Link
+                to="/start-checkout?plan_key=round_pass_7d"
+                onClick={() => track("current_week_upgrade_click", {
+                  source: "bottom_cta",
+                  match_id: selectedMatch.match_id,
+                  plan_key: "round_pass_7d",
+                })}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "9px 16px",
+                  borderRadius: 9,
+                  background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
+                  color: "#eff6ff",
+                  fontSize: 12, fontWeight: 800,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  boxShadow: "0 4px 16px rgba(59,130,246,0.22)",
+                }}
+              >
+                Unlock All Games — $7.99 <ArrowRight size={11} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

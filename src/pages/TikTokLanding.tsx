@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { FreeRoundPreviewTable } from "@/components/landing/FreeRoundPreviewTable";
 
 // ── Build marker — proves this exact code is running in production ────────────
-const BUILD_MARKER = "cta_hotfix_v4";
+const BUILD_MARKER = "cta_hotfix_v5";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 const ENABLE_TIKTOK_STICKY_CTA = false;
@@ -93,7 +93,7 @@ const PAID_TRACKING = {
 // WebView-safe CTA. Tracks gesture movement to distinguish real taps from scrolls.
 // Forces navigation via window.location.assign only on confirmed taps.
 
-const TAP_MOVE_THRESHOLD_PX = 10;
+const TAP_MOVE_THRESHOLD_PX = 15;
 const TAP_MAX_DURATION_MS = 2500;
 
 interface HardenedTikTokLinkProps {

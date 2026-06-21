@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Users, ChartBar as BarChart2, Swords, CalendarDays, ArrowRight } from "lucide-react";
+import { Users, ChartBar as BarChart2, Swords, CalendarDays, ArrowRight, Crown } from "lucide-react";
+import { track } from "@/lib/analytics";
 
 // ── Shared layout tokens (mirrored in FantasyHubPage) ─────────────────────────
 // maxWidth: 680 | padding: clamp(36px,4.5vw,60px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)
@@ -189,6 +190,52 @@ export default function StatBoardHubPage() {
 
           {/* ── Footer strip ──────────────────────────────────────────────── */}
           <FooterStrip steps={["Pick a match", "Choose a stat lens", "Open the page you want to analyse"]} />
+
+          {/* ── Upgrade CTA ───────────────────────────────────────────────── */}
+          <div style={{
+            marginTop: 20,
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+            flexWrap: "wrap",
+            padding: "16px 18px",
+            borderRadius: 12,
+            background: "linear-gradient(150deg, rgba(59,130,246,0.07) 0%, rgba(15,23,42,0.06) 100%)",
+            border: "1px solid rgba(96,165,250,0.16)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Crown size={14} style={{ color: "#F5C84C", flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,0.72)" }}>
+                  Want every game?
+                </p>
+                <p style={{ margin: "1px 0 0", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  7-day round pass — full access, one payment.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/start-checkout?plan_key=round_pass_7d"
+              onClick={() => track("cta_clicked", {
+                cta_location: "stat_board_hub_bottom",
+                cta_text: "Unlock All Games",
+                plan_key: "round_pass_7d",
+                billing_type: "one_time",
+                value: 7.99,
+                currency: "AUD",
+              })}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "9px 16px", borderRadius: 9,
+                background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
+                color: "#eff6ff",
+                fontSize: 12, fontWeight: 800,
+                textDecoration: "none",
+                whiteSpace: "nowrap", flexShrink: 0,
+                boxShadow: "0 4px 16px rgba(59,130,246,0.20)",
+              }}
+            >
+              Unlock All Games — $7.99 <ArrowRight size={11} />
+            </Link>
+          </div>
 
         </div>
       </div>

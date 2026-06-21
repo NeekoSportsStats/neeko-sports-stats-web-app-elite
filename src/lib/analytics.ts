@@ -417,14 +417,35 @@ export function trackAdminEvent(event: string, properties?: Record<string, unkno
    ENGAGEMENT TRACKING (heartbeat + scroll)
 ============================= */
 let heartbeatTimers: ReturnType<typeof setTimeout>[] = [];
-let scrollListenerAttached = false;
+let scrollHandler: (() => void) | null = null;
 let scrollDepthsFired = new Set<number>();
+
+function makeScrollHandler() {
+  return () => {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    if (docHeight <= 0) return;
+
+    const pct = Math.round((scrollTop / docHeight) * 100);
+
+    for (const threshold of [25, 50, 75, 100]) {
+      if (pct >= threshold && !scrollDepthsFired.has(threshold)) {
+        scrollDepthsFired.add(threshold);
+        track("scroll_depth_reached", {
+          depth: threshold,
+          depth_pct: threshold,
+          current_path: getCleanPagePath(),
+        });
+      }
+    }
+  };
+}
 
 export function startEngagementTracking() {
   if (typeof window === "undefined") return;
   if (isAdminRoute()) return;
 
-  // Clear existing
+  // Tear down previous tracking for this route
   stopEngagementTracking();
 
   // Heartbeat events at 15s, 30s, 60s
@@ -434,36 +455,20 @@ export function startEngagementTracking() {
     setTimeout(() => track("session_heartbeat_60s", { current_path: getCleanPagePath() }), 60_000),
   ];
 
-  // Scroll depth
-  if (!scrollListenerAttached) {
-    scrollDepthsFired = new Set();
-
-    const handleScroll = () => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      if (docHeight <= 0) return;
-
-      const pct = Math.round((scrollTop / docHeight) * 100);
-
-      for (const threshold of [25, 50, 75, 100]) {
-        if (pct >= threshold && !scrollDepthsFired.has(threshold)) {
-          scrollDepthsFired.add(threshold);
-          track("scroll_depth_reached", {
-            depth_pct: threshold,
-            current_path: getCleanPagePath(),
-          });
-        }
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    scrollListenerAttached = true;
-  }
+  // Scroll depth — always fresh per route
+  scrollDepthsFired = new Set();
+  scrollHandler = makeScrollHandler();
+  window.addEventListener("scroll", scrollHandler, { passive: true });
 }
 
 export function stopEngagementTracking() {
   for (const t of heartbeatTimers) clearTimeout(t);
   heartbeatTimers = [];
+  if (scrollHandler) {
+    window.removeEventListener("scroll", scrollHandler);
+    scrollHandler = null;
+  }
+  scrollDepthsFired = new Set();
 }
 
 /* =============================

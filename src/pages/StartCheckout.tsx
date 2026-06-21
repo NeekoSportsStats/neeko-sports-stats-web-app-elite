@@ -25,8 +25,11 @@ const StartCheckout = () => {
     if (startedRef.current) return;
     startedRef.current = true;
 
+    track("checkout_page_viewed", { plan_key: plan, source_page: "/start-checkout" });
+
     (async () => {
       if (!supabase) {
+        track("checkout_error", { plan_key: plan, source_page: "/start-checkout", error: "Supabase not initialised" });
         navigate("/neeko-plus", { replace: true });
         return;
       }
@@ -34,6 +37,7 @@ const StartCheckout = () => {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
+        track("checkout_auth_redirect", { plan_key: plan, source_page: "/start-checkout" });
         navigate(`/auth?mode=signup&plan_key=${plan}`, { replace: true });
         return;
       }
