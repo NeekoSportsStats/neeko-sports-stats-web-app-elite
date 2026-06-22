@@ -22,6 +22,8 @@ interface Props {
   playerW?: number;
   /** Override L5 column width (px). Defaults to L5_W (68). Use smaller value on mobile. */
   l5W?: number;
+  /** When false, L5 column is not sticky — scrolls with the threshold columns. Default: true. */
+  l5Sticky?: boolean;
 }
 
 /*
@@ -68,6 +70,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   scrollContainerId,
   playerW: playerWProp,
   l5W: l5WProp,
+  l5Sticky = true,
 }: Props) {
   const playerW = playerWProp ?? PLAYER_W;
   const l5W     = l5WProp     ?? L5_W;
@@ -95,23 +98,26 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     }
     const idx = thresholds.indexOf(selectedLine);
     if (idx < 0) return;
+    // When L5 is non-sticky it scrolls with the thresholds; compute its visual offset
+    const effectiveStickyW = l5Sticky ? playerW + l5W : playerW;
+    const l5Offset = l5Sticky ? 0 : l5W;
     const target = computeCentreOffset(
       container.clientWidth,
-      playerW,
-      l5W,
+      effectiveStickyW,
+      0,
       THRESH_W,
       idx,
       thresholds.length,
-    );
+    ) + l5Offset;
     // Suppress outgoing scroll events so we don't create a sync loop
     suppressSync.current = true;
-    container.scrollLeft = target;
+    container.scrollLeft = Math.max(0, target);
     requestAnimationFrame(() => {
       suppressSync.current = false;
       updateFades();
       onCentered?.(container.scrollLeft);
     });
-  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered, playerW, l5W]);
+  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered, playerW, l5W, l5Sticky]);
 
   // Re-centre when selected line changes
   useEffect(() => {
@@ -222,16 +228,18 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 </span>
               </th>
 
-              {/* Sticky: L5 */}
+              {/* L5 — sticky or scrollable depending on l5Sticky prop */}
               <th
                 scope="col"
                 style={{
                   height: ROW_H,
                   textAlign: "center",
                   verticalAlign: "middle",
-                  position: "sticky",
-                  left: playerW,
-                  zIndex: 21,
+                  ...(l5Sticky ? {
+                    position: "sticky",
+                    left: playerW,
+                    zIndex: 21,
+                  } : {}),
                   background: HDR_BG,
                   borderRight: "1px solid rgba(255,255,255,0.06)",
                 }}
@@ -289,6 +297,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 onPlayerClick={onPlayerClick}
                 playerW={playerW}
                 l5W={l5W}
+                l5Sticky={l5Sticky}
               />
             ))}
           </tbody>
@@ -317,6 +326,7 @@ const TableRow = memo(function TableRow({
   onPlayerClick,
   playerW: playerWProp,
   l5W: l5WProp,
+  l5Sticky = true,
 }: {
   cp: ComparePlayer;
   thresholds: readonly number[];
@@ -324,6 +334,7 @@ const TableRow = memo(function TableRow({
   onPlayerClick?: (playerName: string) => void;
   playerW?: number;
   l5W?: number;
+  l5Sticky?: boolean;
 }) {
   const playerW = playerWProp ?? PLAYER_W;
   const l5W     = l5WProp     ?? L5_W;
@@ -389,12 +400,14 @@ const TableRow = memo(function TableRow({
         </button>
       </td>
 
-      {/* Sticky: L5 avg */}
+      {/* L5 avg — sticky or scrollable */}
       <td
         style={{
-          position: "sticky",
-          left: playerW,
-          zIndex: 10,
+          ...(l5Sticky ? {
+            position: "sticky",
+            left: playerW,
+            zIndex: 10,
+          } : {}),
           background: CELL_BG,
           borderRight: "1px solid rgba(255,255,255,0.06)",
           textAlign: "center",

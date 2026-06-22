@@ -67,7 +67,7 @@ export function CurrentWeekGameSelector({
           <div
             key={i}
             className="animate-pulse bg-white/[0.04] rounded-xl"
-            style={{ height: 56 }}
+            style={{ height: 48 }}
           />
         ))}
       </div>
@@ -150,7 +150,7 @@ function GameCard({
   const statusLabel = () => {
     if (isLocked)               return "Neeko+";
     if (state === "completed")  return "Final";
-    if (state === "free")       return "Free";
+    if (state === "free")       return "Free game";
     return `R${m.week}`;
   };
 
@@ -173,7 +173,7 @@ function GameCard({
       }}
       className={[
         "flex flex-col items-center justify-center gap-0.5",
-        "px-2 py-2.5 rounded-xl border text-center transition-all duration-150",
+        "px-2 py-1.5 rounded-xl border text-center transition-all duration-150",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
         flex ? "flex-shrink-0" : "w-full",
         isSelected

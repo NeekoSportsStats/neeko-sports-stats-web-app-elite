@@ -23,7 +23,7 @@ function SecondaryNav() {
   return (
     <nav
       className="flex gap-1 overflow-x-auto no-scrollbar"
-      style={{ paddingInline: "var(--page-px)", paddingTop: 10, paddingBottom: 4 }}
+      style={{ paddingInline: "var(--page-px)", paddingTop: 6, paddingBottom: 4 }}
       aria-label="Stat Board sections"
     >
       <span
@@ -112,9 +112,9 @@ function ScrollButtons({
             ? "text-white/55 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.14]"
             : "text-white/15 cursor-not-allowed border-white/[0.04]",
         ].join(" ")}
-        style={{ width: 28, height: 28, minWidth: 40, minHeight: 40, padding: "6px 0" }}
+        style={{ width: 24, height: 24, minWidth: 36, minHeight: 36, padding: "6px 0" }}
       >
-        <ChevronLeft size={11} aria-hidden="true" />
+        <ChevronLeft size={10} aria-hidden="true" />
       </button>
       <button
         onClick={onScrollNext}
@@ -131,9 +131,9 @@ function ScrollButtons({
             ? "text-white/55 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.14]"
             : "text-white/15 cursor-not-allowed border-white/[0.04]",
         ].join(" ")}
-        style={{ width: 28, height: 28, minWidth: 40, minHeight: 40, padding: "6px 0" }}
+        style={{ width: 24, height: 24, minWidth: 36, minHeight: 36, padding: "6px 0" }}
       >
-        <ChevronRight size={11} aria-hidden="true" />
+        <ChevronRight size={10} aria-hidden="true" />
       </button>
     </div>
   );
@@ -154,7 +154,7 @@ function TeamHeader({
 }) {
   return (
     <div
-      className="flex items-center gap-2 py-2"
+      className="flex items-center gap-2 py-1.5"
       style={{ paddingInline: "var(--page-px)" }}
     >
       <span
@@ -198,6 +198,7 @@ function TeamSection({
   scrollButtons,
   playerW,
   l5W,
+  l5Sticky,
 }: {
   teamName: string;
   side: "HOME" | "AWAY";
@@ -213,6 +214,7 @@ function TeamSection({
   scrollButtons?: React.ReactNode;
   playerW?: number;
   l5W?: number;
+  l5Sticky?: boolean;
 }) {
   return (
     <section
@@ -242,6 +244,7 @@ function TeamSection({
         scrollContainerId={scrollContainerId}
         playerW={playerW}
         l5W={l5W}
+        l5Sticky={l5Sticky}
       />
     </section>
   );
@@ -429,7 +432,8 @@ export default function StatBoardCurrentWeekPage() {
       suppressAwaySync.current = false;
       syncScrollButtonState();
     });
-  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion]);
+    track("current_week_scroll_prev", { stat, mode });
+  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion, stat, mode]);
 
   const handleScrollNext = useCallback(() => {
     const home = homeScrollRef.current;
@@ -454,7 +458,8 @@ export default function StatBoardCurrentWeekPage() {
       suppressAwaySync.current = false;
       syncScrollButtonState();
     });
-  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion]);
+    track("current_week_scroll_next", { stat, mode });
+  }, [thresholds, tablePlayerW, tableL5W, syncScrollButtonState, prefersReducedMotion, stat, mode]);
 
   // ── Other handlers ────────────────────────────────────────────────────────
 
@@ -540,8 +545,8 @@ export default function StatBoardCurrentWeekPage() {
           className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
           style={{
             paddingInline: "var(--page-px)",
-            paddingTop: "clamp(20px,3vw,36px)",
-            paddingBottom: 6,
+            paddingTop: "clamp(12px,2vw,36px)",
+            paddingBottom: 4,
           }}
         >
           <div>
@@ -571,7 +576,7 @@ export default function StatBoardCurrentWeekPage() {
               AFL Matchup Compare
             </h1>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", margin: 0 }}>
-              {typeof week === "number" ? `Round ${week} · ` : ""}Compare player hit rates by game, stat and line.
+              {typeof week === "number" ? `Round ${week} · ` : ""}Compare player hit rates by match, stat and threshold.
             </p>
           </div>
 
@@ -600,10 +605,10 @@ export default function StatBoardCurrentWeekPage() {
           <SecondaryNav />
         </div>
 
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 0 0" }} />
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "6px 0 0" }} />
 
         {/* ── Game selector ── */}
-        <div style={{ paddingTop: 12 }}>
+        <div style={{ paddingTop: 8 }}>
           <CurrentWeekGameSelector
             matches={matches}
             selected={selectedMatch}
@@ -621,7 +626,7 @@ export default function StatBoardCurrentWeekPage() {
         </div>
 
         {/* ── Controls (Row 1: stat + mode + line; Row 2: position + search + sort) ── */}
-        <div style={{ paddingTop: 12, paddingBottom: 6 }}>
+        <div style={{ paddingTop: 8, paddingBottom: 4 }}>
           <CurrentWeekControls
             stat={stat}
             mode={mode}
@@ -637,12 +642,18 @@ export default function StatBoardCurrentWeekPage() {
               pushState({ mode: m as CompareMode, line: null });
               track("current_week_mode_selected", { mode: m });
             }}
-            onPositionChange={(p) => { pushState({ position: p as PositionFilter }); }}
+            onPositionChange={(p) => {
+              pushState({ position: p as PositionFilter });
+              track("current_week_position_filter", { position: p });
+            }}
             onSortChange={(s) => {
               pushState({ sort: s as SortKey });
               track("current_week_sort_selected", { sort: s });
             }}
-            onSearchChange={(s) => pushState({ search: s })}
+            onSearchChange={(s) => {
+              pushState({ search: s });
+              if (s.length >= 2) track("current_week_search", { query_length: s.length });
+            }}
             onLineChange={lineChangeHandler}
           />
         </div>
@@ -726,6 +737,7 @@ export default function StatBoardCurrentWeekPage() {
               scrollButtons={renderScrollButtons()}
               playerW={tablePlayerW}
               l5W={tableL5W}
+              l5Sticky={!isMobile}
             />
             <TeamSection
               teamName={selectedMatch.away_team_name}
@@ -742,6 +754,7 @@ export default function StatBoardCurrentWeekPage() {
               scrollButtons={renderScrollButtons()}
               playerW={tablePlayerW}
               l5W={tableL5W}
+              l5Sticky={!isMobile}
             />
           </div>
         ) : null}

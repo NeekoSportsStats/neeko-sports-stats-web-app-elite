@@ -67,7 +67,7 @@ export function CurrentWeekControls({
   const quickLines  = Array.from(thresholds).slice(quickStart, quickEnd + 1);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
 
       {/*
        * MOBILE (<640px): 4 separate rows
@@ -198,7 +198,7 @@ export function CurrentWeekControls({
       >
         {/* Mode toggle */}
         <div
-          className="flex gap-1 flex-shrink-0 bg-white/[0.03] border border-white/[0.07] rounded-xl p-0.5"
+          className="flex gap-0.5 flex-shrink-0 bg-white/[0.03] border border-white/[0.07] rounded-lg p-0.5"
           role="group"
           aria-label="Select view mode"
           data-testid="mode-toggle"
@@ -210,7 +210,7 @@ export function CurrentWeekControls({
               aria-pressed={mode === o.key}
               data-mode={o.key}
               className={[
-                "px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-150",
+                "px-2 py-1 rounded-md text-[10px] font-semibold transition-all duration-150",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40",
                 mode === o.key
                   ? "bg-white/[0.12] text-white shadow-sm"
