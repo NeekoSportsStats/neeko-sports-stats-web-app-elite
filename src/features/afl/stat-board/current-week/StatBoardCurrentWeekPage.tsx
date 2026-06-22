@@ -199,6 +199,7 @@ function TeamSection({
   playerW,
   l5W,
   l5Sticky,
+  showL5Column,
 }: {
   teamName: string;
   side: "HOME" | "AWAY";
@@ -215,6 +216,7 @@ function TeamSection({
   playerW?: number;
   l5W?: number;
   l5Sticky?: boolean;
+  showL5Column?: boolean;
 }) {
   return (
     <section
@@ -245,6 +247,7 @@ function TeamSection({
         playerW={playerW}
         l5W={l5W}
         l5Sticky={l5Sticky}
+        showL5Column={showL5Column}
       />
     </section>
   );
@@ -331,8 +334,9 @@ export default function StatBoardCurrentWeekPage() {
   // Detect mobile once per render. The table re-centres on resize via ResizeObserver.
   const isMobile =
     typeof window !== "undefined" && window.innerWidth < 640;
-  const tablePlayerW = isMobile ? 168 : PLAYER_W;
-  const tableL5W     = isMobile ? 56  : L5_W;
+  const tablePlayerW  = isMobile ? 168 : PLAYER_W;
+  // On mobile the L5 column is hidden (embedded in player cell), so its effective width is 0.
+  const tableL5W      = isMobile ? 0   : L5_W;
 
   // ── Scroll button state ───────────────────────────────────────────────────
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -738,6 +742,7 @@ export default function StatBoardCurrentWeekPage() {
               playerW={tablePlayerW}
               l5W={tableL5W}
               l5Sticky={!isMobile}
+              showL5Column={!isMobile}
             />
             <TeamSection
               teamName={selectedMatch.away_team_name}
@@ -755,6 +760,7 @@ export default function StatBoardCurrentWeekPage() {
               playerW={tablePlayerW}
               l5W={tableL5W}
               l5Sticky={!isMobile}
+              showL5Column={!isMobile}
             />
           </div>
         ) : null}

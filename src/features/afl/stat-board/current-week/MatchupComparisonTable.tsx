@@ -24,6 +24,13 @@ interface Props {
   l5W?: number;
   /** When false, L5 column is not sticky — scrolls with the threshold columns. Default: true. */
   l5Sticky?: boolean;
+  /**
+   * When false, L5 is not rendered as its own column.
+   * Instead the L5 value appears as secondary text inside the player cell.
+   * Use on mobile to eliminate the clipped sliver between player and threshold cols.
+   * Default: true.
+   */
+  showL5Column?: boolean;
 }
 
 /*
@@ -71,6 +78,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   playerW: playerWProp,
   l5W: l5WProp,
   l5Sticky = true,
+  showL5Column = true,
 }: Props) {
   const playerW = playerWProp ?? PLAYER_W;
   const l5W     = l5WProp     ?? L5_W;
@@ -92,23 +100,48 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
   const centerSelectedColumn = useCallback(() => {
     const container = externalScrollRef.current;
     if (!container) return;
-    const totalScrollWidth = playerW + l5W + thresholds.length * THRESH_W;
+    // When L5 column is hidden, it contributes no width to the scroll area
+    const effectiveL5W = showL5Column ? l5W : 0;
+    const totalScrollWidth = playerW + effectiveL5W + thresholds.length * THRESH_W;
     if (totalScrollWidth <= container.clientWidth) {
       return;
     }
     const idx = thresholds.indexOf(selectedLine);
     if (idx < 0) return;
-    // When L5 is non-sticky it scrolls with the thresholds; compute its visual offset
-    const effectiveStickyW = l5Sticky ? playerW + l5W : playerW;
-    const l5Offset = l5Sticky ? 0 : l5W;
-    const target = computeCentreOffset(
-      container.clientWidth,
-      effectiveStickyW,
-      0,
-      THRESH_W,
-      idx,
-      thresholds.length,
-    ) + l5Offset;
+
+    let target: number;
+    if (!showL5Column) {
+      // Only playerW is sticky; thresholds start immediately after
+      target = computeCentreOffset(
+        container.clientWidth,
+        playerW,
+        0,
+        THRESH_W,
+        idx,
+        thresholds.length,
+      );
+    } else if (l5Sticky) {
+      // Both player and L5 are sticky
+      target = computeCentreOffset(
+        container.clientWidth,
+        playerW + l5W,
+        0,
+        THRESH_W,
+        idx,
+        thresholds.length,
+      );
+    } else {
+      // L5 scrolls with content — offset past it
+      target = computeCentreOffset(
+        container.clientWidth,
+        playerW,
+        0,
+        THRESH_W,
+        idx,
+        thresholds.length,
+      ) + l5W;
+    }
+
     // Suppress outgoing scroll events so we don't create a sync loop
     suppressSync.current = true;
     container.scrollLeft = Math.max(0, target);
@@ -117,7 +150,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
       updateFades();
       onCentered?.(container.scrollLeft);
     });
-  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered, playerW, l5W, l5Sticky]);
+  }, [selectedLine, thresholds, externalScrollRef, updateFades, onCentered, playerW, l5W, l5Sticky, showL5Column]);
 
   // Re-centre when selected line changes
   useEffect(() => {
@@ -155,7 +188,8 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
     );
   }
 
-  const totalMinWidth = playerW + l5W + thresholds.length * THRESH_W;
+  const effectiveL5W = showL5Column ? l5W : 0;
+  const totalMinWidth = playerW + effectiveL5W + thresholds.length * THRESH_W;
 
   return (
     <div className="relative">
@@ -193,7 +227,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
         >
           <colgroup>
             <col style={{ width: playerW }} />
-            <col style={{ width: l5W }} />
+            {showL5Column && <col style={{ width: l5W }} />}
             {thresholds.map((t) => (
               <col key={t} style={{ width: THRESH_W }} />
             ))}
@@ -228,26 +262,28 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 </span>
               </th>
 
-              {/* L5 — sticky or scrollable depending on l5Sticky prop */}
-              <th
-                scope="col"
-                style={{
-                  height: ROW_H,
-                  textAlign: "center",
-                  verticalAlign: "middle",
-                  ...(l5Sticky ? {
-                    position: "sticky",
-                    left: playerW,
-                    zIndex: 21,
-                  } : {}),
-                  background: HDR_BG,
-                  borderRight: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
-                  L5
-                </span>
-              </th>
+              {/* L5 — only rendered when showL5Column is true */}
+              {showL5Column && (
+                <th
+                  scope="col"
+                  style={{
+                    height: ROW_H,
+                    textAlign: "center",
+                    verticalAlign: "middle",
+                    ...(l5Sticky ? {
+                      position: "sticky",
+                      left: playerW,
+                      zIndex: 21,
+                    } : {}),
+                    background: HDR_BG,
+                    borderRight: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30">
+                    L5
+                  </span>
+                </th>
+              )}
 
               {/* Threshold headers */}
               {thresholds.map((t) => {
@@ -298,6 +334,7 @@ export const MatchupComparisonTable = memo(function MatchupComparisonTable({
                 playerW={playerW}
                 l5W={l5W}
                 l5Sticky={l5Sticky}
+                showL5Column={showL5Column}
               />
             ))}
           </tbody>
@@ -327,6 +364,7 @@ const TableRow = memo(function TableRow({
   playerW: playerWProp,
   l5W: l5WProp,
   l5Sticky = true,
+  showL5Column = true,
 }: {
   cp: ComparePlayer;
   thresholds: readonly number[];
@@ -335,6 +373,7 @@ const TableRow = memo(function TableRow({
   playerW?: number;
   l5W?: number;
   l5Sticky?: boolean;
+  showL5Column?: boolean;
 }) {
   const playerW = playerWProp ?? PLAYER_W;
   const l5W     = l5WProp     ?? L5_W;
@@ -384,10 +423,17 @@ const TableRow = memo(function TableRow({
             >
               {player.player_name}
             </span>
-            {player.position_group && (
+            {/* Secondary line: POS · L5 value (always on mobile where showL5Column=false, never on desktop) */}
+            {!showL5Column ? (
               <span className="block text-[9px] text-white/30 leading-none mt-0.5">
-                {player.position_group}
+                {player.position_group ? `${player.position_group} · ` : ""}L5 {fmtAvg(player.last_5_avg)}
               </span>
+            ) : (
+              player.position_group && (
+                <span className="block text-[9px] text-white/30 leading-none mt-0.5">
+                  {player.position_group}
+                </span>
+              )
             )}
           </div>
           {isClickable && (
@@ -400,28 +446,30 @@ const TableRow = memo(function TableRow({
         </button>
       </td>
 
-      {/* L5 avg — sticky or scrollable */}
-      <td
-        style={{
-          ...(l5Sticky ? {
-            position: "sticky",
-            left: playerW,
-            zIndex: 10,
-          } : {}),
-          background: CELL_BG,
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-          textAlign: "center",
-          verticalAlign: "middle",
-        }}
-        aria-label={`${player.player_name} last 5 average: ${fmtAvg(player.last_5_avg)}`}
-      >
-        <span
-          className="text-[11px] font-medium text-white/55"
-          style={{ fontVariantNumeric: "tabular-nums" }}
+      {/* L5 avg — only rendered when showL5Column is true */}
+      {showL5Column && (
+        <td
+          style={{
+            ...(l5Sticky ? {
+              position: "sticky",
+              left: playerW,
+              zIndex: 10,
+            } : {}),
+            background: CELL_BG,
+            borderRight: "1px solid rgba(255,255,255,0.06)",
+            textAlign: "center",
+            verticalAlign: "middle",
+          }}
+          aria-label={`${player.player_name} last 5 average: ${fmtAvg(player.last_5_avg)}`}
         >
-          {fmtAvg(player.last_5_avg)}
-        </span>
-      </td>
+          <span
+            className="text-[11px] font-medium text-white/55"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {fmtAvg(player.last_5_avg)}
+          </span>
+        </td>
+      )}
 
       {/* Threshold cells */}
       {thresholds.map((t) => {
