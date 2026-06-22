@@ -257,6 +257,15 @@ export function computeScrollTarget(
   return Math.max(0, snapped - colStep);
 }
 
+// ─── Player name visibility ───────────────────────────────────────────────────
+
+export function isVisiblePlayerName(name: string | null | undefined): boolean {
+  if (!name || name.trim() === "") return false;
+  if (/^Player\s*#?\s*\d+$/i.test(name.trim())) return false;
+  if (/^Unknown(\s+Player)?$/i.test(name.trim())) return false;
+  return true;
+}
+
 // ─── Re-export useful stat helpers ───────────────────────────────────────────
 
 export { getThresholdsForMode as thresholdsForMode, defaultThreshold, thresholdsForLens };

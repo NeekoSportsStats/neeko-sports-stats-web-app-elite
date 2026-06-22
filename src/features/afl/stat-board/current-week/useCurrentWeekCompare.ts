@@ -8,6 +8,7 @@ import {
   selectDefaultMatch,
   buildComparePlayer,
   sortComparePlayers,
+  isVisiblePlayerName,
 } from "./currentWeekUtils";
 import type { SortKey, ComparePlayer } from "./currentWeekTypes";
 
@@ -130,7 +131,7 @@ export function useCurrentWeekCompare({
   const homePlayers = useMemo<ComparePlayer[]>(() => {
     if (!selectedMatch) return [];
     const home = comparePlayers.filter(
-      (cp) => cp.player.team_id === selectedMatch.home_team_id,
+      (cp) => cp.player.team_id === selectedMatch.home_team_id && isVisiblePlayerName(cp.player.player_name),
     );
     return sortComparePlayers(home, sort);
   }, [comparePlayers, selectedMatch, sort]);
@@ -138,7 +139,7 @@ export function useCurrentWeekCompare({
   const awayPlayers = useMemo<ComparePlayer[]>(() => {
     if (!selectedMatch) return [];
     const away = comparePlayers.filter(
-      (cp) => cp.player.team_id === selectedMatch.away_team_id,
+      (cp) => cp.player.team_id === selectedMatch.away_team_id && isVisiblePlayerName(cp.player.player_name),
     );
     return sortComparePlayers(away, sort);
   }, [comparePlayers, selectedMatch, sort]);
