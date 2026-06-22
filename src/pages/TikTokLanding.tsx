@@ -499,7 +499,7 @@ export default function TikTokLanding() {
 
   // ── Destination URLs ────────────────────────────────────────────────────────
   const freeHref  = appendUtms("/stat-board/players", utms);
-  const paidHref  = appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms);
+  const paidHref  = appendUtms("/start-checkout?plan_key=round_pass_7d", utms);
   const plansHref = appendUtms("/neeko-plus?plan=round_pass_7d", utms);
 
   return (
@@ -600,13 +600,13 @@ export default function TikTokLanding() {
             View Free Games
           </HardenedTikTokLink>
 
-          {/* Paid CTA — direct to auth with plan preserved */}
+          {/* Paid CTA — direct to checkout */}
           <HardenedTikTokLink
             href={paidHref}
             cta_type="paid"
             cta_text="7-Day Round Pass — $7.99 once"
             cta_location="tiktok_landing_hero"
-            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            destination="/start-checkout?plan_key=round_pass_7d"
             {...PAID_TRACKING}
             utms={utms}
             style={{
@@ -717,7 +717,7 @@ export default function TikTokLanding() {
             cta_type="paid"
             cta_text="Get 7-Day Round Pass — $7.99 once"
             cta_location="tiktok_landing_round_pass_section"
-            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            destination="/start-checkout?plan_key=round_pass_7d"
             {...PAID_TRACKING}
             utms={utms}
             style={{

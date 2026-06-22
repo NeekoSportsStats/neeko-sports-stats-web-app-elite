@@ -532,7 +532,7 @@ export default function ReferralLanding() {
   // ── Destination URLs ──────────────────────────────────────────────────────
   const refParam = { ref: creatorSlug };
   const freeHref  = appendUtms("/stat-board/players", utms);
-  const paidHref  = appendUtms(`/auth?mode=signup&plan_key=round_pass_7d`, utms, refParam);
+  const paidHref  = appendUtms(`/start-checkout?plan_key=round_pass_7d`, utms, refParam);
   const plansHref = appendUtms(`/neeko-plus?plan=round_pass_7d`, utms, refParam);
 
   const sharedLinkProps = {
@@ -653,7 +653,7 @@ export default function ReferralLanding() {
             cta_type="paid"
             cta_text="Start 7-Day Access — A$7.99"
             cta_location="referral_landing_hero"
-            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            destination="/start-checkout?plan_key=round_pass_7d"
             {...PAID_TRACKING}
             {...sharedLinkProps}
             style={{
@@ -762,7 +762,7 @@ export default function ReferralLanding() {
             cta_type="paid"
             cta_text="Start 7-Day Access"
             cta_location="referral_landing_round_pass_section"
-            destination="/auth?mode=signup&plan_key=round_pass_7d"
+            destination="/start-checkout?plan_key=round_pass_7d"
             {...PAID_TRACKING}
             {...sharedLinkProps}
             style={{
