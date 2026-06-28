@@ -173,6 +173,7 @@ const Auth = () => {
     symbol: false,
   });
 
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
   const [confirmedPlanKey, setConfirmedPlanKey] = useState<string | null>(null);
@@ -447,7 +448,7 @@ const Auth = () => {
               {isPurchaseIntent && (
                 <p className="text-sm text-muted-foreground">
                   {mode === "signup"
-                    ? "We need an account to issue your access and manage your purchase."
+                    ? "We'll create your account first, then send you to secure Stripe checkout."
                     : "You'll be taken straight to checkout after signing in."}
                 </p>
               )}
@@ -489,6 +490,8 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"}
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                     value={password}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     onChange={(e) => {
                       const v = e.target.value;
                       setPassword(v);
@@ -515,23 +518,26 @@ const Auth = () => {
                   </button>
                 </div>
 
-                {mode === "signup" && (
+                {mode === "signup" && (passwordFocused || password.length > 0) && (
                   <div className="text-xs space-y-1 mt-2">
-                    <p className={passwordChecks.length ? "text-green-500" : "text-red-500"}>
-                      {passwordChecks.length ? "✔" : "✘"} 10+ characters
-                    </p>
-                    <p className={passwordChecks.upper ? "text-green-500" : "text-red-500"}>
-                      {passwordChecks.upper ? "✔" : "✘"} Uppercase letter
-                    </p>
-                    <p className={passwordChecks.lower ? "text-green-500" : "text-red-500"}>
-                      {passwordChecks.lower ? "✔" : "✘"} Lowercase letter
-                    </p>
-                    <p className={passwordChecks.digit ? "text-green-500" : "text-red-500"}>
-                      {passwordChecks.digit ? "✔" : "✘"} Number
-                    </p>
-                    <p className={passwordChecks.symbol ? "text-green-500" : "text-red-500"}>
-                      {passwordChecks.symbol ? "✔" : "✘"} Symbol
-                    </p>
+                    {[
+                      { met: passwordChecks.length, label: "10+ characters" },
+                      { met: passwordChecks.upper,  label: "Uppercase letter" },
+                      { met: passwordChecks.lower,  label: "Lowercase letter" },
+                      { met: passwordChecks.digit,  label: "Number" },
+                      { met: passwordChecks.symbol, label: "Symbol" },
+                    ].map(({ met, label }) => (
+                      <p key={label} className={met ? "text-green-500" : "text-red-500"}>
+                        {met ? "✔" : "✘"} {label}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {mode === "signup" && !passwordFocused && password.length === 0 && (
+                  <div className="text-xs space-y-1 mt-2" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    {["10+ characters", "Uppercase letter", "Lowercase letter", "Number", "Symbol"].map(label => (
+                      <p key={label}>· {label}</p>
+                    ))}
                   </div>
                 )}
               </div>
@@ -567,7 +573,16 @@ const Auth = () => {
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || !canSubmit}
+                style={
+                  loading || !canSubmit
+                    ? { opacity: 0.45, cursor: "not-allowed", background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)", border: "1px solid rgba(255,255,255,0.10)" }
+                    : undefined
+                }
+              >
                 {loading
                   ? "Loading..."
                   : mode === "login"

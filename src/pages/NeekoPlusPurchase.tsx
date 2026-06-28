@@ -692,7 +692,7 @@ const NeekoPlusPurchase = () => {
             lineHeight: 1.6,
             maxWidth: 460,
           }}>
-            Start with 2 free games each week. Upgrade when you want every matchup — full player projections, breakevens, stat trends, hit rates, team dashboards and market signals updated before every lockout.
+            Start with free games each week. Upgrade for every matchup, full player pools, projections, hit rates, trends and market signals before lockout.
           </p>
         </div>
 
@@ -748,8 +748,8 @@ const NeekoPlusPurchase = () => {
             Choose your plan
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-            {/* 7-Day Round Pass card — PRIMARY */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* 7-Day Round Pass card — PRIMARY, FIRST */}
             <div
               onClick={() => setSelectedPlan("round_pass_7d")}
               style={{
@@ -759,13 +759,13 @@ const NeekoPlusPurchase = () => {
                   : "rgba(255,255,255,0.025)",
                 border: `2px solid ${selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.07)"}`,
                 borderRadius: 16,
-                padding: "24px 20px 20px",
+                padding: "20px 20px 18px",
                 cursor: "pointer",
                 transition: "all 0.16s ease",
                 boxShadow: selectedPlan === "round_pass_7d"
                   ? "0 0 40px rgba(59,130,246,0.12), 0 8px 32px rgba(0,0,0,0.50)"
                   : "none",
-                display: "flex", flexDirection: "column",
+                display: "flex", alignItems: "center", gap: 16,
               }}
             >
               {selectedPlan === "round_pass_7d" && (
@@ -776,59 +776,59 @@ const NeekoPlusPurchase = () => {
                 }} />
               )}
 
-              <p style={{
-                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.36em",
-                textTransform: "uppercase",
-                color: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.75)" : "rgba(255,255,255,0.28)",
-                margin: "0 0 10px",
-              }}>
-                Round Pass
-              </p>
-
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 2 }}>
-                <span style={{
-                  fontSize: 38, fontWeight: 900,
-                  color: selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.55)",
-                  letterSpacing: "-0.04em",
-                }}>
-                  ${NEEKO_PRICING.round_pass_7d.price}
-                </span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.28)" }}>AUD</span>
-              </div>
-
-              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", margin: "0 0 10px", lineHeight: 1.4 }}>
-                7 days access. One payment.
-              </p>
-
-              <span style={{
-                display: "inline-flex", alignItems: "center",
-                background: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.10)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.22)" : "rgba(255,255,255,0.07)"}`,
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 10, fontWeight: 700,
-                color: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.80)" : "rgba(255,255,255,0.28)",
-                marginBottom: 16,
-              }}>
-                Try one round
-              </span>
-
+              {/* Radio */}
               <div style={{
-                width: 20, height: 20, borderRadius: "50%",
+                width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
                 background: selectedPlan === "round_pass_7d" ? "#60a5fa" : "transparent",
                 border: `2px solid ${selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.18)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                marginTop: "auto",
                 transition: "all 0.15s",
-                flexShrink: 0,
               }}>
                 {selectedPlan === "round_pass_7d" && (
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#07101e" }} />
                 )}
               </div>
+
+              {/* Label + copy */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <p style={{
+                    fontSize: 14, fontWeight: 900,
+                    color: selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.70)",
+                    margin: 0,
+                  }}>
+                    7-Day Round Pass
+                  </p>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center",
+                    background: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.05)",
+                    border: `1px solid ${selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.28)" : "rgba(255,255,255,0.09)"}`,
+                    borderRadius: 5,
+                    padding: "2px 7px",
+                    fontSize: 9.5, fontWeight: 700,
+                    color: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.32)",
+                  }}>
+                    Starter pick
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>
+                  7 days of full access · One payment. No subscription.
+                </p>
+              </div>
+
+              {/* Price */}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{
+                  margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em",
+                  color: selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.55)",
+                }}>
+                  ${NEEKO_PRICING.round_pass_7d.price}
+                </p>
+                <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.28)" }}>AUD</p>
+              </div>
             </div>
 
-            {/* Season card */}
+            {/* Season card — SECOND */}
             <div
               onClick={() => setSelectedPlan("season")}
               style={{
@@ -838,16 +838,15 @@ const NeekoPlusPurchase = () => {
                   : "rgba(255,255,255,0.025)",
                 border: `2px solid ${selectedPlan === "season" ? "rgba(224,174,45,0.55)" : "rgba(255,255,255,0.07)"}`,
                 borderRadius: 16,
-                padding: "24px 20px 20px",
+                padding: "20px 20px 18px",
                 cursor: "pointer",
                 transition: "all 0.16s ease",
                 boxShadow: selectedPlan === "season"
                   ? "0 0 40px rgba(224,174,45,0.12), 0 8px 32px rgba(0,0,0,0.50)"
                   : "none",
-                display: "flex", flexDirection: "column",
+                display: "flex", alignItems: "center", gap: 16,
               }}
             >
-              {/* Top accent line */}
               {selectedPlan === "season" && (
                 <div style={{
                   position: "absolute", top: 0, left: 0, right: 0, height: 2,
@@ -858,10 +857,10 @@ const NeekoPlusPurchase = () => {
 
               {/* Best value badge */}
               <div style={{
-                position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
+                position: "absolute", top: -11, right: 16,
                 background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
                 borderRadius: 999,
-                padding: "3px 13px",
+                padding: "3px 12px",
                 fontSize: 8.5, fontWeight: 900,
                 color: "#130c00",
                 letterSpacing: "0.12em",
@@ -872,140 +871,119 @@ const NeekoPlusPurchase = () => {
                 Best Value
               </div>
 
-              <p style={{
-                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.36em",
-                textTransform: "uppercase",
-                color: selectedPlan === "season" ? "rgba(224,174,45,0.65)" : "rgba(255,255,255,0.28)",
-                margin: "0 0 10px",
-              }}>
-                Season Pass
-              </p>
-
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 2 }}>
-                <span style={{
-                  fontSize: 38, fontWeight: 900,
-                  color: selectedPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.55)",
-                  letterSpacing: "-0.04em",
-                }}>
-                  ${NEEKO_PRICING.season.price}
-                </span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.28)" }}>AUD</span>
-              </div>
-
-              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", margin: "0 0 10px", lineHeight: 1.4 }}>
-                Full season access. One payment.
-              </p>
-
-              {/* Per round breakdown */}
+              {/* Radio */}
               <div style={{
-                display: "flex", flexWrap: "wrap", gap: 5,
-                marginBottom: 16,
-              }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center",
-                  background: selectedPlan === "season" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${selectedPlan === "season" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)"}`,
-                  borderRadius: 6,
-                  padding: "3px 8px",
-                  fontSize: 10, fontWeight: 700,
-                  color: selectedPlan === "season" ? "rgba(34,197,94,0.85)" : "rgba(255,255,255,0.28)",
-                }}>
-                  ${seasonPerRound}/round
-                </span>
-                <span style={{
-                  display: "inline-flex", alignItems: "center",
-                  background: selectedPlan === "season" ? "rgba(224,174,45,0.09)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${selectedPlan === "season" ? "rgba(224,174,45,0.22)" : "rgba(255,255,255,0.06)"}`,
-                  borderRadius: 6,
-                  padding: "3px 8px",
-                  fontSize: 10, fontWeight: 700,
-                  color: selectedPlan === "season" ? "rgba(224,174,45,0.80)" : "rgba(255,255,255,0.22)",
-                }}>
-                  Save ${savings} vs weekly
-                </span>
-              </div>
-
-              {/* Radio indicator */}
-              <div style={{
-                width: 20, height: 20, borderRadius: "50%",
+                width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
                 background: selectedPlan === "season" ? "#E0AE2D" : "transparent",
                 border: `2px solid ${selectedPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.18)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                marginTop: "auto",
                 transition: "all 0.15s",
-                flexShrink: 0,
               }}>
                 {selectedPlan === "season" && (
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#130c00" }} />
                 )}
               </div>
+
+              {/* Label + copy */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+                  <p style={{
+                    fontSize: 14, fontWeight: 900,
+                    color: selectedPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.70)",
+                    margin: 0,
+                  }}>
+                    Season Pass
+                  </p>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center",
+                    background: selectedPlan === "season" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${selectedPlan === "season" ? "rgba(34,197,94,0.20)" : "rgba(255,255,255,0.08)"}`,
+                    borderRadius: 5,
+                    padding: "2px 7px",
+                    fontSize: 9.5, fontWeight: 700,
+                    color: selectedPlan === "season" ? "rgba(34,197,94,0.85)" : "rgba(255,255,255,0.32)",
+                  }}>
+                    ${seasonPerRound}/round
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>
+                  Full season access · One payment.
+                </p>
+              </div>
+
+              {/* Price */}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{
+                  margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em",
+                  color: selectedPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.55)",
+                }}>
+                  ${NEEKO_PRICING.season.price}
+                </p>
+                <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.28)" }}>AUD</p>
+              </div>
             </div>
 
-            {/* Weekly card — SECONDARY */}
+            {/* Weekly card — THIRD, visually secondary */}
             <div
               onClick={() => setSelectedPlan("weekly")}
               style={{
                 background: selectedPlan === "weekly"
                   ? "rgba(255,255,255,0.05)"
-                  : "rgba(255,255,255,0.025)",
-                border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.09)"}`,
-                borderRadius: 16,
-                padding: "24px 20px 20px",
+                  : "rgba(255,255,255,0.015)",
+                border: `1.5px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.07)"}`,
+                borderRadius: 12,
+                padding: "14px 20px",
                 cursor: "pointer",
                 transition: "all 0.16s ease",
-                display: "flex", flexDirection: "column",
-                boxShadow: selectedPlan === "weekly" ? "0 4px 24px rgba(0,0,0,0.40)" : "none",
+                display: "flex", alignItems: "center", gap: 14,
               }}
             >
-              <p style={{
-                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.36em",
-                textTransform: "uppercase",
-                color: selectedPlan === "weekly" ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.38)",
-                margin: "0 0 10px",
-              }}>
-                Weekly
-              </p>
-
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 2 }}>
-                <span style={{
-                  fontSize: 38, fontWeight: 900,
-                  color: selectedPlan === "weekly" ? "#F5F5F5" : "rgba(255,255,255,0.72)",
-                  letterSpacing: "-0.04em",
-                }}>
-                  ${NEEKO_PRICING.weekly.price}
-                </span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.32)" }}>AUD/wk</span>
-              </div>
-
-              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.42)", margin: "0 0 10px", lineHeight: 1.4 }}>
-                Flexible access. Cancel anytime.
-              </p>
-
+              {/* Radio */}
               <div style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 10, fontWeight: 600,
-                color: "rgba(255,255,255,0.38)",
-                marginBottom: 16,
-              }}>
-                ${weeklyTotal} AUD if held all season
-              </div>
-
-              <div style={{
-                width: 20, height: 20, borderRadius: "50%",
+                width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
                 background: selectedPlan === "weekly" ? "rgba(255,255,255,0.85)" : "transparent",
                 border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.22)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                marginTop: "auto",
                 transition: "all 0.15s",
-                flexShrink: 0,
               }}>
                 {selectedPlan === "weekly" && (
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0a0909" }} />
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#0a0909" }} />
                 )}
+              </div>
+
+              {/* Label + copy */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 1 }}>
+                  <p style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.50)",
+                    margin: 0,
+                  }}>
+                    Weekly
+                  </p>
+                  <span style={{
+                    display: "inline-flex",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: 4,
+                    padding: "1px 6px",
+                    fontSize: 9, fontWeight: 700,
+                    color: "rgba(255,255,255,0.35)",
+                  }}>
+                    Weekly subscription · Cancel anytime
+                  </span>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{
+                  margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: "-0.03em",
+                  color: selectedPlan === "weekly" ? "#F5F5F5" : "rgba(255,255,255,0.45)",
+                }}>
+                  ${NEEKO_PRICING.weekly.price}
+                </p>
+                <p style={{ margin: 0, fontSize: 9.5, color: "rgba(255,255,255,0.25)" }}>AUD/wk</p>
               </div>
             </div>
           </div>
@@ -1086,7 +1064,7 @@ const NeekoPlusPurchase = () => {
                         ? `Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
                         : selectedPlan === "season"
                           ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                          : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
+                          : `Start Weekly Subscription — $${NEEKO_PRICING.weekly.price} AUD/wk`}
                 <ArrowRight size={15} />
               </>
             )}
@@ -1115,7 +1093,7 @@ const NeekoPlusPurchase = () => {
 
           <div style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: 10,
           }}>
             {/* Free column */}
@@ -1245,7 +1223,7 @@ const NeekoPlusPurchase = () => {
             Why serious AFL users choose Neeko+
           </h2>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", textAlign: "center", margin: "0 0 28px" }}>
-            Built for serious AFL stats and fantasy managers.
+            Built for AFL fans who want faster player, matchup and form research.
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
