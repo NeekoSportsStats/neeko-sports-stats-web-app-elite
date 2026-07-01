@@ -4,6 +4,7 @@ import { trackPageView, captureAttribution, startEngagementTracking, stopEngagem
 import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
 import { LandingLayout } from "@/components/LandingLayout";
+import { PublicPageLayout } from "@/components/PublicPageLayout";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import {
@@ -87,17 +88,20 @@ function App() {
         <Route path="/" element={<Index />} />
       </Route>
 
-      <Route element={<Layout />}>
+      {/* ── Public / legal pages — clean layout, no sidebar ──────────────── */}
+      <Route element={<PublicPageLayout />}>
         <Route path="/about" element={<S fallback={Generic}><About /></S>} />
         <Route path="/contact" element={<S fallback={Generic}><Contact /></S>} />
-
         <Route path="/policies" element={<S fallback={Generic}><Policies /></S>} />
         <Route path="/privacy-policy" element={<S fallback={Generic}><PrivacyPolicy /></S>} />
         <Route path="/terms-conditions" element={<S fallback={Generic}><TermsConditions /></S>} />
         <Route path="/refund-policy" element={<S fallback={Generic}><RefundPolicy /></S>} />
         <Route path="/security-policy" element={<S fallback={Generic}><SecurityPolicy /></S>} />
         <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
+      </Route>
 
+      {/* ── App shell — sidebar + stats board top bar ────────────────────── */}
+      <Route element={<Layout />}>
         {/* SEO-ONLY ROUTES: player/team/position pages kept for deindexing crawl */}
         <Route path="/sports/afl/players/:slug" element={<Navigate to="/" replace />} />
         <Route path="/sports/afl/teams/:team" element={<Navigate to="/" replace />} />
