@@ -22,13 +22,29 @@
     }
   ],
   "redirects": [
-    { "source": "/products/:path*", "destination": "/404", "permanent": false },
-    { "source": "/nba/:path*",      "destination": "/404", "permanent": false },
-    { "source": "/epl/:path*",      "destination": "/404", "permanent": false },
-    { "source": "/sports/nba/:path*", "destination": "/404", "permanent": false },
-    { "source": "/sports/epl/:path*", "destination": "/404", "permanent": false },
-    { "source": "/sports/nba",      "destination": "/404", "permanent": false },
-    { "source": "/sports/epl",      "destination": "/404", "permanent": false }
+    { "source": "/products/:path*",         "destination": "/404", "permanent": false },
+    { "source": "/nba/:path*",              "destination": "/404", "permanent": false },
+    { "source": "/epl/:path*",              "destination": "/404", "permanent": false },
+    { "source": "/sports/nba/:path*",       "destination": "/404", "permanent": false },
+    { "source": "/sports/epl/:path*",       "destination": "/404", "permanent": false },
+    { "source": "/sports/nba",              "destination": "/404", "permanent": false },
+    { "source": "/sports/epl",              "destination": "/404", "permanent": false },
+
+    { "source": "/fantasy",                 "destination": "/", "permanent": true },
+    { "source": "/fantasy/:path*",          "destination": "/", "permanent": true },
+    { "source": "/stat-board",              "destination": "/", "permanent": true },
+    { "source": "/stat-board/:path*",       "destination": "/", "permanent": true },
+    { "source": "/sports/afl",              "destination": "/", "permanent": true },
+    { "source": "/sports/afl/:path*",       "destination": "/", "permanent": true },
+    { "source": "/neeko-plus",              "destination": "/", "permanent": true },
+    { "source": "/neeko-plus-purchase",     "destination": "/", "permanent": true },
+    { "source": "/tiktok",                  "destination": "/", "permanent": true },
+    { "source": "/ref/:path*",              "destination": "/", "permanent": true },
+    { "source": "/faq",                     "destination": "/", "permanent": true },
+    { "source": "/socials",                 "destination": "/", "permanent": true },
+    { "source": "/start-checkout",          "destination": "/", "permanent": true },
+    { "source": "/billing",                 "destination": "/", "permanent": true },
+    { "source": "/pipeline-history",        "destination": "/", "permanent": true }
   ],
   "rewrites": [
     {
