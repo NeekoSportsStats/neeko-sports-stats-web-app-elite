@@ -1,53 +1,65 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 
-const DARK = "#07090C";
-const GOLD = "#E0AE2D";
-const TEAL = "#22c55e";
+const DARK  = "#07090C";
+const GOLD  = "#E0AE2D";
+const TEAL  = "#22c55e";
 const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
+
+const APPLE_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+  </svg>
+);
 
 const FEATURES = [
   {
-    icon: "▦",
-    title: "Match Boards",
-    copy: "Pick any match, set your threshold. See hit rates, last-10 form and projections for every player — before bounce.",
+    label: "Match Boards",
+    copy:  "Pick a game and scan player lines, hit rates and recent form across every stat.",
     color: TEAL,
+    icon:  "▦",
   },
   {
-    icon: "◈",
-    title: "Player Hit Rates",
-    copy: "How often does a player hit 25+ disposals? 2+ goals? Historical hit rates across every stat line, every matchup.",
+    label: "Player Profiles",
+    copy:  "View season averages, recent results, trend charts and hit-rate lines by stat.",
     color: GOLD,
+    icon:  "◎",
   },
   {
-    icon: "◉",
-    title: "Team Trends",
-    copy: "Identify teams running hot, leaking points, or trending into tough draws. Form across the last 5 rounds at a glance.",
+    label: "Team Trends",
+    copy:  "Compare ladder position, scoring, defence and last-5 form across every AFL team.",
     color: "#60a5fa",
+    icon:  "◉",
   },
   {
-    icon: "◆",
-    title: "Neeko Pro",
-    copy: "Unlock every match, every player, every lens for the full season — or grab a Round Pass when you need it most.",
+    label: "Neeko Pro",
+    copy:  "Unlock every match board, stat lens and matchup view. $9.99 / month.",
     color: GOLD,
+    icon:  "◆",
   },
 ];
 
 const SCREENSHOTS = [
-  { src: "/image.png", alt: "Neeko Stats match board screen" },
-  { src: "/image copy.png", alt: "Neeko Stats player stats screen" },
-  { src: "/image copy copy.png", alt: "Neeko Stats team trends screen" },
+  { src: "/images/app-screenshots/01-stat-board.png",    caption: "AFL Stat Board",     sub: "Hit rates & form by match" },
+  { src: "/images/app-screenshots/02-player-profile.png", caption: "Player Profile",   sub: "Trends, averages & history" },
+  { src: "/images/app-screenshots/05-teams-list.png",    caption: "Team Trends",        sub: "Ladder, scoring & form" },
+  { src: "/images/app-screenshots/06-team-profile.png",  caption: "Team Profile",       sub: "Season summary & leaders" },
+];
+
+const PRO_FEATURES = [
+  "Every match board this round",
+  "All stat lenses: disposals, goals, marks & tackles",
+  "Full hit-rate lines and fine thresholds",
+  "Matchup Compare access",
+  "Team and match context",
 ];
 
 export default function Index() {
   return (
-    <div style={{ background: DARK, overflowX: "hidden", minHeight: "100vh", fontFamily: "inherit" }}>
+    <div style={{ background: DARK, overflowX: "hidden", minHeight: "100vh" }}>
       <Helmet>
         <title>Neeko Stats — AFL Stats App for iPhone</title>
-        <meta
-          name="description"
-          content="Neeko Stats is the AFL stats app for fantasy footy. Hit rates, match boards, player trends and team form — in your pocket, before the bounce. Now on iOS."
-        />
+        <meta name="description" content="Neeko Stats is the AFL stats app for iPhone. Player hit rates, match boards, team form and recent trends — before the bounce." />
         <link rel="canonical" href="https://neekostats.com.au/" />
         <meta property="og:title" content="Neeko Stats — AFL Stats App for iPhone" />
         <meta property="og:description" content="AFL hit rates, match boards and team trends in your pocket. Now on iOS." />
@@ -58,183 +70,195 @@ export default function Index() {
         <meta name="robots" content="index, follow" />
       </Helmet>
 
-      {/* ── HERO ──────────────────────────────────────────────────────────────────── */}
-      <section className="n-hero">
-        <div className="n-hero-bg" aria-hidden="true" />
+      {/* ── HERO ─────────────────────────────────────────────────────────────── */}
+      <section className="ix-hero">
+        <div className="ix-hero-glow" aria-hidden="true" />
 
-        <div className="n-hero-inner">
-          {/* Text column */}
-          <div className="n-hero-text">
-            <p className="n-eyebrow">Now on iOS</p>
+        <div className="ix-hero-inner">
 
-            <h1 className="n-h1">
-              AFL stats{" "}
-              <span style={{ color: GOLD, textShadow: "0 0 40px rgba(224,174,45,0.35)" }}>
-                before bounce.
-              </span>
-            </h1>
-
-            <p className="n-sub">
-              Player trends, hit rates, match boards and team form in your pocket.
-            </p>
-
-            <div className="n-ctas">
-              <a
-                href={APP_STORE}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="n-btn-primary"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                </svg>
-                Download on the App Store
-              </a>
-            </div>
-
-            <div className="n-pills">
-              {["600+ AFL players tracked", "Updated before every lockout", "Disposals, goals & more"].map((t) => (
-                <span key={t} className="n-pill">{t}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Screenshot column */}
-          <div className="n-hero-visual">
-            <div className="n-phone-frame">
+          {/* Phone screenshot — above text on mobile, right column on desktop */}
+          <div className="ix-hero-visual">
+            <div className="ix-phone">
               <img
-                src="/hero/image.png"
-                alt="Neeko Stats app on iPhone"
-                className="n-phone-img"
+                src="/images/app-screenshots/01-stat-board.png"
+                alt="Neeko Stats AFL Stat Board on iPhone"
+                className="ix-phone-img"
                 loading="eager"
               />
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── FEATURES ──────────────────────────────────────────────────────────────── */}
-      <section className="n-section" style={{ background: "#060809" }}>
-        <div className="n-container">
-          <div className="n-section-header">
-            <p className="n-label">The full toolkit</p>
-            <h2 className="n-h2">Everything you need before Sunday lockout.</h2>
-          </div>
-
-          <div className="n-feature-grid">
-            {FEATURES.map(({ icon, title, copy, color }) => (
-              <div
-                key={title}
-                className="n-feature-card"
-                style={{ borderColor: `${color}22` }}
-              >
-                <div className="n-feature-icon" style={{ color, background: `${color}12` }}>
-                  {icon}
-                </div>
-                <p className="n-feature-title">{title}</p>
-                <p className="n-feature-copy">{copy}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SCREENSHOTS ───────────────────────────────────────────────────────────── */}
-      <section className="n-section n-screenshots-section">
-        <div className="n-container">
-          <div className="n-section-header">
-            <p className="n-label" style={{ color: `${GOLD}99` }}>See it in action</p>
-            <h2 className="n-h2">Your stats. Your edge.</h2>
-            <p className="n-section-sub">
-              Every screen built for speed. Find the players and matchups that matter in seconds.
-            </p>
-          </div>
-
-          <div className="n-screenshots-grid">
-            {SCREENSHOTS.map(({ src, alt }) => (
-              <div key={src} className="n-screenshot-wrap">
-                <div className="n-screenshot-frame">
-                  <img src={src} alt={alt} className="n-screenshot-img" loading="lazy" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── NEEKO PRO ─────────────────────────────────────────────────────────────── */}
-      <section className="n-section n-pro-section">
-        <div className="n-pro-bg" aria-hidden="true" />
-        <div className="n-container" style={{ position: "relative" }}>
-          <div className="n-pro-inner">
-            <div className="n-pro-badge">Neeko Pro</div>
-            <h2 className="n-h2" style={{ marginBottom: 16 }}>
-              Unlock every{" "}
-              <span style={{ color: GOLD }}>match board.</span>
-            </h2>
-            <p className="n-section-sub" style={{ maxWidth: 480, margin: "0 auto 32px" }}>
-              Free access shows a preview match. Neeko Pro unlocks every match, every player and every stat lens for the full season — or grab a Round Pass when you need it.
+          {/* Text column */}
+          <div className="ix-hero-text">
+            <p className="ix-eyebrow">Now on iOS</p>
+            <h1 className="ix-h1">
+              AFL stats{" "}
+              <span style={{ color: GOLD, textShadow: "0 0 36px rgba(224,174,45,0.32)" }}>
+                before bounce.
+              </span>
+            </h1>
+            <p className="ix-sub">
+              Player hit rates, match boards, team form and recent trends — built for iPhone.
             </p>
 
-            <div className="n-pro-features">
-              {[
-                { label: "Every match unlocked", color: TEAL },
-                { label: "All stat lenses", color: TEAL },
-                { label: "Player hit rates", color: TEAL },
-                { label: "Team trends", color: TEAL },
-                { label: "Round Pass available", color: GOLD },
-                { label: "Season Pass available", color: GOLD },
-              ].map(({ label, color }) => (
-                <div key={label} className="n-pro-feature" style={{ color }}>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <path d="M13.5 3.5L6 11 2.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </svg>
-                  {label}
-                </div>
-              ))}
+            <div className="ix-ctas">
+              <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary">
+                {APPLE_ICON}
+                Download on the App Store
+              </a>
             </div>
 
-            <a
-              href={APP_STORE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="n-btn-primary"
-              style={{ marginTop: 32, display: "inline-flex" }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              Get Neeko Pro on iOS
-            </a>
+            <div className="ix-pills">
+              {[
+                "600+ AFL players",
+                "Updated before each round",
+                "No betting tips — stats research only",
+              ].map(t => (
+                <span key={t} className="ix-pill">{t}</span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── TRUST ─────────────────────────────────────────────────────────────────── */}
-      <section className="n-section" style={{ background: "#060809" }}>
-        <div className="n-container">
-          <div className="n-trust-inner">
-            <div className="n-trust-text">
-              <p className="n-label">Built for fans and fantasy players</p>
-              <h2 className="n-h2" style={{ textAlign: "left", marginBottom: 16 }}>
+      {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
+      <section id="features" className="ix-section" style={{ background: "#060809" }}>
+        <div className="ix-container">
+          <div className="ix-section-head">
+            <p className="ix-label">What's inside</p>
+            <h2 className="ix-h2">Everything before lockout.</h2>
+          </div>
+
+          <div className="ix-feature-grid">
+            {FEATURES.map(({ label, copy, color, icon }) => (
+              <div key={label} className="ix-feature-card" style={{ borderColor: `${color}1e` }}>
+                <div className="ix-feature-icon" style={{ color, background: `${color}12` }}>{icon}</div>
+                <p className="ix-feature-title">{label}</p>
+                <p className="ix-feature-copy">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SCREENSHOTS ──────────────────────────────────────────────────────── */}
+      <section id="screenshots" className="ix-section" style={{ background: DARK }}>
+        <div className="ix-container">
+          <div className="ix-section-head">
+            <p className="ix-label" style={{ color: `${GOLD}99` }}>See the board before the bounce</p>
+            <h2 className="ix-h2">Built for iPhone.</h2>
+            <p className="ix-section-sub">Every screen optimised for fast decisions before game day.</p>
+          </div>
+
+          {/* Desktop grid */}
+          <div className="ix-shots-grid">
+            {SCREENSHOTS.map(({ src, caption, sub }, i) => (
+              <div key={src} className="ix-shot-wrap" style={{ marginTop: i === 1 || i === 3 ? -24 : 0 }}>
+                <div className="ix-shot-frame">
+                  <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
+                </div>
+                <p className="ix-shot-caption">{caption}</p>
+                <p className="ix-shot-sub">{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile swipe strip */}
+          <div className="ix-shots-scroll">
+            {SCREENSHOTS.map(({ src, caption, sub }) => (
+              <div key={src} className="ix-shots-scroll-item">
+                <div className="ix-shot-frame">
+                  <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
+                </div>
+                <p className="ix-shot-caption">{caption}</p>
+                <p className="ix-shot-sub">{sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── NEEKO PRO ────────────────────────────────────────────────────────── */}
+      <section id="neeko-pro" className="ix-section ix-pro-section">
+        <div className="ix-pro-glow" aria-hidden="true" />
+        <div className="ix-container" style={{ position: "relative" }}>
+          <div className="ix-pro-inner">
+
+            {/* Pro screenshot */}
+            <div className="ix-pro-visual">
+              <div className="ix-shot-frame" style={{ maxWidth: 280, margin: "0 auto" }}>
+                <img
+                  src="/images/app-screenshots/04-pro-unlock.png"
+                  alt="Neeko Pro unlock screen"
+                  className="ix-shot-img"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+
+            {/* Pro copy */}
+            <div className="ix-pro-copy">
+              <div className="ix-pro-badge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill={GOLD} aria-hidden="true" style={{ flexShrink: 0 }}>
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+                Neeko Pro
+              </div>
+              <h2 className="ix-h2" style={{ textAlign: "left", marginBottom: 14 }}>
+                Unlock every{" "}
+                <span style={{ color: GOLD }}>match board.</span>
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.58)", lineHeight: 1.65, margin: "0 0 24px" }}>
+                Neeko Pro unlocks full-round access — every stat lens, fine-line thresholds, matchup compare and team context.
+              </p>
+
+              <div className="ix-pro-feats">
+                {PRO_FEATURES.map(f => (
+                  <div key={f} className="ix-pro-feat">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={TEAL} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <polyline points="2,8 6,12 14,4" />
+                    </svg>
+                    {f}
+                  </div>
+                ))}
+              </div>
+
+              <p className="ix-pro-price">$9.99 / month</p>
+
+              <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary" style={{ marginTop: 4 }}>
+                {APPLE_ICON}
+                Download on the App Store
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRUST ────────────────────────────────────────────────────────────── */}
+      <section className="ix-section" style={{ background: "#060809" }}>
+        <div className="ix-container">
+          <div className="ix-trust-inner">
+            <div className="ix-trust-text">
+              <p className="ix-label">For fans and fantasy players</p>
+              <h2 className="ix-h2" style={{ textAlign: "left", marginBottom: 16 }}>
                 Stats and research.<br />Nothing else.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, margin: 0 }}>
-                Neeko Stats is an AFL statistics and trends research tool. We surface historical hit rates, form data and matchup context to help fantasy footy players and fans make informed decisions.
+                Neeko Stats surfaces AFL hit rates, form data and matchup context for research and entertainment purposes.
               </p>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.30)", lineHeight: 1.6, marginTop: 16 }}>
-                Neeko Stats does not provide betting tips, does not partner with any bookmaker, and does not endorse or encourage gambling. All data is for research and entertainment purposes only.
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", lineHeight: 1.65, marginTop: 14 }}>
+                Neeko Stats does not provide betting tips, does not partner with any bookmaker, and does not endorse or encourage gambling.
               </p>
             </div>
-            <div className="n-trust-cards">
+            <div className="ix-trust-stats">
               {[
-                { stat: "600+", label: "AFL players tracked", color: TEAL },
-                { stat: "All rounds", label: "every season, every week", color: GOLD },
-                { stat: "iOS", label: "native iPhone app", color: "#60a5fa" },
-              ].map(({ stat, label, color }) => (
-                <div key={stat} className="n-trust-card">
-                  <p className="n-trust-stat" style={{ color }}>{stat}</p>
-                  <p className="n-trust-label">{label}</p>
+                { n: "600+",   label: "AFL players tracked",    color: TEAL },
+                { n: "18",     label: "teams, all positions",   color: GOLD },
+                { n: "iOS",    label: "native iPhone app",      color: "#60a5fa" },
+              ].map(({ n, label, color }) => (
+                <div key={n} className="ix-trust-card">
+                  <p className="ix-trust-n" style={{ color }}>{n}</p>
+                  <p className="ix-trust-label">{label}</p>
                 </div>
               ))}
             </div>
@@ -242,23 +266,18 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── FOOTER CTA ────────────────────────────────────────────────────────────── */}
-      <section className="n-footer-cta">
-        <div className="n-container" style={{ textAlign: "center" }}>
-          <p className="n-eyebrow" style={{ animationDelay: "0s" }}>Available now</p>
-          <h2 className="n-h2" style={{ marginBottom: 16, fontSize: "clamp(24px, 3vw, 40px)" }}>
+      {/* ── FINAL CTA ────────────────────────────────────────────────────────── */}
+      <section className="ix-section ix-cta-section">
+        <div className="ix-container" style={{ textAlign: "center" }}>
+          <p className="ix-eyebrow" style={{ animationDelay: "0s" }}>Available now</p>
+          <h2 className="ix-h2" style={{ fontSize: "clamp(24px, 3vw, 40px)", marginBottom: 14 }}>
             Get the edge before bounce.
           </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.50)", marginBottom: 32, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.48)", marginBottom: 32, lineHeight: 1.6 }}>
             Download Neeko Stats free on iPhone. Upgrade to Pro when you're ready.
           </p>
-          <a
-            href={APP_STORE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="n-btn-primary n-btn-lg"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary ix-btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
             </svg>
             Download on the App Store
@@ -266,103 +285,100 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── FOOTER ────────────────────────────────────────────────────────────────── */}
-      <footer className="n-footer">
-        <div className="n-container">
-          <div className="n-footer-inner">
-            <div className="n-footer-brand">
-              <img src="/logo.png" alt="Neeko Stats" className="n-footer-logo" />
-              <p className="n-footer-tagline">AFL stats for fantasy players — on iOS.</p>
+      {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
+      <footer className="ix-footer">
+        <div className="ix-container">
+          <div className="ix-footer-row">
+            <div className="ix-footer-brand">
+              <img src="/logo.png" alt="Neeko Stats" style={{ height: 24, width: "auto", opacity: 0.8 }} />
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.30)" }}>
+                AFL stats for iPhone.
+              </p>
             </div>
-
-            <nav className="n-footer-nav" aria-label="Footer">
+            <nav className="ix-footer-nav" aria-label="Footer navigation">
               {[
-                { label: "Privacy Policy", to: "/privacy-policy" },
-                { label: "Terms", to: "/terms-conditions" },
-                { label: "Refund Policy", to: "/refund-policy" },
-                { label: "Contact", to: "/contact" },
-                { label: "About", to: "/about" },
+                { label: "Privacy Policy", to: "/privacy-policy"  },
+                { label: "Terms",          to: "/terms-conditions" },
+                { label: "Refund Policy",  to: "/refund-policy"   },
+                { label: "Contact",        to: "/contact"         },
+                { label: "About",          to: "/about"           },
               ].map(({ label, to }) => (
-                <Link key={to} to={to} className="n-footer-link">{label}</Link>
+                <Link key={to} to={to} className="ix-footer-link">{label}</Link>
               ))}
             </nav>
           </div>
-
-          <p className="n-copyright">
-            &copy; {new Date().getFullYear()} Neeko Stats. All rights reserved.
-          </p>
+          <p className="ix-copyright">&copy; {new Date().getFullYear()} Neeko Stats. All rights reserved.</p>
         </div>
       </footer>
 
       <style>{`
-        /* ── Animations ──────────────────────────────────────────────────────────── */
-        @keyframes nFadeUp {
-          from { opacity: 0; transform: translateY(20px); }
+        /* ── Animations ────────────────────────────────────────────────────── */
+        @keyframes ixFadeUp {
+          from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes nFloat {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-10px); }
+        @keyframes ixFloat {
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(-8px); }
         }
 
-        .n-eyebrow {
-          margin: 0 0 20px;
+        .ix-eyebrow {
+          margin: 0 0 18px;
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.44em;
           text-transform: uppercase;
           color: ${TEAL};
-          text-shadow: 0 0 20px rgba(34,197,94,0.28);
+          text-shadow: 0 0 18px rgba(34,197,94,0.28);
           opacity: 0;
-          animation: nFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.08s forwards;
+          animation: ixFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.05s forwards;
         }
-        .n-h1 {
-          margin: 0 0 22px;
-          font-size: clamp(36px, 5.5vw, 72px);
+        .ix-h1 {
+          margin: 0 0 18px;
+          font-size: clamp(34px, 5.5vw, 68px);
           font-weight: 900;
           line-height: 1.04;
           letter-spacing: -0.04em;
           color: #f4f4f4;
           opacity: 0;
-          animation: nFadeUp 0.60s cubic-bezier(0.22,1,0.36,1) 0.18s forwards;
+          animation: ixFadeUp 0.60s cubic-bezier(0.22,1,0.36,1) 0.15s forwards;
         }
-        .n-sub {
-          margin: 0 0 36px;
-          font-size: clamp(15px, 1.2vw, 19px);
-          color: rgba(255,255,255,0.66);
+        .ix-sub {
+          margin: 0 0 28px;
+          font-size: clamp(15px, 1.2vw, 18px);
+          color: rgba(255,255,255,0.62);
           line-height: 1.65;
-          font-weight: 400;
           opacity: 0;
-          animation: nFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.30s forwards;
+          animation: ixFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.28s forwards;
         }
-        .n-ctas {
+        .ix-ctas {
           display: flex;
-          gap: 12px;
           flex-wrap: wrap;
+          gap: 10px;
           opacity: 0;
-          animation: nFadeUp 0.50s cubic-bezier(0.22,1,0.36,1) 0.42s forwards;
+          animation: ixFadeUp 0.50s cubic-bezier(0.22,1,0.36,1) 0.40s forwards;
         }
-        .n-pills {
+        .ix-pills {
           display: flex;
-          gap: 8px;
           flex-wrap: wrap;
-          margin-top: 22px;
+          gap: 7px;
+          margin-top: 20px;
           opacity: 0;
-          animation: nFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.54s forwards;
+          animation: ixFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.52s forwards;
         }
-        .n-pill {
+        .ix-pill {
           font-size: 11px;
           font-weight: 600;
-          color: rgba(255,255,255,0.50);
+          color: rgba(255,255,255,0.46);
           background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.09);
           padding: 4px 11px;
           border-radius: 999px;
           white-space: nowrap;
         }
 
-        /* ── Buttons ─────────────────────────────────────────────────────────────── */
-        .n-btn-primary {
+        /* ── Button ─────────────────────────────────────────────────────────── */
+        .ix-btn-primary {
           display: inline-flex;
           align-items: center;
           gap: 8px;
@@ -370,216 +386,220 @@ export default function Index() {
           color: #07090C;
           font-weight: 800;
           font-size: clamp(13px, 1vw, 16px);
-          padding: 14px 28px;
+          padding: 14px 26px;
           border-radius: 12px;
           text-decoration: none;
           letter-spacing: 0.01em;
-          box-shadow: 0 8px 28px rgba(224,174,45,0.30), 0 4px 12px rgba(0,0,0,0.50);
+          box-shadow: 0 8px 24px rgba(224,174,45,0.28), 0 3px 10px rgba(0,0,0,0.45);
           transition: transform 0.18s ease, box-shadow 0.18s ease;
           white-space: nowrap;
         }
-        .n-btn-primary:hover {
+        .ix-btn-primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 14px 36px rgba(224,174,45,0.42), 0 4px 12px rgba(0,0,0,0.50);
+          box-shadow: 0 14px 32px rgba(224,174,45,0.40), 0 3px 10px rgba(0,0,0,0.45);
         }
-        .n-btn-lg {
-          font-size: clamp(14px, 1.1vw, 18px);
-          padding: 16px 36px;
+        .ix-btn-lg {
+          font-size: clamp(14px, 1.1vw, 17px);
+          padding: 16px 34px;
           border-radius: 14px;
         }
 
-        /* ── Hero ────────────────────────────────────────────────────────────────── */
-        .n-hero {
+        /* ── Hero ───────────────────────────────────────────────────────────── */
+        .ix-hero {
           position: relative;
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          padding: 80px clamp(20px, 5vw, 64px) 60px;
-          box-sizing: border-box;
           overflow: hidden;
+          padding: clamp(48px, 7vw, 88px) clamp(20px, 5vw, 64px) clamp(40px, 5vw, 72px);
         }
-        .n-hero-bg {
+        .ix-hero-glow {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 65% 55% at 40% -5%, rgba(34,197,94,0.09) 0%, transparent 65%),
-            radial-gradient(ellipse 50% 40% at 85% 55%, rgba(224,174,45,0.06) 0%, transparent 55%),
-            radial-gradient(ellipse 40% 30% at 10% 80%, rgba(96,165,250,0.04) 0%, transparent 50%);
+            radial-gradient(ellipse 65% 55% at 35% -5%, rgba(34,197,94,0.09) 0%, transparent 60%),
+            radial-gradient(ellipse 45% 35% at 85% 55%, rgba(224,174,45,0.06) 0%, transparent 55%);
           pointer-events: none;
         }
-        .n-hero-inner {
+        .ix-hero-inner {
           position: relative;
           max-width: 1160px;
           margin: 0 auto;
-          width: 100%;
           display: grid;
           grid-template-columns: 1fr;
-          gap: 48px;
+          gap: 36px;
           align-items: center;
         }
-        .n-hero-text {
-          max-width: 600px;
-        }
-        .n-hero-visual {
-          display: flex;
-          justify-content: center;
-          align-items: flex-end;
+        /* screenshot ABOVE text on mobile */
+        .ix-hero-visual { order: -1; display: flex; justify-content: center; }
+        .ix-hero-text   { order: 1; }
+
+        .ix-phone {
+          width: clamp(180px, 52vw, 280px);
           opacity: 0;
-          animation: nFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.60s forwards;
+          animation: ixFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.0s forwards;
         }
-        .n-phone-frame {
-          position: relative;
-          width: clamp(200px, 45vw, 320px);
-          animation: nFloat 4s ease-in-out 1.2s infinite;
-          filter: drop-shadow(0 32px 64px rgba(0,0,0,0.70)) drop-shadow(0 8px 24px rgba(34,197,94,0.12));
-        }
-        .n-phone-img {
+        .ix-phone-img {
           width: 100%;
           height: auto;
           display: block;
           border-radius: 28px;
+          box-shadow: 0 28px 60px rgba(0,0,0,0.65), 0 6px 20px rgba(34,197,94,0.10);
         }
 
-        /* ── Layout helpers ──────────────────────────────────────────────────────── */
-        .n-section {
-          padding: clamp(56px, 6vw, 96px) clamp(20px, 5vw, 64px);
+        /* ── Layout helpers ─────────────────────────────────────────────────── */
+        .ix-section {
+          padding: clamp(48px, 5.5vw, 88px) clamp(20px, 5vw, 64px);
         }
-        .n-container {
+        .ix-container {
           max-width: 1160px;
           margin: 0 auto;
           width: 100%;
         }
-        .n-section-header {
+        .ix-section-head {
           text-align: center;
-          margin-bottom: clamp(36px, 4vw, 56px);
+          margin-bottom: clamp(32px, 4vw, 52px);
         }
-        .n-label {
+        .ix-label {
           margin: 0 0 10px;
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.44em;
           text-transform: uppercase;
-          color: rgba(255,255,255,0.32);
+          color: rgba(255,255,255,0.28);
         }
-        .n-h2 {
+        .ix-h2 {
           margin: 0;
-          font-size: clamp(22px, 2.6vw, 36px);
+          font-size: clamp(22px, 2.6vw, 34px);
           font-weight: 900;
           color: #f0f0f0;
           letter-spacing: -0.03em;
           line-height: 1.15;
           text-align: center;
         }
-        .n-section-sub {
-          margin: 16px auto 0;
-          font-size: clamp(14px, 1vw, 16px);
-          color: rgba(255,255,255,0.52);
+        .ix-section-sub {
+          margin: 14px auto 0;
+          font-size: clamp(13px, 1vw, 15px);
+          color: rgba(255,255,255,0.48);
           line-height: 1.7;
           text-align: center;
         }
 
-        /* ── Features ────────────────────────────────────────────────────────────── */
-        .n-feature-grid {
+        /* ── Feature grid ───────────────────────────────────────────────────── */
+        .ix-feature-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
+          gap: 12px;
         }
-        .n-feature-card {
+        .ix-feature-card {
           background: rgba(255,255,255,0.03);
           border: 1px solid transparent;
-          border-radius: 14px;
-          padding: 24px 22px;
+          border-radius: 12px;
+          padding: 18px 16px;
           transition: background 0.2s ease, transform 0.2s ease;
         }
-        .n-feature-card:hover {
-          background: rgba(255,255,255,0.055);
+        .ix-feature-card:hover {
+          background: rgba(255,255,255,0.05);
           transform: translateY(-2px);
         }
-        .n-feature-icon {
+        .ix-feature-icon {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-          font-size: 18px;
-          margin-bottom: 14px;
+          width: 36px;
+          height: 36px;
+          border-radius: 9px;
+          font-size: 16px;
+          margin-bottom: 12px;
         }
-        .n-feature-title {
-          margin: 0 0 8px;
-          font-size: 15px;
+        .ix-feature-title {
+          margin: 0 0 6px;
+          font-size: 14px;
           font-weight: 800;
           color: #ebebeb;
           letter-spacing: -0.01em;
         }
-        .n-feature-copy {
+        .ix-feature-copy {
           margin: 0;
-          font-size: 13px;
-          color: rgba(255,255,255,0.50);
-          line-height: 1.65;
+          font-size: 12.5px;
+          color: rgba(255,255,255,0.46);
+          line-height: 1.6;
         }
 
-        /* ── Screenshots ─────────────────────────────────────────────────────────── */
-        .n-screenshots-section {
-          background: ${DARK};
-        }
-        .n-screenshots-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
+        /* ── Screenshots desktop grid ───────────────────────────────────────── */
+        .ix-shots-grid {
+          display: none;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 18px;
           align-items: end;
         }
-        .n-screenshot-wrap {
-          display: flex;
-          justify-content: center;
-        }
-        .n-screenshot-frame {
-          width: 100%;
-          max-width: 260px;
-          border-radius: 22px;
+        .ix-shot-wrap { text-align: center; }
+        .ix-shot-frame {
+          border-radius: 20px;
           overflow: hidden;
-          box-shadow: 0 20px 48px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.40);
+          box-shadow: 0 18px 44px rgba(0,0,0,0.55), 0 3px 12px rgba(0,0,0,0.35);
           border: 1px solid rgba(255,255,255,0.07);
           transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
-        .n-screenshot-frame:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 28px 60px rgba(0,0,0,0.65), 0 8px 24px rgba(34,197,94,0.10);
+        .ix-shot-frame:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 26px 56px rgba(0,0,0,0.65), 0 6px 18px rgba(34,197,94,0.09);
         }
-        .n-screenshot-img {
+        .ix-shot-img {
           width: 100%;
           height: auto;
           display: block;
         }
-        /* stagger the middle screenshot up a bit on desktop */
-        .n-screenshots-grid .n-screenshot-wrap:nth-child(2) .n-screenshot-frame {
-          transform: translateY(-16px);
+        .ix-shot-caption {
+          margin: 10px 0 2px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #e8e8e8;
         }
-        .n-screenshots-grid .n-screenshot-wrap:nth-child(2) .n-screenshot-frame:hover {
-          transform: translateY(-22px);
+        .ix-shot-sub {
+          margin: 0;
+          font-size: 11.5px;
+          color: rgba(255,255,255,0.38);
         }
 
-        /* ── Neeko Pro ───────────────────────────────────────────────────────────── */
-        .n-pro-section {
-          position: relative;
+        /* ── Screenshots mobile scroll ──────────────────────────────────────── */
+        .ix-shots-scroll {
+          display: flex;
+          gap: 14px;
+          overflow-x: auto;
+          padding-bottom: 12px;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+        }
+        .ix-shots-scroll::-webkit-scrollbar { display: none; }
+        .ix-shots-scroll-item {
+          flex: 0 0 clamp(160px, 52vw, 220px);
+          scroll-snap-align: start;
+          text-align: center;
+        }
+        .ix-shots-scroll .ix-shot-frame { border-radius: 18px; }
+
+        /* ── Neeko Pro ──────────────────────────────────────────────────────── */
+        .ix-pro-section {
           background: ${DARK};
           overflow: hidden;
+          position: relative;
         }
-        .n-pro-bg {
+        .ix-pro-glow {
           position: absolute;
           inset: 0;
-          background:
-            radial-gradient(ellipse 70% 60% at 50% 100%, rgba(224,174,45,0.07) 0%, transparent 65%),
-            radial-gradient(ellipse 40% 30% at 0% 50%, rgba(34,197,94,0.04) 0%, transparent 55%);
+          background: radial-gradient(ellipse 70% 60% at 50% 110%, rgba(224,174,45,0.07) 0%, transparent 60%);
           pointer-events: none;
         }
-        .n-pro-inner {
-          text-align: center;
-          max-width: 640px;
-          margin: 0 auto;
+        .ix-pro-inner {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 40px;
+          align-items: center;
         }
-        .n-pro-badge {
-          display: inline-block;
+        .ix-pro-visual { display: flex; justify-content: center; }
+        .ix-pro-copy   {}
+        .ix-pro-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.44em;
@@ -589,175 +609,156 @@ export default function Index() {
           border: 1px solid rgba(224,174,45,0.22);
           padding: 5px 14px;
           border-radius: 999px;
+          margin-bottom: 18px;
+        }
+        .ix-pro-feats {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
           margin-bottom: 20px;
         }
-        .n-pro-features {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px 16px;
-          justify-content: center;
-          margin-top: 8px;
-        }
-        .n-pro-feature {
+        .ix-pro-feat {
           display: flex;
           align-items: center;
-          gap: 7px;
-          font-size: 13px;
+          gap: 9px;
+          font-size: 13.5px;
           font-weight: 600;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          padding: 7px 14px;
-          border-radius: 999px;
+          color: rgba(255,255,255,0.78);
+        }
+        .ix-pro-price {
+          margin: 0 0 20px;
+          font-size: 22px;
+          font-weight: 900;
+          color: ${GOLD};
+          letter-spacing: -0.02em;
         }
 
-        /* ── Trust ───────────────────────────────────────────────────────────────── */
-        .n-trust-inner {
+        /* ── Trust ──────────────────────────────────────────────────────────── */
+        .ix-trust-inner {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 40px;
+          gap: 32px;
           align-items: center;
         }
-        .n-trust-text .n-h2 {
-          text-align: left;
-        }
-        .n-trust-cards {
+        .ix-trust-stats {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
+          gap: 12px;
         }
-        .n-trust-card {
+        .ix-trust-card {
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 12px;
-          padding: 20px 16px;
+          border-radius: 10px;
+          padding: 16px 12px;
           text-align: center;
         }
-        .n-trust-stat {
-          margin: 0 0 6px;
-          font-size: clamp(22px, 2.5vw, 30px);
+        .ix-trust-n {
+          margin: 0 0 5px;
+          font-size: clamp(20px, 2.5vw, 28px);
           font-weight: 900;
           letter-spacing: -0.03em;
         }
-        .n-trust-label {
+        .ix-trust-label {
           margin: 0;
-          font-size: 12px;
-          color: rgba(255,255,255,0.40);
+          font-size: 11px;
+          color: rgba(255,255,255,0.38);
           line-height: 1.4;
         }
 
-        /* ── Footer CTA ──────────────────────────────────────────────────────────── */
-        .n-footer-cta {
+        /* ── CTA section ────────────────────────────────────────────────────── */
+        .ix-cta-section {
           background: #060809;
           border-top: 1px solid rgba(255,255,255,0.05);
-          padding: clamp(64px, 7vw, 104px) clamp(20px, 5vw, 64px);
         }
 
-        /* ── Footer ──────────────────────────────────────────────────────────────── */
-        .n-footer {
+        /* ── Footer ─────────────────────────────────────────────────────────── */
+        .ix-footer {
           background: #03050A;
           border-top: 1px solid rgba(255,255,255,0.06);
-          padding: clamp(32px, 4vw, 52px) clamp(20px, 5vw, 64px);
+          padding: clamp(28px, 3.5vw, 48px) clamp(20px, 5vw, 64px);
         }
-        .n-footer-inner {
+        .ix-footer-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
           flex-wrap: wrap;
-          gap: 24px;
-          margin-bottom: 28px;
+          gap: 20px;
+          margin-bottom: 22px;
         }
-        .n-footer-brand {
+        .ix-footer-brand {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
-        .n-footer-logo {
-          height: 28px;
-          width: auto;
-          opacity: 0.85;
-        }
-        .n-footer-tagline {
-          margin: 0;
-          font-size: 13px;
-          color: rgba(255,255,255,0.35);
-        }
-        .n-footer-nav {
+        .ix-footer-nav {
           display: flex;
-          gap: 20px;
+          gap: 18px;
           flex-wrap: wrap;
           align-items: center;
         }
-        .n-footer-link {
+        .ix-footer-link {
           font-size: 12px;
-          color: rgba(255,255,255,0.38);
+          color: rgba(255,255,255,0.36);
           text-decoration: none;
           transition: color 0.15s ease;
           white-space: nowrap;
         }
-        .n-footer-link:hover {
-          color: rgba(255,255,255,0.72);
-        }
-        .n-copyright {
+        .ix-footer-link:hover { color: rgba(255,255,255,0.72); }
+        .ix-copyright {
           margin: 0;
           font-size: 11px;
-          color: rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.16);
           text-align: center;
         }
 
-        /* ── Mobile ──────────────────────────────────────────────────────────────── */
-        @media (max-width: 640px) {
-          .n-hero {
-            min-height: auto;
-            padding-top: 72px;
-            padding-bottom: 40px;
-          }
-          .n-hero-inner {
-            gap: 36px;
-          }
-          /* screenshot first on mobile */
-          .n-hero-visual { order: -1; }
-          .n-hero-text   { order: 1; }
-          .n-phone-frame {
-            width: clamp(180px, 60vw, 240px);
-          }
-          .n-ctas { flex-direction: column; align-items: flex-start; }
-          .n-ctas .n-btn-primary { width: 100%; max-width: 320px; justify-content: center; }
-          .n-feature-grid { grid-template-columns: 1fr; }
-          .n-screenshots-grid { grid-template-columns: 1fr; gap: 16px; }
-          .n-screenshots-grid .n-screenshot-wrap { max-width: 280px; margin: 0 auto; width: 100%; }
-          .n-screenshots-grid .n-screenshot-wrap:nth-child(2) .n-screenshot-frame { transform: none; }
-          .n-screenshots-grid .n-screenshot-wrap:nth-child(2) .n-screenshot-frame:hover { transform: translateY(-4px); }
-          .n-trust-inner { grid-template-columns: 1fr; }
-          .n-trust-cards { grid-template-columns: 1fr; gap: 10px; }
-          .n-trust-text .n-h2 { text-align: center; }
-          .n-footer-inner { flex-direction: column; align-items: flex-start; }
-          .n-footer-brand { flex-direction: column; align-items: flex-start; gap: 6px; }
+        /* ── Mobile ─────────────────────────────────────────────────────────── */
+        @media (max-width: 639px) {
+          .ix-hero { padding-top: 36px; padding-bottom: 32px; }
+          .ix-phone { width: clamp(160px, 62vw, 240px); }
+          .ix-hero-inner { gap: 24px; }
+          .ix-ctas { flex-direction: column; align-items: flex-start; }
+          .ix-ctas .ix-btn-primary { width: 100%; max-width: 320px; justify-content: center; }
+          .ix-feature-grid { grid-template-columns: 1fr; gap: 10px; }
+          .ix-shots-grid { display: none !important; }
+          .ix-trust-stats { grid-template-columns: 1fr; gap: 10px; }
+          .ix-trust-inner .ix-h2 { text-align: center; }
+          .ix-footer-row { flex-direction: column; align-items: flex-start; }
+          .ix-pro-price { font-size: 20px; }
         }
 
-        /* ── Tablet ──────────────────────────────────────────────────────────────── */
-        @media (min-width: 641px) and (max-width: 1023px) {
-          .n-hero-inner { grid-template-columns: 1fr; }
-          .n-hero-text { max-width: 100%; }
-          .n-hero-visual { order: -1; }
-          .n-phone-frame { width: clamp(220px, 35vw, 280px); animation: none; }
-          .n-screenshots-grid { grid-template-columns: repeat(3, 1fr); }
-          .n-trust-inner { grid-template-columns: 1fr; }
-          .n-trust-cards { grid-template-columns: repeat(3, 1fr); }
+        /* ── Tablet ─────────────────────────────────────────────────────────── */
+        @media (min-width: 640px) and (max-width: 1023px) {
+          .ix-shots-grid { display: none !important; }
+          .ix-trust-stats { grid-template-columns: repeat(3, 1fr); }
+          .ix-feature-grid { grid-template-columns: repeat(2, 1fr); }
+          .ix-pro-inner { grid-template-columns: 1fr; }
         }
 
-        /* ── Desktop ─────────────────────────────────────────────────────────────── */
+        /* ── Desktop ────────────────────────────────────────────────────────── */
         @media (min-width: 1024px) {
-          .n-hero-inner {
+          .ix-hero-inner {
             grid-template-columns: 1fr auto;
             gap: 80px;
           }
-          .n-hero-visual { order: 1; }
-          .n-hero-text { order: -1; }
-          .n-phone-frame { width: clamp(260px, 22vw, 340px); }
-          .n-trust-inner { grid-template-columns: 1fr 1fr; }
-          .n-trust-cards { grid-template-columns: 1fr; gap: 12px; }
-          .n-trust-card { display: flex; align-items: center; gap: 16px; text-align: left; }
-          .n-trust-stat { font-size: clamp(20px, 1.8vw, 26px); margin-bottom: 0; }
+          .ix-hero-visual { order: 1; }
+          .ix-hero-text   { order: -1; }
+          .ix-phone {
+            width: clamp(260px, 20vw, 320px);
+            animation: ixFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.55s forwards, ixFloat 4.5s ease-in-out 1.4s infinite;
+          }
+          .ix-shots-grid   { display: grid !important; }
+          .ix-shots-scroll { display: none; }
+          .ix-pro-inner { grid-template-columns: auto 1fr; gap: 60px; }
+          .ix-pro-visual .ix-shot-frame { max-width: 260px; }
+          .ix-trust-inner { grid-template-columns: 1fr 1fr; }
+          .ix-trust-stats { grid-template-columns: 1fr; gap: 10px; }
+          .ix-trust-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+          }
+          .ix-trust-n { font-size: clamp(18px, 1.8vw, 24px); margin-bottom: 0; }
         }
       `}</style>
     </div>
