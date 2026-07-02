@@ -326,8 +326,8 @@ export default function Index() {
         <div className="ix-container">
           <div className="ix-footer-row">
             <div className="ix-footer-brand">
-              <img src="/logo.png" alt="Neeko Stats" style={{ height: 24, width: "auto", opacity: 0.8 }} />
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.30)" }}>
+              <img src="/logo.png" alt="Neeko Stats" style={{ height: 20, width: "auto", opacity: 0.75 }} />
+              <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>
                 AFL stats for iPhone.
               </p>
             </div>
@@ -834,42 +834,42 @@ export default function Index() {
         /* ── Footer ─────────────────────────────────────────────────────────── */
         .ix-footer {
           background: #03050A;
-          border-top: 1px solid rgba(255,255,255,0.06);
-          padding: clamp(24px, 3vw, 44px) clamp(20px, 5vw, 64px);
-          padding-bottom: calc(clamp(24px, 3vw, 44px) + env(safe-area-inset-bottom, 0px));
+          border-top: 1px solid rgba(255,255,255,0.07);
+          padding: clamp(20px, 2.5vw, 36px) clamp(20px, 5vw, 64px);
+          padding-bottom: calc(clamp(20px, 2.5vw, 36px) + env(safe-area-inset-bottom, 0px));
         }
         .ix-footer-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
           flex-wrap: wrap;
-          gap: 18px;
-          margin-bottom: 20px;
+          gap: 14px;
+          margin-bottom: 14px;
         }
         .ix-footer-brand {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
         }
         .ix-footer-nav {
           display: grid;
           grid-template-columns: repeat(2, auto);
-          gap: 10px 24px;
+          gap: 8px 24px;
           align-items: center;
         }
         .ix-footer-link {
           font-size: 12px;
-          color: rgba(255,255,255,0.36);
+          color: rgba(255,255,255,0.48);
           text-decoration: none;
           transition: color 0.15s ease;
           white-space: nowrap;
-          padding: 6px 2px;
+          padding: 4px 0;
         }
-        .ix-footer-link:hover { color: rgba(255,255,255,0.72); }
+        .ix-footer-link:hover { color: rgba(255,255,255,0.75); }
         .ix-copyright {
           margin: 0;
-          font-size: 11px;
-          color: rgba(255,255,255,0.16);
+          font-size: 10.5px;
+          color: rgba(255,255,255,0.14);
           text-align: center;
         }
 
@@ -890,8 +890,8 @@ export default function Index() {
           .ix-feature-icon { width: 30px; height: 30px; font-size: 13px; margin-bottom: 8px; }
           .ix-trust-stats { grid-template-columns: 1fr; gap: 8px; }
           .ix-trust-inner .ix-h2 { text-align: center; }
-          .ix-footer-row { flex-direction: column; align-items: flex-start; gap: 14px; }
-          .ix-footer-nav { grid-template-columns: repeat(2, auto); gap: 8px 20px; }
+          .ix-footer-row { flex-direction: column; align-items: center; gap: 12px; }
+          .ix-footer-nav { grid-template-columns: repeat(2, auto); gap: 8px 28px; justify-items: center; }
           .ix-pro-price { font-size: 26px; }
           .ix-marquee-item { width: clamp(120px, 36vw, 170px); }
         }

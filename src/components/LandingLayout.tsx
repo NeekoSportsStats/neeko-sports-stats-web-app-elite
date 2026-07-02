@@ -41,7 +41,8 @@ export function LandingLayout() {
           <img
             src="/logo.png"
             alt="Neeko Stats"
-            style={{ height: 44, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }}
+            className="lnav-logo"
+            style={{ width: "clamp(128px, 20vw, 162px)", height: "auto", objectFit: "contain", display: "block", flexShrink: 0 }}
           />
         </Link>
 
@@ -82,6 +83,7 @@ export function LandingLayout() {
       <style>{`
         @media (max-width: 479px) {
           .lnav-cta-text { display: none; }
+          .lnav-logo { width: clamp(128px, 38vw, 148px) !important; }
         }
       `}</style>
     </div>

@@ -42,15 +42,7 @@ export function PublicPageLayout() {
         transition: "height 0.22s ease, background 0.22s ease, border-color 0.22s ease",
       }}>
         <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
-          <img src="/logo.png" alt="" style={{ height: 34, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }} />
-          <span style={{
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#fff",
-            letterSpacing: "-0.01em",
-            lineHeight: 1,
-            whiteSpace: "nowrap",
-          }}>Neeko Stats</span>
+          <img src="/logo.png" alt="Neeko Stats" className="ppl-logo" style={{ width: "clamp(120px, 22vw, 158px)", height: "auto", objectFit: "contain", display: "block", flexShrink: 0 }} />
         </Link>
 
         <a
@@ -96,29 +88,35 @@ export function PublicPageLayout() {
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer style={{
         background: "#03050A",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        padding: "clamp(24px, 3vw, 44px) clamp(20px, 5vw, 40px)",
-        paddingBottom: "calc(clamp(24px, 3vw, 44px) + env(safe-area-inset-bottom, 0px))",
+        borderTop: "1px solid rgba(255,255,255,0.07)",
+        padding: "clamp(20px, 2.5vw, 36px) clamp(20px, 5vw, 40px)",
+        paddingBottom: "calc(clamp(20px, 2.5vw, 36px) + env(safe-area-inset-bottom, 0px))",
       }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 18 }}>
-            <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-              <img src="/logo.png" alt="Neeko Stats" style={{ height: 22, width: "auto", opacity: 0.8 }} />
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.30)" }}>AFL stats for iPhone.</span>
+
+          {/* Mobile: centered stack. Desktop: two-column row */}
+          <div className="ppl-footer-inner">
+
+            <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }} className="ppl-footer-brand">
+              <img src="/logo.png" alt="Neeko Stats" style={{ height: 20, width: "auto", opacity: 0.75 }} />
+              <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>AFL stats for iPhone.</span>
             </Link>
-            <nav className="ppl-footer-nav">
+
+            <nav className="ppl-footer-nav" aria-label="Footer navigation">
               {FOOTER_LINKS.map(({ label, to }) => (
                 <Link
                   key={to}
                   to={to}
-                  style={{ fontSize: 12, color: "rgba(255,255,255,0.36)", textDecoration: "none", padding: "6px 2px", whiteSpace: "nowrap" }}
+                  style={{ fontSize: 12, color: "rgba(255,255,255,0.48)", textDecoration: "none", whiteSpace: "nowrap", padding: "4px 0", transition: "color 0.15s" }}
+                  className="ppl-footer-link"
                 >
                   {label}
                 </Link>
               ))}
             </nav>
           </div>
-          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.16)", textAlign: "center" }}>
+
+          <p style={{ margin: "14px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.14)", textAlign: "center" }}>
             &copy; {new Date().getFullYear()} Neeko Stats. All rights reserved.
           </p>
         </div>
@@ -127,11 +125,32 @@ export function PublicPageLayout() {
       <style>{`
         @media (max-width: 479px) {
           .ppl-cta-text { display: none; }
-          .ppl-footer-nav { display: grid; grid-template-columns: repeat(2, auto); gap: 8px 20px; }
+          .ppl-logo { width: clamp(120px, 36vw, 142px) !important; }
+          .ppl-footer-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+          }
+          .ppl-footer-brand { justify-content: center; }
+          .ppl-footer-nav {
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 8px 28px;
+            justify-items: center;
+          }
         }
         @media (min-width: 480px) {
-          .ppl-footer-nav { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+          .ppl-footer-inner {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+          }
+          .ppl-footer-nav { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
         }
+        .ppl-footer-link:hover { color: rgba(255,255,255,0.72) !important; }
       `}</style>
     </div>
   );
