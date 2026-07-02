@@ -2,18 +2,18 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "9 May 2026";
+const LAST_UPDATED = "2 July 2026";
 
 const TOC = [
   { id: "s1",  label: "Acceptance of Terms" },
-  { id: "s2",  label: "No Betting, Gambling, Financial or Professional Advice" },
-  { id: "s3",  label: "No Guarantee of Accuracy" },
-  { id: "s4",  label: "Prohibited Use" },
-  { id: "s5",  label: "API Restrictions" },
-  { id: "s6",  label: "User Responsibilities" },
-  { id: "s7",  label: "Neeko+ Access Terms" },
-  { id: "s8",  label: "Account Suspension and Termination" },
-  { id: "s9",  label: "Service Availability" },
+  { id: "s2",  label: "About the App" },
+  { id: "s3",  label: "No Betting, Gambling or Financial Advice" },
+  { id: "s4",  label: "No Guarantee of Accuracy" },
+  { id: "s5",  label: "Acceptable Use" },
+  { id: "s6",  label: "Neeko Pro Subscription" },
+  { id: "s7",  label: "Subscription Management and Cancellation" },
+  { id: "s8",  label: "Service Availability" },
+  { id: "s9",  label: "Intellectual Property" },
   { id: "s10", label: "Limitation of Liability" },
   { id: "s11", label: "Australian Consumer Law" },
   { id: "s12", label: "Governing Law" },
@@ -35,11 +35,11 @@ function Prose({ children }: { children: React.ReactNode }) {
   return <div className="text-sm text-white/60 leading-relaxed space-y-3">{children}</div>;
 }
 
-function BulletList({ items }: { items: string[] }) {
+function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
   return (
     <ul className="space-y-2 text-sm text-white/60 mt-2">
-      {items.map((item) => (
-        <li key={item} className="flex gap-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
           <span className="text-white/35 mt-0.5 shrink-0">—</span>
           <span>{item}</span>
         </li>
@@ -54,8 +54,8 @@ export default function TermsConditions() {
   return (
     <>
       <Helmet>
-        <title>Terms &amp; Conditions | Neeko Sports Stats</title>
-        <meta name="description" content="Terms and conditions for using Neeko Sports Stats, the AFL stats and fantasy intelligence platform." />
+        <title>Terms &amp; Conditions | Neeko Stats</title>
+        <meta name="description" content="Terms and conditions for using Neeko Stats, the AFL statistics app for iPhone." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
@@ -75,18 +75,13 @@ export default function TermsConditions() {
             <p className="text-white/35 text-sm">Last updated: {LAST_UPDATED}</p>
           </div>
 
-          {/* Table of contents */}
+          {/* TOC */}
           <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5 mb-6">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25 mb-3">Contents</p>
             <ol className="space-y-1.5">
               {TOC.map(({ id, label }) => (
                 <li key={id}>
-                  <a
-                    href={`#${id}`}
-                    className="text-sm text-white/55 hover:text-white/80 transition-colors"
-                  >
-                    {label}
-                  </a>
+                  <a href={`#${id}`} className="text-sm text-white/55 hover:text-white/80 transition-colors">{label}</a>
                 </li>
               ))}
             </ol>
@@ -97,141 +92,135 @@ export default function TermsConditions() {
             <Section id="s1" num="1" title="Acceptance of Terms">
               <Prose>
                 <p>
-                  By accessing or using Neeko Sports Stats ("the Service"), you accept and agree to be bound by these Terms and Conditions. If you do not agree, do not use the Service.
+                  By downloading, installing, or using the Neeko Stats app ("the App"), you accept and agree to be bound by these Terms and Conditions. If you do not agree, do not use the App.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s2" num="2" title="No Betting, Gambling, Financial or Professional Advice">
+            <Section id="s2" num="2" title="About the App">
               <Prose>
                 <p>
-                  Neeko Sports Stats does not provide betting, wagering, gambling, financial, or investment advice. The Service is intended for AFL statistics, fantasy sport analysis, and general sports information only.
+                  Neeko Stats is an AFL statistics and research app for iPhone. The App provides AFL player hit rates, match boards, team form, and matchup data. Information is provided for research, informational, and entertainment purposes only.
                 </p>
                 <p>
-                  All data, projections, rankings, signals, and analysis available on the platform are provided for informational and entertainment purposes only. Nothing on this platform should be interpreted as advice of any professional, financial, or legal nature.
+                  Neeko Stats is not affiliated with the AFL, AFL clubs, or any official AFL data provider.
                 </p>
-                <p>Users are responsible for how they interpret and use the information provided by the Service.</p>
               </Prose>
             </Section>
 
-            <Section id="s3" num="3" title="No Guarantee of Accuracy">
+            <Section id="s3" num="3" title="No Betting, Gambling or Financial Advice">
               <Prose>
                 <p>
-                  Projections, rankings, and signals are model-generated estimates based on available data. They represent likely ranges, not certainties. AFL player performance is inherently variable and outputs will not always be correct.
+                  Neeko Stats does not provide betting tips, wagering advice, gambling recommendations, bookmaker links, financial advice, or investment guidance of any kind.
+                </p>
+                <p>
+                  All data, statistics, hit rates, projections, and analysis available through the App are provided for informational and entertainment purposes only. Nothing in the App should be interpreted as advice of any professional, financial, legal, or gambling nature.
+                </p>
+                <p>
+                  Users are solely responsible for how they interpret and use the information provided by the App. Neeko Stats does not endorse or encourage gambling.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s4" num="4" title="No Guarantee of Accuracy">
+              <Prose>
+                <p>
+                  AFL statistics, projections, and hit rates are based on available data and are subject to change. AFL player performance is inherently variable and data may be delayed, incomplete, or inaccurate despite our reasonable efforts.
                 </p>
                 <BulletList items={[
-                  "Sports analytics involve inherent uncertainty and are subject to change",
                   "Past performance does not guarantee future results",
-                  "The Service provides no warranties regarding the accuracy, completeness, or reliability of any data or output",
+                  "Statistics and hit rates represent historical patterns, not predictions or certainties",
+                  "The App provides no warranties regarding the accuracy, completeness, or reliability of any data",
+                  "Data may be delayed or unavailable during or immediately after matches",
                 ]} />
               </Prose>
             </Section>
 
-            <Section id="s4" num="4" title="Prohibited Use">
+            <Section id="s5" num="5" title="Acceptable Use">
               <Prose>
-                <p>
-                  You must not access, scrape, harvest, copy, or republish any content from Neeko Sports Stats using automated tools, bots, scripts, crawlers, or unofficial access methods. All prohibited activities are detailed in the User Conduct Policy.
-                </p>
-                <p>Prohibited activities include but are not limited to:</p>
+                <p>You must not:</p>
                 <BulletList items={[
-                  "Using automated tools, bots, scripts, or crawlers to access or extract data",
-                  "Bulk-downloading, systematically copying, or republishing platform content",
-                  "Attempting to bypass access restrictions or Neeko+ paywalls",
-                  "Reverse-engineering any part of the Service",
-                  "Sharing premium content publicly or with non-subscribers",
-                  "Using platform data for commercial purposes without written permission",
+                  "Use automated tools, bots, scripts, or crawlers to access or extract data from the App",
+                  "Reverse-engineer, decompile, or attempt to extract source code from the App",
+                  "Attempt to bypass or circumvent Neeko Pro access restrictions",
+                  "Share Neeko Pro content or access credentials with non-subscribers",
+                  "Use App data or content for commercial purposes without written permission from Neeko Stats",
+                  "Use the App for any unlawful purpose or in violation of any applicable law",
                 ]} />
+                <p>Violation of these rules may result in account suspension or termination, including loss of access to paid features. Refunds in such cases are subject to the Refund Policy and applicable law.</p>
               </Prose>
             </Section>
 
-            <Section id="s5" num="5" title="API Restrictions">
+            <Section id="s6" num="6" title="Neeko Pro Subscription">
               <Prose>
                 <p>
-                  Neeko Sports Stats does not provide a public API. Any attempt to reverse-engineer, replicate, or simulate an API through scraping, automated requests, or network-level manipulation is strictly prohibited. Unauthorised API-like activity may result in immediate account suspension or permanent banning.
+                  Neeko Pro is a premium subscription that unlocks additional features within the Neeko Stats app, including full-round match boards, all stat lenses, fine-line thresholds, and matchup compare access.
                 </p>
-              </Prose>
-            </Section>
-
-            <Section id="s6" num="6" title="User Responsibilities">
-              <Prose>
-                <p>Users are responsible for:</p>
-                <BulletList items={[
-                  "Maintaining the confidentiality of their account credentials",
-                  "All activities that occur under their account",
-                  "Complying with all applicable local, state, and federal laws",
-                  "Using the Service in a lawful and responsible manner",
-                  "Not attempting to gain unauthorised access to any part of the Service",
-                ]} />
-              </Prose>
-            </Section>
-
-            <Section id="s7" num="7" title="Neeko+ Access Terms">
-              <Prose>
-                <p>
-                  Neeko+ is a premium access tier that provides additional features. Two access options are available:
-                </p>
-                <div className="space-y-3 mt-2">
-                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-                    <p className="text-sm font-bold text-white/80 mb-1">Season Pass</p>
-                    <p className="text-sm text-white/40">
-                      A one-time payment for access until the end of the stated AFL season. There is no recurring billing. Access continues until the season ends or until the account is terminated for breach of these Terms or required otherwise by law.
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-                    <p className="text-sm font-bold text-white/80 mb-1">Weekly Plan</p>
-                    <p className="text-sm text-white/40">
-                      A recurring weekly subscription billed via Stripe. Access renews automatically unless cancelled before the next billing date. You may cancel at any time through your account settings. Access continues until the end of the current paid period.
-                    </p>
-                  </div>
+                <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4 mt-2">
+                  <p className="text-sm font-bold text-white/80 mb-2">Neeko Pro — $9.99 AUD / month</p>
+                  <p className="text-sm text-white/55">
+                    Neeko Pro is available as an auto-renewing monthly subscription for $9.99 AUD per month. Payment is charged to your Apple ID through the App Store. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your Apple ID subscription settings.
+                  </p>
                 </div>
-                <p className="mt-2">
-                  We reserve the right to modify pricing or features with reasonable notice to active subscribers.
+                <p>
+                  We reserve the right to modify Neeko Pro pricing or features. Where changes affect active subscribers, reasonable notice will be provided.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s8" num="8" title="Account Suspension and Termination">
+            <Section id="s7" num="7" title="Subscription Management and Cancellation">
               <Prose>
                 <p>
-                  We reserve the right to suspend or permanently terminate accounts that violate these Terms, including but not limited to:
+                  Neeko Pro subscriptions are managed entirely through Apple. You can manage or cancel your subscription at any time through:
                 </p>
                 <BulletList items={[
-                  "Automated scraping or bot usage",
-                  "Attempts to bypass Neeko+ access controls",
-                  "Sharing premium content or credentials with non-subscribers",
-                  "Abusive behaviour toward the platform or other users",
-                  "Fraudulent activity or unjustified chargebacks",
-                  "Any action that materially harms the platform's performance or integrity",
+                  "iPhone Settings → [Your Name] → Subscriptions",
+                  "The App Store → your account → Subscriptions",
                 ]} />
-                <p className="mt-2">
-                  Accounts terminated for breach of these Terms may lose access to all features. Refunds in such cases are subject to the Refund Policy and applicable law.
+                <BulletList items={[
+                  "Cancelling stops future renewals — no further charges will be made after the current period ends",
+                  "Access to Neeko Pro continues until the end of the current paid billing period",
+                  "Cancellation does not automatically trigger a refund for the current period unless required by law",
+                  "Refund requests must be submitted to Apple at reportaproblem.apple.com",
+                ]} />
+                <p>
+                  Because Neeko Pro is purchased through Apple in-app purchase, refund requests are managed by Apple. Neeko Stats does not receive or store your payment card details. For our full refund terms, see the{" "}
+                  <a href="/refund-policy" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">Refund Policy</a>.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s9" num="9" title="Service Availability">
+            <Section id="s8" num="8" title="Service Availability">
               <Prose>
                 <p>
-                  While we aim to provide continuous service, we do not guarantee uninterrupted availability. We reserve the right to:
+                  While we aim to provide continuous service, we do not guarantee uninterrupted availability of the App or its features. We reserve the right to:
                 </p>
                 <BulletList items={[
-                  "Modify, suspend, or discontinue any part of the Service at any time",
+                  "Modify, suspend, or discontinue any part of the App at any time",
                   "Perform scheduled or emergency maintenance",
-                  "Update features, content, and pricing",
+                  "Update features, content, and data sources",
                 ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s9" num="9" title="Intellectual Property">
+              <Prose>
+                <p>
+                  All content, design, data compilations, features, and functionality within the Neeko Stats app are the property of Neeko Stats or its licensors. You may not copy, reproduce, distribute, or create derivative works from any part of the App without written permission.
+                </p>
               </Prose>
             </Section>
 
             <Section id="s10" num="10" title="Limitation of Liability">
               <Prose>
                 <p>
-                  To the fullest extent permitted by law, Neeko Sports Stats shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from:
+                  To the fullest extent permitted by law, Neeko Stats shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from:
                 </p>
                 <BulletList items={[
-                  "Use or inability to use the Service",
-                  "Reliance on any data, projection, ranking, or output from the Service",
+                  "Use or inability to use the App",
+                  "Reliance on any data, statistic, hit rate, or output from the App",
                   "Unauthorised access to or alteration of your account or data",
-                  "Any interruption, delay, or failure of the Service",
+                  "Any interruption, delay, or failure of the App",
                 ]} />
                 <p>This limitation is subject to any rights you may have under Australian Consumer Law or other laws that cannot be excluded.</p>
               </Prose>
@@ -256,7 +245,7 @@ export default function TermsConditions() {
             <Section id="s13" num="13" title="Changes to Terms">
               <Prose>
                 <p>
-                  We may update these Terms at any time. Changes are effective immediately upon posting. Continued use of the Service after changes constitutes acceptance of the updated Terms.
+                  We may update these Terms at any time. Changes are effective immediately upon posting. Continued use of the App after changes constitutes acceptance of the updated Terms.
                 </p>
               </Prose>
             </Section>

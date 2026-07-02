@@ -2,21 +2,22 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "9 May 2026";
+const LAST_UPDATED = "2 July 2026";
 
 const TOC = [
   { id: "s1",  label: "What Information We Collect" },
   { id: "s2",  label: "How We Use Your Information" },
-  { id: "s3",  label: "Payment Information" },
-  { id: "s4",  label: "Cookies and Local Storage" },
+  { id: "s3",  label: "Subscription and Payment Data" },
+  { id: "s4",  label: "App Store Connect Privacy Labels" },
   { id: "s5",  label: "Third-Party Services" },
-  { id: "s6",  label: "Data Storage and Protection" },
-  { id: "s7",  label: "Data Sharing and Disclosure" },
-  { id: "s8",  label: "Your Privacy Rights" },
-  { id: "s9",  label: "Data Retention" },
-  { id: "s10", label: "Children's Privacy" },
-  { id: "s11", label: "Changes to This Policy" },
-  { id: "s12", label: "Contact" },
+  { id: "s6",  label: "Tracking and Advertising" },
+  { id: "s7",  label: "Data Storage and Protection" },
+  { id: "s8",  label: "Data Sharing and Disclosure" },
+  { id: "s9",  label: "Your Privacy Rights" },
+  { id: "s10", label: "Data Retention" },
+  { id: "s11", label: "Children's Privacy" },
+  { id: "s12", label: "Changes to This Policy" },
+  { id: "s13", label: "Contact" },
 ];
 
 function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
@@ -52,9 +53,10 @@ export default function PrivacyPolicy() {
   return (
     <>
       <Helmet>
-        <title>Privacy Policy | Neeko Sports Stats</title>
-        <meta name="description" content="Privacy policy for Neeko Sports Stats. Learn what data we collect, how it is used, and how to exercise your privacy rights." />
-        <meta name="robots" content="noindex, follow" />
+        <title>Privacy Policy | Neeko Stats</title>
+        <meta name="description" content="Privacy policy for Neeko Stats. Learn what data we collect, how it is used, and how to exercise your privacy rights." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/privacy-policy" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
         <div className="max-w-3xl mx-auto px-4 py-16">
@@ -89,14 +91,14 @@ export default function PrivacyPolicy() {
 
             <Section id="s1" num="1" title="What Information We Collect">
               <Prose>
-                <p>Neeko Sports Stats collects the following types of information:</p>
+                <p>Neeko Stats collects the following types of information when you use the app:</p>
                 <BulletList items={[
-                  <><strong className="text-white/60">Account information:</strong> Your email address and a hashed version of your password, used to create and manage your account.</>,
-                  <><strong className="text-white/60">Subscription status:</strong> Whether you hold an active Neeko+ Season Pass or Weekly subscription, used to control access to premium features.</>,
-                  <><strong className="text-white/60">Usage data:</strong> Pages visited, features used, and interaction patterns. This helps us understand how the platform is being used and improve it over time.</>,
-                  <><strong className="text-white/60">Device and browser information:</strong> Browser type, operating system, and IP address, collected automatically when you access the Service.</>,
-                  <><strong className="text-white/60">Payment confirmation:</strong> We receive confirmation of successful payments from Stripe. We do not receive or store full credit card numbers or CVV codes.</>,
+                  <><strong className="text-white/70">Account identifier:</strong> An app user identifier (User ID) is created or linked when you access app features. This is used solely for app functionality such as managing your subscription entitlements.</>,
+                  <><strong className="text-white/70">Subscription and purchase history:</strong> We process your Neeko Pro subscription status and purchase history to determine which app features you can access. This information is linked to your user account for app functionality and support purposes.</>,
+                  <><strong className="text-white/70">Contact form submissions:</strong> If you contact us via the contact form, we collect your name, email address and message content. This information is used only to respond to your enquiry.</>,
+                  <><strong className="text-white/70">Usage data:</strong> We may collect aggregate usage patterns (such as features used or screens visited) to understand how the app is being used and to improve it over time. This data is processed in aggregate or anonymised form.</>,
                 ]} />
+                <p>We do not collect your full name, date of birth, precise location, health data, or financial information.</p>
               </Prose>
             </Section>
 
@@ -104,95 +106,114 @@ export default function PrivacyPolicy() {
               <Prose>
                 <p>We use collected information to:</p>
                 <BulletList items={[
-                  "Provide and maintain the Service",
-                  "Manage your Neeko+ access and subscription status",
-                  "Send transactional emails such as payment confirmations and support replies",
-                  "Analyse usage patterns to improve platform performance and features",
-                  "Detect and prevent misuse, fraud, and security threats",
+                  "Provide and maintain the Neeko Stats app and its features",
+                  "Manage your Neeko Pro subscription status and entitlement access",
+                  "Respond to support enquiries submitted through the contact form",
+                  "Analyse aggregate usage patterns to improve app performance and features",
+                  "Detect and prevent misuse or security threats",
                   "Comply with legal obligations",
                 ]} />
-                <p>We do not use your information for advertising or share it with third parties for marketing purposes.</p>
+                <p>We do not use your information for advertising, and we do not share it with third parties for marketing purposes.</p>
+                <p>
+                  Neeko Stats does not provide betting tips, bookmaker links, gambling advice, or financial advice. The app provides AFL statistics and form data for research and entertainment purposes only.
+                </p>
               </Prose>
             </Section>
 
-            <Section id="s3" num="3" title="Payment Information">
+            <Section id="s3" num="3" title="Subscription and Payment Data">
               <Prose>
                 <p>
-                  All payment processing is handled by Stripe. When you purchase Neeko+, your card details are entered directly into Stripe's secure payment interface. Neeko Sports Stats does not receive, handle, or store full credit card numbers, CVV codes, or other sensitive payment credentials.
+                  Neeko Pro is purchased exclusively through the Apple App Store via in-app purchase. Apple handles all payment processing, billing, and receipts. Neeko Stats does not receive, handle, or store your full credit card number, CVV code, or other sensitive payment credentials.
                 </p>
                 <p>
-                  We receive confirmation from Stripe when a payment is successful, and we store only the subscription status associated with your account.
+                  We may receive confirmation of your active subscription status and purchase history from Apple and/or RevenueCat (our subscription management provider) to determine your access entitlements within the app.
                 </p>
                 <p>
-                  For information about how Stripe handles payment data, see{" "}
-                  <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    stripe.com/privacy
+                  For information about how Apple handles payment data, visit{" "}
+                  <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    apple.com/legal/privacy
                   </a>.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s4" num="4" title="Cookies and Local Storage">
+            <Section id="s4" num="4" title="App Store Connect Privacy Labels">
               <Prose>
+                <p>In accordance with Apple's privacy label requirements, Neeko Stats discloses the following data types collected by the app:</p>
+                <div className="space-y-3 mt-2">
+                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
+                    <p className="text-sm font-bold text-white/80 mb-1">User ID</p>
+                    <p className="text-sm text-white/55">Used for app functionality. Linked to your identity. Not used for tracking.</p>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
+                    <p className="text-sm font-bold text-white/80 mb-1">Purchase History</p>
+                    <p className="text-sm text-white/55">Used for app functionality (subscription access). Linked to your identity. Not used for tracking.</p>
+                  </div>
+                </div>
                 <p>
-                  Neeko Sports Stats uses cookies and local storage to maintain your session and authentication state across page loads. This is required for the platform to function correctly.
-                </p>
-                <BulletList items={[
-                  <><strong className="text-white/60">Authentication tokens:</strong> Used to keep you signed in between sessions.</>,
-                  <><strong className="text-white/60">Preference storage:</strong> Used to remember settings such as filters or display preferences.</>,
-                  <><strong className="text-white/60">Analytics:</strong> We may use analytics tools to understand aggregate usage patterns. Where used, this data is anonymised.</>,
-                ]} />
-                <p>
-                  You can control cookies through your browser settings. Disabling essential cookies will prevent you from signing in or maintaining a session.
+                  This data is not used for tracking, is not sold to data brokers, and is not used for third-party advertising.
                 </p>
               </Prose>
             </Section>
 
             <Section id="s5" num="5" title="Third-Party Services">
               <Prose>
-                <p>We use the following third-party services to operate Neeko Sports Stats:</p>
+                <p>We use the following third-party services to operate Neeko Stats:</p>
                 <BulletList items={[
-                  <><strong className="text-white/60">Stripe:</strong> Handles all payment processing. Stripe maintains PCI-DSS compliance. Card data is handled entirely within Stripe's infrastructure.</>,
-                  <><strong className="text-white/60">Supabase:</strong> Provides our database, authentication, and backend infrastructure. User account data and subscription records are stored in Supabase-hosted environments.</>,
-                  <><strong className="text-white/60">Analytics tools:</strong> We may use analytics services to measure platform usage. Where used, data is processed in aggregate or anonymised form.</>,
+                  <><strong className="text-white/70">Apple App Store:</strong> Handles all in-app purchases, subscription management, and payment processing for Neeko Pro.</>,
+                  <><strong className="text-white/70">RevenueCat:</strong> Manages subscription status, entitlement access and purchase history synchronisation within the app.</>,
+                  <><strong className="text-white/70">Supabase:</strong> Provides database, authentication, and backend infrastructure. App functionality data is stored in Supabase-hosted environments.</>,
+                  <><strong className="text-white/70">Analytics tools:</strong> We may use analytics services to measure app usage. Where used, data is processed in aggregate or anonymised form.</>,
                 ]} />
-                <p>These providers are used only as necessary to operate the Service and are not authorised to use your data for other purposes.</p>
+                <p>These providers are used only as necessary to operate the app and are not authorised to use your data for other purposes.</p>
               </Prose>
             </Section>
 
-            <Section id="s6" num="6" title="Data Storage and Protection">
+            <Section id="s6" num="6" title="Tracking and Advertising">
+              <Prose>
+                <p className="font-semibold text-white/70">Neeko Stats does not use advertising SDKs, track you across apps or websites, or share your data with advertising networks.</p>
+                <BulletList items={[
+                  "We do not use third-party advertising",
+                  "We do not sell your data to data brokers",
+                  "We do not use tracking technologies for cross-app or cross-website tracking",
+                  "We do not partner with any bookmaker or gambling operator",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s7" num="7" title="Data Storage and Protection">
               <Prose>
                 <p>
                   Reasonable technical and organisational safeguards are used to protect your data against unauthorised access, disclosure, or loss. Authentication and account access are handled through trusted infrastructure providers.
                 </p>
                 <p>
-                  No online service can guarantee absolute security. Users should protect their own account credentials and report any suspected unauthorised access promptly.
+                  No online service can guarantee absolute security. You should protect your own Apple ID credentials and report any suspected unauthorised access to Apple.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s7" num="7" title="Data Sharing and Disclosure">
+            <Section id="s8" num="8" title="Data Sharing and Disclosure">
               <Prose>
-                <p className="font-semibold text-white/60">We do not sell, rent, or trade your personal information to third parties.</p>
+                <p className="font-semibold text-white/70">We do not sell, rent, or trade your personal information to third parties.</p>
                 <p>We may share information only in the following circumstances:</p>
                 <BulletList items={[
                   "With your explicit consent",
                   "To comply with legal obligations, court orders, or government requests",
-                  "To protect the rights, property, or safety of Neeko Sports Stats or its users",
-                  "With service providers who operate the platform, under confidentiality obligations",
+                  "To protect the rights, property, or safety of Neeko Stats or its users",
+                  "With service providers who operate the app, under confidentiality obligations",
                   "In connection with a business transfer or acquisition, with prior notice to affected users",
                 ]} />
               </Prose>
             </Section>
 
-            <Section id="s8" num="8" title="Your Privacy Rights">
+            <Section id="s9" num="9" title="Your Privacy Rights">
               <Prose>
                 <p>You have the right to:</p>
                 <BulletList items={[
-                  <><strong className="text-white/60">Access:</strong> Request a copy of the personal data we hold about you.</>,
-                  <><strong className="text-white/60">Correction:</strong> Update inaccurate information through your account settings or by contacting us.</>,
-                  <><strong className="text-white/60">Deletion:</strong> Request deletion of your account and associated personal data, subject to legal retention requirements.</>,
-                  <><strong className="text-white/60">Opt-out:</strong> Unsubscribe from non-essential communications at any time.</>,
+                  <><strong className="text-white/70">Access:</strong> Request a copy of the personal data we hold about you.</>,
+                  <><strong className="text-white/70">Correction:</strong> Request correction of inaccurate information by contacting us.</>,
+                  <><strong className="text-white/70">Deletion:</strong> Request deletion of your account and associated personal data, subject to legal retention requirements.</>,
+                  <><strong className="text-white/70">Subscription management:</strong> Manage or cancel your Neeko Pro subscription at any time through your Apple ID settings.</>,
                 ]} />
                 <p>
                   To exercise any of these rights, contact us at{" "}
@@ -203,34 +224,34 @@ export default function PrivacyPolicy() {
               </Prose>
             </Section>
 
-            <Section id="s9" num="9" title="Data Retention">
+            <Section id="s10" num="10" title="Data Retention">
               <Prose>
                 <BulletList items={[
-                  "Account data is retained while your account is active",
-                  "Payment and billing records may be retained for up to 7 years for legal and accounting purposes",
-                  "Usage and analytics data may be anonymised and retained for platform improvement",
-                  "Deleted accounts are removed from active systems within 30 days; backup retention may extend beyond this period",
+                  "Account and subscription data is retained while your account is active",
+                  "Purchase and billing records may be retained for up to 7 years for legal and accounting purposes",
+                  "Usage and analytics data may be anonymised and retained for app improvement",
+                  "Contact form submissions are retained only as long as needed to resolve your enquiry",
                 ]} />
               </Prose>
             </Section>
 
-            <Section id="s10" num="10" title="Children's Privacy">
+            <Section id="s11" num="11" title="Children's Privacy">
               <Prose>
                 <p>
-                  Neeko Sports Stats is not directed at users under the age of 13. We do not knowingly collect personal information from children. If we become aware that a child has provided personal data, we will take steps to delete it.
+                  Neeko Stats is not directed at users under the age of 13. We do not knowingly collect personal information from children. If we become aware that a child has provided personal data, we will take steps to delete it.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s11" num="11" title="Changes to This Policy">
+            <Section id="s12" num="12" title="Changes to This Policy">
               <Prose>
                 <p>
-                  We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of the Service after changes constitutes acceptance of the updated policy.
+                  We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of the app after changes constitutes acceptance of the updated policy.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s12" num="12" title="Contact">
+            <Section id="s13" num="13" title="Contact">
               <Prose>
                 <p>
                   For privacy questions or data requests, contact us at:{" "}

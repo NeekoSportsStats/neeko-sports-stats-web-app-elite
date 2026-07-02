@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "9 May 2026";
+const LAST_UPDATED = "2 July 2026";
 
 const TOC = [
   { id: "s1", label: "Overview" },

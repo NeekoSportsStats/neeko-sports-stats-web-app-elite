@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "9 May 2026";
+const LAST_UPDATED = "2 July 2026";
 
 const TOC = [
   { id: "s1", label: "Acceptable Use" },
@@ -47,8 +47,8 @@ export default function UserConductPolicy() {
   return (
     <>
       <Helmet>
-        <title>User Conduct Policy | Neeko Sports Stats</title>
-        <meta name="description" content="User conduct policy for Neeko Sports Stats. Covers acceptable use, account misuse, scraping, content standards and enforcement." />
+        <title>User Conduct Policy | Neeko Stats</title>
+        <meta name="description" content="User conduct policy for Neeko Stats. Covers acceptable use, account misuse, scraping, content standards and enforcement." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
@@ -85,14 +85,14 @@ export default function UserConductPolicy() {
             <Section id="s1" num="1" title="Acceptable Use">
               <Prose>
                 <p>
-                  Neeko Sports Stats is an AFL stats and fantasy intelligence platform provided for personal, non-commercial use. By accessing the platform you agree to use it only for its intended purpose.
+                  Neeko Stats is an AFL statistics and research app provided for personal, non-commercial use. By accessing the platform you agree to use it only for its intended purpose.
                 </p>
                 <p>Permitted use includes:</p>
                 <BulletList items={[
                   "Viewing player stats, rankings, projections, and analysis for personal fantasy or research purposes",
-                  "Accessing Neeko+ features under a single active subscription tied to your own account",
+                  "Accessing Neeko Pro features under a single active subscription tied to your own account",
                   "Contacting support through official channels",
-                  "Brief, non-commercial references to individual insights, provided attribution to Neeko Sports Stats is included",
+                  "Brief, non-commercial references to individual insights, provided attribution to Neeko Stats is included",
                 ]} />
                 <p>
                   Users must not republish, resell, bulk-share, scrape, or distribute premium content — whether free or paid — without written permission.
@@ -126,7 +126,7 @@ export default function UserConductPolicy() {
                 <BulletList items={[
                   "Using bots, crawlers, scrapers, or automated scripts to access or extract platform data",
                   "Bulk-downloading or systematically copying rankings, projections, or AI outputs",
-                  "Republishing Neeko Sports Stats content on third-party sites, social channels, or paid services",
+                  "Republishing Neeko Stats content on third-party sites, social channels, or paid services",
                   "Reverse-engineering or attempting to replicate the platform's scoring or projection models",
                   "Making excessive automated requests that degrade platform performance for other users",
                   "Using premium data for commercial purposes without written permission",

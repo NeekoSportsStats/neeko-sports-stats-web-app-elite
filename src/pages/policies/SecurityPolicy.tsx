@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "9 May 2026";
+const LAST_UPDATED = "2 July 2026";
 
 const TOC = [
   { id: "s1",  label: "Overview" },
@@ -54,8 +54,8 @@ export default function SecurityPolicy() {
   return (
     <>
       <Helmet>
-        <title>Data Handling &amp; Security Policy | Neeko Sports Stats</title>
-        <meta name="description" content="Data handling and security policy for Neeko Sports Stats. Covers payment security, data protection, infrastructure, breach response and vulnerability reporting." />
+        <title>Data Handling &amp; Security Policy | Neeko Stats</title>
+        <meta name="description" content="Data handling and security policy for Neeko Stats. Covers payment security, data protection, infrastructure, breach response and vulnerability reporting." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
@@ -92,7 +92,7 @@ export default function SecurityPolicy() {
             <Section id="s1" num="1" title="Overview">
               <Prose>
                 <p>
-                  Neeko Sports Stats uses reasonable technical and organisational safeguards to protect user data against unauthorised access, disclosure, alteration, and loss. This policy explains the practices we follow and the limits of those protections.
+                  Neeko Stats uses reasonable technical and organisational safeguards to protect user data against unauthorised access, disclosure, alteration, and loss. This policy explains the practices we follow and the limits of those protections.
                 </p>
                 <p>
                   No online service can guarantee absolute security. Users should also take steps to protect their own account credentials.
@@ -103,12 +103,12 @@ export default function SecurityPolicy() {
             <Section id="s2" num="2" title="Payment Security">
               <Prose>
                 <p>
-                  All payment processing is handled by Stripe. Neeko Sports Stats does not receive, handle, or store full credit card numbers or CVV codes. Payment data is tokenised and processed entirely within Stripe's infrastructure.
+                  Neeko Pro is purchased exclusively through Apple in-app purchase. Apple handles all payment processing, billing, and receipts. Neeko Stats does not receive, handle, or store full credit card numbers or CVV codes.
                 </p>
                 <p>
-                  For details about Stripe's security and compliance practices, see{" "}
-                  <a href="https://stripe.com/security" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    stripe.com/security
+                  For details about Apple's security and privacy practices, visit{" "}
+                  <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    apple.com/legal/privacy
                   </a>.
                 </p>
               </Prose>
@@ -120,7 +120,7 @@ export default function SecurityPolicy() {
                   Authentication and account access are managed through trusted infrastructure providers. User passwords are not stored in plain text. Session tokens are used to maintain authenticated access and are subject to expiry.
                 </p>
                 <p>
-                  Account credentials are not visible to Neeko Sports Stats staff and should be kept confidential by the user.
+                  Account credentials are not visible to Neeko Stats staff and should be kept confidential by the user.
                 </p>
               </Prose>
             </Section>
@@ -146,7 +146,7 @@ export default function SecurityPolicy() {
 
             <Section id="s6" num="6" title="Access Controls">
               <Prose>
-                <p>Access to user data is restricted to those with a legitimate operational need. Neeko Sports Stats is operated by a small team and data access is managed accordingly.</p>
+                <p>Access to user data is restricted to those with a legitimate operational need. Neeko Stats is operated by a small team and data access is managed accordingly.</p>
                 <BulletList items={[
                   "Administrative access to backend systems requires authentication",
                   "User data is not shared with external parties except as described in the Privacy Policy",
@@ -200,7 +200,7 @@ export default function SecurityPolicy() {
               <Prose>
                 <p>Users are responsible for maintaining the security of their own account. We recommend:</p>
                 <BulletList items={[
-                  "Use a strong, unique password for your Neeko Sports Stats account",
+                  "Use a strong, unique password for your Neeko Stats account",
                   "Never share your password or account credentials with anyone",
                   "Sign out of shared or public devices after use",
                   "Report any suspected unauthorised access immediately to admin@neekostats.com.au",
@@ -210,7 +210,7 @@ export default function SecurityPolicy() {
 
             <Section id="s11" num="11" title="Vulnerability Reporting">
               <Prose>
-                <p>If you discover a security vulnerability in Neeko Sports Stats:</p>
+                <p>If you discover a security vulnerability in Neeko Stats:</p>
                 <BulletList items={[
                   <>Email <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">admin@neekostats.com.au</a> with the subject line "Security Vulnerability"</>,
                   "Describe the issue and include steps to reproduce it",
@@ -222,9 +222,10 @@ export default function SecurityPolicy() {
 
             <Section id="s12" num="12" title="Third-Party Services">
               <Prose>
-                <p>Neeko Sports Stats relies on the following third-party providers:</p>
+                <p>Neeko Stats relies on the following third-party providers:</p>
                 <BulletList items={[
-                  <><strong className="text-white/60">Stripe:</strong> Payment processing. Card data is handled entirely within Stripe's infrastructure.</>,
+                  <><strong className="text-white/60">Apple App Store:</strong> In-app purchase, subscription management and payment processing for Neeko Pro.</>,
+                  <><strong className="text-white/60">RevenueCat:</strong> Subscription status and entitlement management within the app.</>,
                   <><strong className="text-white/60">Supabase:</strong> Database, authentication, and backend infrastructure.</>,
                   <><strong className="text-white/60">Analytics tools:</strong> Where used, data is processed in anonymised or aggregate form.</>,
                 ]} />

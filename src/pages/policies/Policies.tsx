@@ -6,21 +6,21 @@ const POLICIES = [
   {
     title: "Privacy Policy",
     description: "What data we collect, how it is used, and your rights.",
-    updated: "9 May 2026",
+    updated: "2 July 2026",
     icon: Shield,
     url: "/privacy-policy",
   },
   {
     title: "Terms & Conditions",
-    description: "Platform usage rules, prohibited activities, and legal agreements.",
-    updated: "9 May 2026",
+    description: "App usage rules, Neeko Pro subscription terms, and legal agreements.",
+    updated: "2 July 2026",
     icon: FileText,
     url: "/terms-conditions",
   },
   {
     title: "Refund Policy",
-    description: "Neeko Pro subscription refund terms and how to request a refund.",
-    updated: "9 May 2026",
+    description: "Neeko Pro refund terms and how to request a refund via Apple.",
+    updated: "2 July 2026",
     icon: DollarSign,
     url: "/refund-policy",
   },
@@ -72,7 +72,7 @@ export default function Policies() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">{title}</p>
-              <p className="text-xs text-white/50 mt-0.5 truncate">{description}</p>
+              <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{description}</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               {updated && (
