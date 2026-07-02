@@ -333,12 +333,10 @@ export default function Index() {
             </div>
             <nav className="ix-footer-nav" aria-label="Footer navigation">
               {[
-                { label: "Policies",       to: "/policies"         },
-                { label: "Privacy Policy", to: "/privacy-policy"   },
-                { label: "Terms",          to: "/terms-conditions"  },
-                { label: "Refund Policy",  to: "/refund-policy"    },
-                { label: "Contact",        to: "/contact"          },
-                { label: "About",          to: "/about"            },
+                { label: "Policies", to: "/policies"      },
+                { label: "Privacy",  to: "/privacy-policy" },
+                { label: "Contact",  to: "/contact"        },
+                { label: "About",    to: "/about"          },
               ].map(({ label, to }) => (
                 <Link key={to} to={to} className="ix-footer-link">{label}</Link>
               ))}
@@ -854,9 +852,9 @@ export default function Index() {
           gap: 10px;
         }
         .ix-footer-nav {
-          display: flex;
-          gap: 18px;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(2, auto);
+          gap: 10px 24px;
           align-items: center;
         }
         .ix-footer-link {
@@ -892,7 +890,8 @@ export default function Index() {
           .ix-feature-icon { width: 30px; height: 30px; font-size: 13px; margin-bottom: 8px; }
           .ix-trust-stats { grid-template-columns: 1fr; gap: 8px; }
           .ix-trust-inner .ix-h2 { text-align: center; }
-          .ix-footer-row { flex-direction: column; align-items: flex-start; }
+          .ix-footer-row { flex-direction: column; align-items: flex-start; gap: 14px; }
+          .ix-footer-nav { grid-template-columns: repeat(2, auto); gap: 8px 20px; }
           .ix-pro-price { font-size: 26px; }
           .ix-marquee-item { width: clamp(120px, 36vw, 170px); }
         }
@@ -907,6 +906,7 @@ export default function Index() {
         /* ── Desktop ────────────────────────────────────────────────────────── */
         @media (min-width: 1024px) {
           .ix-hero { padding-bottom: 0; }
+          .ix-footer-nav { grid-template-columns: repeat(4, auto); gap: 0 18px; }
           .ix-hero-inner {
             grid-template-columns: 1fr auto;
             gap: 80px;

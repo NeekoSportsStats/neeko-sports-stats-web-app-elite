@@ -5,12 +5,10 @@ const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
 const GOLD = "#E0AE2D";
 
 const FOOTER_LINKS = [
-  { label: "Policies",       to: "/policies"        },
-  { label: "Privacy Policy", to: "/privacy-policy"  },
-  { label: "Terms",          to: "/terms-conditions" },
-  { label: "Refund Policy",  to: "/refund-policy"   },
-  { label: "Contact",        to: "/contact"         },
-  { label: "About",          to: "/about"           },
+  { label: "Policies", to: "/policies"      },
+  { label: "Privacy",  to: "/privacy-policy" },
+  { label: "Contact",  to: "/contact"        },
+  { label: "About",    to: "/about"          },
 ];
 
 export function PublicPageLayout() {
@@ -108,7 +106,7 @@ export function PublicPageLayout() {
               <img src="/logo.png" alt="Neeko Stats" style={{ height: 22, width: "auto", opacity: 0.8 }} />
               <span style={{ fontSize: 12, color: "rgba(255,255,255,0.30)" }}>AFL stats for iPhone.</span>
             </Link>
-            <nav style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            <nav className="ppl-footer-nav">
               {FOOTER_LINKS.map(({ label, to }) => (
                 <Link
                   key={to}
@@ -129,6 +127,10 @@ export function PublicPageLayout() {
       <style>{`
         @media (max-width: 479px) {
           .ppl-cta-text { display: none; }
+          .ppl-footer-nav { display: grid; grid-template-columns: repeat(2, auto); gap: 8px 20px; }
+        }
+        @media (min-width: 480px) {
+          .ppl-footer-nav { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
         }
       `}</style>
     </div>
