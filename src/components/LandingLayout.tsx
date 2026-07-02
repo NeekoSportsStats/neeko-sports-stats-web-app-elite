@@ -57,13 +57,21 @@ export function LandingLayout() {
         }}
       >
         {/* Logo */}
-        <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }} onClick={close}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }} onClick={close}>
           <img
             src="/logo.png"
-            alt="Neeko Stats"
-            className="lnav-logo"
-            style={{ width: "auto", objectFit: "contain", display: "block" }}
+            alt=""
+            className="lnav-logo-icon"
+            style={{ width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }}
           />
+          <span className="lnav-wordmark" style={{
+            fontSize: 16,
+            fontWeight: 800,
+            color: "#fff",
+            letterSpacing: "-0.01em",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+          }}>Neeko Stats</span>
         </Link>
 
         {/* Desktop nav center */}
@@ -273,11 +281,11 @@ export function LandingLayout() {
       </main>
 
       <style>{`
-        .lnav-logo { height: 36px; }
+        .lnav-logo-icon { height: 36px; }
         @media (max-width: 1023px) {
           .lnav-desktop { display: none !important; }
           .lnav-burger  { display: flex !important; }
-          .lnav-logo    { height: 32px; }
+          .lnav-logo-icon { height: 34px; }
         }
         @media (max-width: 479px) {
           .lnav-cta-text { display: none; }

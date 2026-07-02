@@ -49,8 +49,16 @@ export function PublicPageLayout() {
         gap: 0,
         transition: "height 0.22s ease, background 0.22s ease, border-color 0.22s ease",
       }}>
-        <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }} onClick={close}>
-          <img src="/logo.png" alt="Neeko Stats" style={{ height: 32, width: "auto", objectFit: "contain", display: "block" }} />
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }} onClick={close}>
+          <img src="/logo.png" alt="" style={{ height: 34, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }} />
+          <span style={{
+            fontSize: 16,
+            fontWeight: 800,
+            color: "#fff",
+            letterSpacing: "-0.01em",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+          }}>Neeko Stats</span>
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
