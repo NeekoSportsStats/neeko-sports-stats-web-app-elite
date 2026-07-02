@@ -37,20 +37,12 @@ export function LandingLayout() {
         }}
       >
         {/* Logo */}
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
           <img
             src="/logo.png"
-            alt=""
-            style={{ height: 36, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }}
+            alt="Neeko Stats"
+            style={{ height: 44, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }}
           />
-          <span style={{
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#fff",
-            letterSpacing: "-0.01em",
-            lineHeight: 1,
-            whiteSpace: "nowrap",
-          }}>Neeko Stats</span>
         </Link>
 
         {/* Right CTA */}
