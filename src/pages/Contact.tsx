@@ -165,7 +165,7 @@ export default function Contact() {
                 <Mail className="h-5 w-5 text-primary mt-0.5" />
                 <div>
                   <h3 className="font-semibold mb-1">Email</h3>
-                  <p className="text-muted-foreground">admin@neekostats.com.au</p>
+                  <p className="text-muted-foreground">matthew@neekostats.com.au</p>
                 </div>
               </div>
 

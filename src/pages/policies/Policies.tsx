@@ -86,8 +86,8 @@ export default function Policies() {
 
       <p className="text-center text-xs text-white/38 mt-10">
         Questions?{" "}
-        <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white/80 underline underline-offset-2 transition-colors break-all">
-          admin@neekostats.com.au
+        <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white/80 underline underline-offset-2 transition-colors break-all">
+          matthew@neekostats.com.au
         </a>
       </p>
     </>

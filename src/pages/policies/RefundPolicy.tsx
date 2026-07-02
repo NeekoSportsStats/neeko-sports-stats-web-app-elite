@@ -165,8 +165,8 @@ export default function RefundPolicy() {
                 </p>
                 <p>
                   For other queries, email{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>{" "}
                   with:
                 </p>
@@ -204,8 +204,8 @@ export default function RefundPolicy() {
             <p className="text-sm font-semibold text-white mb-1">Billing question or refund request?</p>
             <p className="text-sm text-white/35">
               Email{" "}
-              <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
-                admin@neekostats.com.au
+              <a href="mailto:matthew@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
+                matthew@neekostats.com.au
               </a>
             </p>
           </div>

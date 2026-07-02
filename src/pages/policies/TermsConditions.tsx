@@ -254,8 +254,8 @@ export default function TermsConditions() {
               <Prose>
                 <p>
                   For questions about these Terms, contact us at:{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>
                 </p>
                 <p>Melbourne, Victoria, Australia</p>

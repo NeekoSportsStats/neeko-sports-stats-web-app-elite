@@ -203,7 +203,7 @@ export default function SecurityPolicy() {
                   "Use a strong, unique password for your Neeko Stats account",
                   "Never share your password or account credentials with anyone",
                   "Sign out of shared or public devices after use",
-                  "Report any suspected unauthorised access immediately to admin@neekostats.com.au",
+                  "Report any suspected unauthorised access immediately to matthew@neekostats.com.au",
                 ]} />
               </Prose>
             </Section>
@@ -212,7 +212,7 @@ export default function SecurityPolicy() {
               <Prose>
                 <p>If you discover a security vulnerability in Neeko Stats:</p>
                 <BulletList items={[
-                  <>Email <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">admin@neekostats.com.au</a> with the subject line "Security Vulnerability"</>,
+                  <>Email <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">matthew@neekostats.com.au</a> with the subject line "Security Vulnerability"</>,
                   "Describe the issue and include steps to reproduce it",
                   "Do not publicly disclose the vulnerability until we have had the opportunity to address it",
                 ]} />
@@ -245,8 +245,8 @@ export default function SecurityPolicy() {
               <Prose>
                 <p>
                   For security concerns, vulnerability reports, or data handling questions, contact us at:{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>
                 </p>
                 <p>Melbourne, Victoria, Australia</p>

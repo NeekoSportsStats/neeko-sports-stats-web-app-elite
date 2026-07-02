@@ -217,8 +217,8 @@ export default function PrivacyPolicy() {
                 ]} />
                 <p>
                   To exercise any of these rights, contact us at{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>.
                 </p>
               </Prose>
@@ -255,8 +255,8 @@ export default function PrivacyPolicy() {
               <Prose>
                 <p>
                   For privacy questions or data requests, contact us at:{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>
                 </p>
                 <p>Melbourne, Victoria, Australia</p>

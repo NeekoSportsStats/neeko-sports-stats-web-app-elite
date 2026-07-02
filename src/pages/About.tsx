@@ -230,14 +230,14 @@ export default function About() {
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               <a
-                href="mailto:admin@neekostats.com.au"
+                href="mailto:matthew@neekostats.com.au"
                 style={{
                   display: "inline-flex", alignItems: "center",
                   fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.75)",
                   textDecoration: "underline", textUnderlineOffset: 3,
                 }}
               >
-                admin@neekostats.com.au
+                matthew@neekostats.com.au
               </a>
               <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 13 }}>·</span>
               <Link

@@ -159,7 +159,7 @@ export default function UserConductPolicy() {
                   <><strong className="text-white/60">Legal referral</strong> — data theft or other criminal conduct</>,
                 ]} />
                 <p className="text-white/50 mt-2">
-                  To appeal a suspension, contact admin@neekostats.com.au within 14 days. Appeals are reviewed within 5–7 business days.
+                  To appeal a suspension, contact matthew@neekostats.com.au within 14 days. Appeals are reviewed within 5–7 business days.
                 </p>
               </Prose>
             </Section>
@@ -168,8 +168,8 @@ export default function UserConductPolicy() {
               <Prose>
                 <p>
                   Report conduct violations, scraping activity, or content misuse to{" "}
-                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
-                    admin@neekostats.com.au
+                  <a href="mailto:matthew@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    matthew@neekostats.com.au
                   </a>.
                   Include a description of the issue, relevant dates, and any supporting evidence. All reports are treated confidentially.
                 </p>
@@ -188,8 +188,8 @@ export default function UserConductPolicy() {
             <p className="text-sm font-semibold text-white mb-1">Questions about this policy?</p>
             <p className="text-sm text-white/35">
               Contact{" "}
-              <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
-                admin@neekostats.com.au
+              <a href="mailto:matthew@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
+                matthew@neekostats.com.au
               </a>
             </p>
           </div>
