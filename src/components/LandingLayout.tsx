@@ -5,12 +5,15 @@ const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
 const GOLD = "#E0AE2D";
 
 const MOBILE_NAV = [
-  { label: "Features",       href: "#features"     },
-  { label: "Screenshots",    href: "#screenshots"  },
-  { label: "Neeko Pro",      href: "#neeko-pro"    },
-  { label: "About",          to: "/about"          },
-  { label: "Contact",        to: "/contact"        },
-  { label: "Privacy Policy", to: "/privacy-policy" },
+  { label: "Features",       href: "#features"      },
+  { label: "Screenshots",    href: "#screenshots"   },
+  { label: "Neeko Pro",      href: "#neeko-pro"     },
+  { label: "Policies",       to: "/policies"        },
+  { label: "Privacy Policy", to: "/privacy-policy"  },
+  { label: "Terms",          to: "/terms-conditions" },
+  { label: "Refund Policy",  to: "/refund-policy"   },
+  { label: "Contact",        to: "/contact"         },
+  { label: "About",          to: "/about"           },
 ];
 
 export function LandingLayout() {
