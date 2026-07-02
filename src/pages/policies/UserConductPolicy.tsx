@@ -104,7 +104,7 @@ export default function UserConductPolicy() {
               <Prose>
                 <p>The following will result in account suspension or permanent termination:</p>
                 <BulletList items={[
-                  "Sharing login credentials to give non-subscribers access to Neeko+ content",
+                  "Sharing login credentials to give non-subscribers access to premium content",
                   "Creating multiple accounts to circumvent free-tier limits or bans",
                   "Providing false information during account registration or billing",
                   "Using stolen or unauthorised payment methods",

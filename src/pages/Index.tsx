@@ -210,11 +210,25 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── SCREENSHOT MARQUEE ───────────────────────────────────────────────── */}
+      {/* ── SCREENSHOTS ─────────────────────────────────────────────────────── */}
       <section className="ix-marquee-section" aria-label="App screenshots">
+        {/* Mobile / tablet: auto-scroll marquee */}
         <div className="ix-marquee-track" aria-hidden="true">
           {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub }, i) => (
             <div key={i} className="ix-marquee-item">
+              <div className="ix-shot-frame">
+                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
+              </div>
+              <p className="ix-shot-caption">{caption}</p>
+              <p className="ix-shot-sub">{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: static premium gallery (4 screenshots, centred) */}
+        <div className="ix-screenshot-grid ix-container">
+          {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub }) => (
+            <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
                 <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
               </div>
@@ -647,12 +661,13 @@ export default function Index() {
           line-height: 1.6;
         }
 
-        /* ── Screenshot marquee ─────────────────────────────────────────────── */
+        /* ── Screenshots ────────────────────────────────────────────────────── */
         .ix-marquee-section {
           background: #060809;
           padding: clamp(28px, 3.5vw, 56px) 0;
           overflow: hidden;
         }
+        /* Marquee: visible only on mobile/tablet (<1024px) */
         .ix-marquee-track {
           display: flex;
           gap: 16px;
@@ -675,6 +690,13 @@ export default function Index() {
         .ix-marquee-item {
           flex: 0 0 auto;
           width: clamp(130px, 22vw, 190px);
+          text-align: center;
+        }
+        /* Static desktop grid: hidden by default, shown on desktop */
+        .ix-screenshot-grid {
+          display: none;
+        }
+        .ix-shot-grid-item {
           text-align: center;
         }
         .ix-shot-frame {
@@ -931,7 +953,22 @@ export default function Index() {
             text-align: left;
           }
           .ix-trust-n { font-size: clamp(18px, 1.8vw, 24px); margin-bottom: 0; }
-          .ix-marquee-item { width: clamp(160px, 14vw, 210px); }
+          /* Desktop screenshots: hide carousel, show static grid */
+          .ix-marquee-section { padding: clamp(28px, 3.5vw, 56px) clamp(20px, 5vw, 64px); overflow: visible; }
+          .ix-marquee-track { display: none !important; }
+          .ix-screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin: 0 auto;
+          }
+          .ix-shot-grid-item .ix-shot-frame {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+          }
+          .ix-shot-grid-item:hover .ix-shot-frame {
+            transform: translateY(-6px);
+            box-shadow: 0 28px 60px rgba(0,0,0,0.68), 0 6px 20px rgba(34,197,94,0.10);
+          }
         }
       `}</style>
     </div>
