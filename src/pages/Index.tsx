@@ -359,6 +359,7 @@ export default function Index() {
             </div>
             <nav className="ix-footer-nav" aria-label="Footer navigation">
               {[
+                { label: "Policies",       to: "/policies"        },
                 { label: "Privacy Policy", to: "/privacy-policy"  },
                 { label: "Terms",          to: "/terms-conditions" },
                 { label: "Refund Policy",  to: "/refund-policy"   },

@@ -1,20 +1,18 @@
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const LAST_UPDATED = "9 May 2026";
 
 const TOC = [
   { id: "s1", label: "Overview" },
-  { id: "s2", label: "Subscription Plans & Billing" },
+  { id: "s2", label: "Neeko Pro Subscription & Billing" },
   { id: "s3", label: "Cancellation" },
   { id: "s4", label: "Refund Eligibility" },
   { id: "s5", label: "Change of Mind" },
   { id: "s6", label: "How to Request a Refund" },
-  { id: "s7", label: "Chargeback Policy" },
-  { id: "s8", label: "Australian Consumer Law" },
-  { id: "s9", label: "Policy Updates" },
+  { id: "s7", label: "Australian Consumer Law" },
+  { id: "s8", label: "Policy Updates" },
 ];
 
 function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
@@ -50,8 +48,8 @@ export default function RefundPolicy() {
   return (
     <>
       <Helmet>
-        <title>Refund Policy | Neeko Sports Stats</title>
-        <meta name="description" content="Refund policy for Neeko Sports Stats. Covers Season Pass and Weekly plan refund terms, cancellation and how to request a refund." />
+        <title>Refund Policy | Neeko Stats</title>
+        <meta name="description" content="Refund policy for Neeko Stats. Covers Neeko Pro subscription refund terms, cancellation and how to request a refund." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
@@ -88,44 +86,39 @@ export default function RefundPolicy() {
             <Section id="s1" num="1" title="Overview">
               <Prose>
                 <p>
-                  Neeko Sports Stats processes all Neeko+ payments through Stripe. This policy outlines the refund and cancellation terms for the Season Pass and Weekly subscription plans.
+                  Neeko Stats offers Neeko Pro, a monthly subscription for the iOS app. Billing is handled by Apple via the App Store. This policy outlines the refund and cancellation terms for Neeko Pro.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s2" num="2" title="Subscription Plans & Billing">
+            <Section id="s2" num="2" title="Neeko Pro Subscription & Billing">
               <Prose>
-                <p>Neeko+ is available on the following plans:</p>
+                <p>Neeko Pro is available as a monthly subscription:</p>
                 <div className="space-y-3 mt-2">
                   <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
                     <p className="text-sm font-bold text-white/80 mb-1">
-                      Season Pass — ${NEEKO_PRICING.season.price} AUD
+                      Neeko Pro — $9.99 AUD / month
                     </p>
                     <p className="text-sm text-white/60">
-                      One-time payment. Full access for the entire 2026 AFL season. No recurring billing.
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-                    <p className="text-sm font-bold text-white/80 mb-1">
-                      Weekly — ${NEEKO_PRICING.weekly.price} AUD / week
-                    </p>
-                    <p className="text-sm text-white/60">
-                      Recurring weekly billing via Stripe. Automatically renews unless cancelled before the next billing date. A receipt is sent by email after each successful charge.
+                      Recurring monthly billing via Apple. Automatically renews unless cancelled before the next billing date. A receipt is sent by Apple after each successful charge.
                     </p>
                   </div>
                 </div>
+                <p>
+                  All billing, receipts, and payment management are handled by Apple through the App Store. Neeko Stats does not have direct access to your payment information.
+                </p>
               </Prose>
             </Section>
 
             <Section id="s3" num="3" title="Cancellation">
               <Prose>
                 <p>
-                  The Weekly Plan can be cancelled at any time from your Account Settings. The Season Pass is a one-time payment and does not require cancellation — there is no recurring charge to cancel.
+                  Neeko Pro can be cancelled at any time through your iPhone Settings → Apple ID → Subscriptions.
                 </p>
                 <BulletList items={[
-                  "Cancelling the Weekly Plan stops future billing immediately",
+                  "Cancelling stops future billing immediately",
                   "Access continues until the end of the current paid period",
-                  "Cancellation of the Weekly Plan does not automatically trigger a refund for the current period unless required by law",
+                  "Cancellation does not automatically trigger a refund for the current period unless required by law",
                   "You can resubscribe at any time",
                 ]} />
               </Prose>
@@ -134,16 +127,20 @@ export default function RefundPolicy() {
             <Section id="s4" num="4" title="Refund Eligibility">
               <Prose>
                 <p>
-                  Digital access to Neeko+ begins immediately after purchase. Refund requests are reviewed in the following circumstances:
+                  Because billing is managed by Apple, most refund requests must be submitted directly to Apple at{" "}
+                  <a href="https://reportaproblem.apple.com" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    reportaproblem.apple.com
+                  </a>.
+                  Refund requests are reviewed in the following circumstances:
                 </p>
                 <BulletList items={[
                   "Accidental duplicate charges or duplicate purchases",
                   "Billing errors caused by a platform or payment processing malfunction",
                   "Unauthorised charges (subject to verification)",
                   "Extended service outages of 48 or more consecutive hours",
-                  "Technical access failures that prevent use of the purchased plan",
+                  "Technical access failures that prevent use of the purchased subscription",
                 ]} />
-                <p>Refund requests are assessed in accordance with this policy and applicable Australian Consumer Law. Where a refund is required by law, it will be provided. Other requests may be reviewed on a case-by-case basis.</p>
+                <p>Refund requests are assessed in accordance with this policy and applicable Australian Consumer Law. Where a refund is required by law, it will be provided.</p>
               </Prose>
             </Section>
 
@@ -161,7 +158,13 @@ export default function RefundPolicy() {
             <Section id="s6" num="6" title="How to Request a Refund">
               <Prose>
                 <p>
-                  Email{" "}
+                  For App Store billing issues, visit{" "}
+                  <a href="https://reportaproblem.apple.com" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    reportaproblem.apple.com
+                  </a>.
+                </p>
+                <p>
+                  For other queries, email{" "}
                   <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
                     admin@neekostats.com.au
                   </a>{" "}
@@ -174,23 +177,12 @@ export default function RefundPolicy() {
                   "Any supporting evidence such as screenshots or error messages",
                 ]} />
                 <p>
-                  Requests are reviewed within 5–7 business days. Approved refunds are returned to the original payment method via Stripe and typically clear within 5–10 business days depending on your bank.
+                  We will review your request within 5–7 business days and respond accordingly.
                 </p>
               </Prose>
             </Section>
 
-            <Section id="s7" num="7" title="Chargeback Policy">
-              <Prose>
-                <p>
-                  If you believe a charge was made in error, please contact us before disputing the charge with your bank. We are generally able to resolve billing issues faster than the chargeback process.
-                </p>
-                <p>
-                  Filing a chargeback without first contacting support may result in account suspension. Fraudulent or unjustified chargebacks may result in account review, suspension, or dispute handling through Stripe.
-                </p>
-              </Prose>
-            </Section>
-
-            <Section id="s8" num="8" title="Australian Consumer Law">
+            <Section id="s7" num="7" title="Australian Consumer Law">
               <Prose>
                 <p>
                   Nothing in this Refund Policy limits any rights you may have under Australian Consumer Law. Where applicable law provides guarantees or rights that cannot be excluded or limited, those rights apply to the extent required by law.
@@ -198,10 +190,10 @@ export default function RefundPolicy() {
               </Prose>
             </Section>
 
-            <Section id="s9" num="9" title="Policy Updates">
+            <Section id="s8" num="8" title="Policy Updates">
               <Prose>
                 <p>
-                  This policy may be updated at any time. The current version is posted on this page. Continued use of Neeko+ constitutes acceptance of the current policy.
+                  This policy may be updated at any time. The current version is posted on this page. Continued use of Neeko Pro constitutes acceptance of the current policy.
                 </p>
               </Prose>
             </Section>

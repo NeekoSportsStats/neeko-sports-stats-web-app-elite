@@ -22,6 +22,7 @@ export function PublicPageLayout() {
   }, [menuOpen]);
 
   const FOOTER_LINKS = [
+    { label: "Policies",       to: "/policies"        },
     { label: "Privacy Policy", to: "/privacy-policy"  },
     { label: "Terms",          to: "/terms-conditions" },
     { label: "Refund Policy",  to: "/refund-policy"   },
@@ -49,7 +50,7 @@ export function PublicPageLayout() {
         transition: "height 0.22s ease, background 0.22s ease, border-color 0.22s ease",
       }}>
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }} onClick={close}>
-          <img src="/logo.png" alt="Neeko Stats" style={{ height: 28, width: "auto", objectFit: "contain", display: "block" }} />
+          <img src="/logo.png" alt="Neeko Stats" style={{ height: 32, width: "auto", objectFit: "contain", display: "block" }} />
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
