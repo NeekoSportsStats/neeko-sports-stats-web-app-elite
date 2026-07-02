@@ -8,6 +8,7 @@ const MOBILE_NAV = [
   { label: "Features",       href: "#features"     },
   { label: "Screenshots",    href: "#screenshots"  },
   { label: "Neeko Pro",      href: "#neeko-pro"    },
+  { label: "About",          to: "/about"          },
   { label: "Contact",        to: "/contact"        },
   { label: "Privacy Policy", to: "/privacy-policy" },
 ];
@@ -31,7 +32,7 @@ export function LandingLayout() {
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
-  const headerH = scrolled ? 54 : 64;
+  const headerH = scrolled ? 60 : 74;
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", background: "#07090C" }}>
@@ -181,8 +182,8 @@ export function LandingLayout() {
           position: "fixed",
           top: headerH,
           left: 0,
-          width: "88%",
-          maxWidth: 320,
+          width: "90%",
+          maxWidth: 340,
           background: "rgba(10,13,18,0.98)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
@@ -272,11 +273,11 @@ export function LandingLayout() {
       </main>
 
       <style>{`
-        .lnav-logo { height: 32px; }
+        .lnav-logo { height: 36px; }
         @media (max-width: 1023px) {
           .lnav-desktop { display: none !important; }
           .lnav-burger  { display: flex !important; }
-          .lnav-logo    { height: 28px; }
+          .lnav-logo    { height: 32px; }
         }
         @media (max-width: 479px) {
           .lnav-cta-text { display: none; }

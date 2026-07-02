@@ -47,6 +47,7 @@ const FEATURES = [
 const SCREENSHOTS = [
   { src: "/images/app-screenshots/01-stat-board.png",    caption: "AFL Stat Board",  sub: "Hit rates & form by match" },
   { src: "/images/app-screenshots/02-player-profile.png", caption: "Player Profile", sub: "Trends, averages & history" },
+  { src: "/images/app-screenshots/03-pro-details.png",   caption: "Pro Details",     sub: "Deep stat lens & thresholds" },
   { src: "/images/app-screenshots/05-teams-list.png",    caption: "Team Trends",     sub: "Ladder, scoring & form" },
   { src: "/images/app-screenshots/06-team-profile.png",  caption: "Team Profile",    sub: "Season summary & leaders" },
 ];
@@ -167,7 +168,7 @@ export default function Index() {
       </section>
 
       {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
-      <section id="features" className="ix-section" style={{ background: "#060809" }} ref={featRef as React.RefObject<HTMLElement>}>
+      <section id="features" className="ix-section" style={{ background: "#060809", scrollMarginTop: 74 }} ref={featRef as React.RefObject<HTMLElement>}>
         <div className="ix-container">
           <div className="ix-section-head reveal" style={{ "--delay": "0s" } as React.CSSProperties}>
             <p className="ix-label">What's inside</p>
@@ -194,7 +195,7 @@ export default function Index() {
       </section>
 
       {/* ── SCREENSHOTS ──────────────────────────────────────────────────────── */}
-      <section id="screenshots" className="ix-section" style={{ background: DARK }} ref={shotsRef as React.RefObject<HTMLElement>}>
+      <section id="screenshots" className="ix-section" style={{ background: DARK, scrollMarginTop: 74 }} ref={shotsRef as React.RefObject<HTMLElement>}>
         <div className="ix-container">
           <div className="ix-section-head reveal" style={{ "--delay": "0s" } as React.CSSProperties}>
             <p className="ix-label" style={{ color: `${GOLD}99` }}>See the board before the bounce</p>
@@ -202,13 +203,13 @@ export default function Index() {
             <p className="ix-section-sub">Every screen optimised for fast decisions before game day.</p>
           </div>
 
-          {/* Desktop grid — 4 phones with stagger */}
+          {/* Desktop grid — 5 phones with stagger */}
           <div className="ix-shots-grid">
             {SCREENSHOTS.map(({ src, caption, sub }, i) => (
               <div
                 key={src}
                 className="ix-shot-wrap reveal"
-                style={{ marginTop: i === 1 || i === 3 ? 28 : 0, "--delay": `${i * 0.10}s` } as React.CSSProperties}
+                style={{ marginTop: i % 2 === 1 ? 28 : 0, "--delay": `${i * 0.09}s` } as React.CSSProperties}
               >
                 <div className="ix-shot-frame">
                   <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
@@ -219,14 +220,10 @@ export default function Index() {
             ))}
           </div>
 
-          {/* Mobile — vertical stack, fully visible */}
-          <div className="ix-shots-mobile">
+          {/* Mobile — horizontal swipe carousel */}
+          <div className="ix-shots-carousel" aria-label="App screenshots">
             {SCREENSHOTS.map(({ src, caption, sub }, i) => (
-              <div
-                key={src}
-                className="ix-shot-mobile-item reveal"
-                style={{ "--delay": `${i * 0.07}s` } as React.CSSProperties}
-              >
+              <div key={src} className="ix-carousel-item">
                 <div className="ix-shot-frame">
                   <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
                 </div>
@@ -239,7 +236,7 @@ export default function Index() {
       </section>
 
       {/* ── NEEKO PRO ────────────────────────────────────────────────────────── */}
-      <section id="neeko-pro" className="ix-section ix-pro-section" ref={proRef as React.RefObject<HTMLElement>}>
+      <section id="neeko-pro" className="ix-section ix-pro-section" style={{ scrollMarginTop: 74 }} ref={proRef as React.RefObject<HTMLElement>}>
         <div className="ix-pro-glow" aria-hidden="true" />
         <div className="ix-container" style={{ position: "relative" }}>
           <div className="ix-pro-inner">
@@ -332,7 +329,7 @@ export default function Index() {
       </section>
 
       {/* ── FINAL CTA ────────────────────────────────────────────────────────── */}
-      <section className="ix-section ix-cta-section">
+      <section className="ix-section ix-cta-section" style={{ paddingBottom: "max(48px, env(safe-area-inset-bottom, 48px))" }}>
         <div className="ix-container" style={{ textAlign: "center" }}>
           <p className="ix-eyebrow" style={{ animationDelay: "0s" }}>Available now</p>
           <h2 className="ix-h2" style={{ fontSize: "clamp(24px, 3vw, 40px)", marginBottom: 14 }}>
@@ -516,13 +513,28 @@ export default function Index() {
           width: clamp(180px, 54vw, 260px);
           opacity: 0;
           animation: ixFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.60s forwards;
+          position: relative;
         }
         .ix-phone-img {
           width: 100%;
           height: auto;
+          max-height: 560px;
+          object-fit: cover;
+          object-position: top;
           display: block;
           border-radius: 28px 28px 0 0;
           box-shadow: 0 -8px 40px rgba(34,197,94,0.12), 0 28px 60px rgba(0,0,0,0.55);
+        }
+        .ix-phone::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 120px;
+          background: linear-gradient(to bottom, transparent 0%, ${DARK} 100%);
+          border-radius: 0 0 28px 28px;
+          pointer-events: none;
         }
 
         /* ── Layout helpers ─────────────────────────────────────────────────── */
@@ -622,8 +634,8 @@ export default function Index() {
         /* ── Screenshots desktop grid ───────────────────────────────────────── */
         .ix-shots-grid {
           display: none;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 14px;
           align-items: start;
         }
         .ix-shot-wrap { text-align: center; }
@@ -655,14 +667,28 @@ export default function Index() {
           color: rgba(255,255,255,0.38);
         }
 
-        /* ── Screenshots mobile: vertical 2-column grid ─────────────────────── */
-        .ix-shots-mobile {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
+        /* ── Screenshots mobile: horizontal swipe carousel ──────────────────── */
+        .ix-shots-carousel {
+          display: flex;
           gap: 14px;
+          overflow-x: auto;
+          overflow-y: visible;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          padding: 4px 4px 16px;
+          margin: 0 -20px;
+          padding-left: 20px;
+          padding-right: 20px;
+          scrollbar-width: none;
         }
-        .ix-shot-mobile-item { text-align: center; }
-        .ix-shots-mobile .ix-shot-frame { border-radius: 16px; }
+        .ix-shots-carousel::-webkit-scrollbar { display: none; }
+        .ix-carousel-item {
+          flex: 0 0 auto;
+          width: clamp(180px, 62vw, 240px);
+          scroll-snap-align: start;
+          text-align: center;
+        }
+        .ix-carousel-item .ix-shot-frame { border-radius: 18px; }
 
         /* ── Neeko Pro ──────────────────────────────────────────────────────── */
         .ix-pro-section {
@@ -832,12 +858,16 @@ export default function Index() {
         /* ── Mobile ─────────────────────────────────────────────────────────── */
         @media (max-width: 639px) {
           .ix-hero { padding-top: 28px; }
-          .ix-phone { width: clamp(170px, 60vw, 240px); }
+          .ix-phone { width: clamp(170px, 60vw, 230px); }
+          .ix-phone-img { max-height: 520px; }
+          .ix-phone::after { height: 100px; }
           .ix-ctas { flex-direction: column; align-items: stretch; }
           .ix-ctas .ix-btn-primary { justify-content: center; }
-          .ix-feature-grid { grid-template-columns: 1fr; gap: 9px; }
+          .ix-feature-grid { grid-template-columns: 1fr; gap: 8px; }
+          .ix-feature-card { padding: 12px 12px; }
+          .ix-feature-icon { width: 30px; height: 30px; font-size: 13px; margin-bottom: 8px; }
           .ix-shots-grid { display: none !important; }
-          .ix-shots-mobile { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .ix-shots-carousel { display: flex; }
           .ix-trust-stats { grid-template-columns: 1fr; gap: 8px; }
           .ix-trust-inner .ix-h2 { text-align: center; }
           .ix-footer-row { flex-direction: column; align-items: flex-start; }
@@ -847,10 +877,14 @@ export default function Index() {
         /* ── Tablet ─────────────────────────────────────────────────────────── */
         @media (min-width: 640px) and (max-width: 1023px) {
           .ix-shots-grid { display: none !important; }
+          .ix-shots-carousel {
+            display: flex;
+            gap: 16px;
+          }
+          .ix-carousel-item { width: clamp(200px, 36vw, 260px); }
           .ix-trust-stats { grid-template-columns: repeat(3, 1fr); }
           .ix-feature-grid { grid-template-columns: repeat(2, 1fr); }
           .ix-pro-inner { grid-template-columns: 1fr; }
-          .ix-shots-mobile { grid-template-columns: repeat(4, 1fr); gap: 14px; }
         }
 
         /* ── Desktop ────────────────────────────────────────────────────────── */
@@ -869,9 +903,10 @@ export default function Index() {
           }
           .ix-phone-img {
             border-radius: 28px 28px 0 0;
+            max-height: 580px;
           }
           .ix-shots-grid   { display: grid !important; }
-          .ix-shots-mobile { display: none; }
+          .ix-shots-carousel { display: none !important; }
           .ix-pro-inner { grid-template-columns: auto 1fr; gap: 56px; }
           .ix-pro-shot { max-width: 250px; }
           .ix-pro-cta { width: auto; justify-content: flex-start; }

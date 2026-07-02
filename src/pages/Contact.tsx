@@ -82,7 +82,7 @@ export default function Contact() {
         <meta name="twitter:description" content="Contact the Neeko Sports Stats team for support, feedback or enquiries about AFL Fantasy analytics." />
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
       </Helmet>
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl" style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom, 32px))" }}>
       <Button
         variant="ghost"
         onClick={() => navigate("/")}
