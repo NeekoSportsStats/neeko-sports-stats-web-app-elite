@@ -46,10 +46,10 @@ const FEATURES = [
 ];
 
 const SCREENSHOTS = [
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_14_PM_(2).png", caption: "AFL Stat Board",    sub: "Hit rates & form by match" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_15_PM_(5).png", caption: "Player Profile",   sub: "Trends, averages & history" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_14_PM_(3).png", caption: "Hit Rate Builder", sub: "Deep stat lens & thresholds" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_15_PM_(4).png", caption: "Team Trends",      sub: "Ladder, scoring & form" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_12_PM_(2).png", caption: "AFL Stat Board",    sub: "Hit rates & form by match" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(5).png", caption: "Player Profile",   sub: "Trends, averages & history" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(3).png", caption: "Hit Rate Builder", sub: "Deep stat lens & thresholds" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(6).png", caption: "Team Trends",      sub: "Ladder, scoring & form" },
 ];
 
 const PRO_FEATURES = [
@@ -154,34 +154,34 @@ export default function Index() {
               {/* Left rear — Combo Tracker */}
               <div className="ix-phone ix-phone-left">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_17_PM_(6).png"
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(4).png"
                   alt="Neeko Stats Combo Tracker showing multi-leg hit rates"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="928"
-                  height="1160"
+                  width="1170"
+                  height="2532"
                 />
               </div>
               {/* Centre front — Home screen */}
               <div className="ix-phone ix-phone-center">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_13_PM_(1).png"
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_12_PM_(1).png"
                   alt="Neeko Stats home screen showing round stat lines and match boards"
                   className="ix-phone-img"
                   loading="eager"
-                  width="928"
-                  height="1160"
+                  width="1170"
+                  height="2532"
                 />
               </div>
               {/* Right rear — More / Pro overview */}
               <div className="ix-phone ix-phone-right">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_18_PM_(7).png"
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_14_PM_(7).png"
                   alt="Neeko Stats Pro overview screen"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="928"
-                  height="1160"
+                  width="1170"
+                  height="2532"
                 />
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function Index() {
           {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub }, i) => (
             <div key={i} className="ix-marquee-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="928" height="1160" />
+                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="1170" height="2532" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -236,7 +236,7 @@ export default function Index() {
           {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub }) => (
             <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="928" height="1160" />
+                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="1170" height="2532" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -523,6 +523,9 @@ export default function Index() {
         .ix-phone {
           position: absolute;
           bottom: 0;
+          overflow: hidden;
+          border-radius: 36px 36px 0 0;
+          border: 1px solid rgba(255,255,255,0.07);
         }
         .ix-phone-center {
           width: clamp(120px, 36vw, 180px);
@@ -537,7 +540,7 @@ export default function Index() {
           left: 0;
           transform: translateX(-4%) rotate(-6deg);
           transform-origin: bottom center;
-          filter: brightness(0.62) drop-shadow(0 16px 32px rgba(0,0,0,0.55));
+          filter: brightness(0.85) drop-shadow(0 16px 32px rgba(0,0,0,0.55));
         }
         .ix-phone-right {
           width: clamp(88px, 26vw, 130px);
@@ -545,7 +548,7 @@ export default function Index() {
           right: 0;
           transform: translateX(4%) rotate(6deg);
           transform-origin: bottom center;
-          filter: brightness(0.62) drop-shadow(0 16px 32px rgba(0,0,0,0.55));
+          filter: brightness(0.85) drop-shadow(0 16px 32px rgba(0,0,0,0.55));
         }
         .ix-phone-img {
           width: 100%;
@@ -686,6 +689,9 @@ export default function Index() {
           text-align: center;
         }
         .ix-shot-frame {
+          border-radius: 24px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.07);
           box-shadow: 0 18px 44px rgba(0,0,0,0.55), 0 3px 12px rgba(0,0,0,0.35);
           transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
