@@ -1,9 +1,10 @@
 import { Helmet } from "react-helmet-async";
+import { APP_STORE_URL } from "@/constants/appStore";
 
 const DARK  = "#07090C";
 const GOLD  = "#E0AE2D";
 const TEAL  = "#22c55e";
-const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
+const APP_STORE = APP_STORE_URL;
 
 const APPLE_ICON = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -40,7 +41,7 @@ const FEATURES = [
 
 const PRO_FEATURES = [
   "Every match board this round",
-  "All stat lenses — disposals, goals, marks, tackles",
+  "All six stat lenses — disposals, goals, marks, tackles, kicks, fantasy",
   "Full hit-rate lines and fine thresholds",
   "Matchup Compare access",
   "Team and match context",

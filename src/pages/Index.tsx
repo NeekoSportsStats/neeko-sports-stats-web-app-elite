@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { APP_STORE_URL } from "@/constants/appStore";
 
 const DARK  = "#07090C";
 const GOLD  = "#E0AE2D";
 const TEAL  = "#22c55e";
-const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
+const APP_STORE = APP_STORE_URL;
 
 const APPLE_ICON = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -45,16 +46,15 @@ const FEATURES = [
 ];
 
 const SCREENSHOTS = [
-  { src: "/images/app-screenshots/01-stat-board.png",    caption: "AFL Stat Board",  sub: "Hit rates & form by match" },
-  { src: "/images/app-screenshots/02-player-profile.png", caption: "Player Profile", sub: "Trends, averages & history" },
-  { src: "/images/app-screenshots/03-pro-details.png",   caption: "Pro Details",     sub: "Deep stat lens & thresholds" },
-  { src: "/images/app-screenshots/05-teams-list.png",    caption: "Team Trends",     sub: "Ladder, scoring & form" },
-  { src: "/images/app-screenshots/06-team-profile.png",  caption: "Team Profile",    sub: "Season summary & leaders" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_14_PM_(2).png", caption: "AFL Stat Board",    sub: "Hit rates & form by match" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_15_PM_(5).png", caption: "Player Profile",   sub: "Trends, averages & history" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_14_PM_(3).png", caption: "Hit Rate Builder", sub: "Deep stat lens & thresholds" },
+  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_15_PM_(4).png", caption: "Team Trends",      sub: "Ladder, scoring & form" },
 ];
 
 const PRO_FEATURES = [
   "Every match board this round",
-  "All stat lenses: disposals, goals, marks & tackles",
+  "All six stat lenses: disposals, goals, marks, tackles, kicks and fantasy",
   "Full hit-rate lines and fine thresholds",
   "Matchup Compare access",
   "Team and match context",
@@ -143,7 +143,7 @@ export default function Index() {
 
             <div className="ix-chips">
               <span className="ix-chip">600+ players</span>
-              <span className="ix-chip">Updated weekly</span>
+              <span className="ix-chip">Refreshed every morning during the season</span>
               <span className="ix-chip">Stats research only</span>
             </div>
           </div>
@@ -151,31 +151,37 @@ export default function Index() {
           {/* 3-phone layered composition */}
           <div className="ix-hero-visual" aria-hidden="true">
             <div className="ix-phone-stack">
-              {/* Left rear — Player Profile */}
+              {/* Left rear — Combo Tracker */}
               <div className="ix-phone ix-phone-left">
                 <img
-                  src="/images/app-screenshots/02-player-profile.png"
-                  alt=""
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_17_PM_(6).png"
+                  alt="Neeko Stats Combo Tracker showing multi-leg hit rates"
                   className="ix-phone-img"
-                  loading="eager"
+                  loading="lazy"
+                  width="928"
+                  height="1160"
                 />
               </div>
-              {/* Centre front — Stat Board */}
+              {/* Centre front — Home screen */}
               <div className="ix-phone ix-phone-center">
                 <img
-                  src="/images/app-screenshots/01-stat-board.png"
-                  alt="Neeko Stats AFL Stat Board on iPhone"
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_13_PM_(1).png"
+                  alt="Neeko Stats home screen showing round stat lines and match boards"
                   className="ix-phone-img"
                   loading="eager"
+                  width="928"
+                  height="1160"
                 />
               </div>
-              {/* Right rear — Team Profile */}
+              {/* Right rear — More / Pro overview */}
               <div className="ix-phone ix-phone-right">
                 <img
-                  src="/images/app-screenshots/06-team-profile.png"
-                  alt=""
+                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_40_18_PM_(7).png"
+                  alt="Neeko Stats Pro overview screen"
                   className="ix-phone-img"
-                  loading="eager"
+                  loading="lazy"
+                  width="928"
+                  height="1160"
                 />
               </div>
             </div>
@@ -217,7 +223,7 @@ export default function Index() {
           {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub }, i) => (
             <div key={i} className="ix-marquee-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
+                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="928" height="1160" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -230,7 +236,7 @@ export default function Index() {
           {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub }) => (
             <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" />
+                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="928" height="1160" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -517,7 +523,6 @@ export default function Index() {
         .ix-phone {
           position: absolute;
           bottom: 0;
-          overflow: hidden;
         }
         .ix-phone-center {
           width: clamp(120px, 36vw, 180px);
@@ -546,25 +551,6 @@ export default function Index() {
           width: 100%;
           height: auto;
           display: block;
-          border-radius: 22px 22px 0 0;
-          object-fit: cover;
-          object-position: top;
-        }
-        .ix-phone-center .ix-phone-img {
-          border-radius: 26px 26px 0 0;
-          max-height: clamp(260px, 68vw, 460px);
-          object-fit: cover;
-          object-position: top;
-        }
-        .ix-phone-center::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 80px;
-          background: linear-gradient(to bottom, transparent 0%, ${DARK} 100%);
-          pointer-events: none;
         }
 
         /* ── Layout helpers ─────────────────────────────────────────────────── */
@@ -700,10 +686,7 @@ export default function Index() {
           text-align: center;
         }
         .ix-shot-frame {
-          border-radius: 20px;
-          overflow: hidden;
           box-shadow: 0 18px 44px rgba(0,0,0,0.55), 0 3px 12px rgba(0,0,0,0.35);
-          border: 1px solid rgba(255,255,255,0.07);
           transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
         .ix-marquee-section:hover .ix-shot-frame:hover {

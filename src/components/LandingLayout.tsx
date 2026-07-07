@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, Outlet } from "react-router-dom";
+import { APP_STORE_URL } from "@/constants/appStore";
 
-const APP_STORE = "https://apps.apple.com/au/app/neeko-stats/id6744005975";
+const APP_STORE = APP_STORE_URL;
 const GOLD = "#E0AE2D";
 
 export function LandingLayout() {
