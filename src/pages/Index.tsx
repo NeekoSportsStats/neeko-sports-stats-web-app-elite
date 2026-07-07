@@ -517,6 +517,7 @@ export default function Index() {
           align-items: flex-end;
           width: clamp(260px, 80vw, 420px);
           height: clamp(260px, 68vw, 480px);
+          overflow: hidden;
           opacity: 0;
           animation: ixFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.60s forwards;
         }
@@ -552,6 +553,7 @@ export default function Index() {
         }
         .ix-phone-img {
           width: 100%;
+          max-width: 100%;
           height: auto;
           display: block;
         }
@@ -886,16 +888,26 @@ export default function Index() {
 
         /* ── Mobile ─────────────────────────────────────────────────────────── */
         @media (max-width: 639px) {
-          .ix-hero { padding-top: 24px; }
+          .ix-hero { padding-top: 24px; padding-left: 16px; padding-right: 16px; overflow-x: clip; }
+          .ix-hero-inner { gap: 16px; }
+          .ix-hero-text { padding-bottom: 0; }
+          .ix-hero-visual { margin-top: 8px; overflow: hidden; }
           .ix-phone-stack {
-            width: clamp(240px, 88vw, 340px);
-            height: clamp(220px, 62vw, 380px);
+            width: clamp(240px, 88vw, 320px);
+            height: clamp(200px, 58vw, 340px);
           }
-          .ix-phone-center { width: clamp(108px, 34vw, 156px); }
-          .ix-phone-left,
-          .ix-phone-right  { width: clamp(78px, 24vw, 112px); }
+          .ix-phone-center { width: clamp(100px, 32vw, 148px); }
+          .ix-phone-left {
+            width: clamp(72px, 22vw, 108px);
+            transform: translateX(0%) rotate(-5deg);
+          }
+          .ix-phone-right {
+            width: clamp(72px, 22vw, 108px);
+            transform: translateX(0%) rotate(5deg);
+          }
           .ix-ctas { flex-direction: column; align-items: stretch; }
           .ix-ctas .ix-btn-primary { justify-content: center; }
+          .ix-chips { flex-wrap: wrap; overflow: visible; }
           .ix-feature-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
           .ix-feature-card { padding: 12px; }
           .ix-feature-icon { width: 30px; height: 30px; font-size: 13px; margin-bottom: 8px; }
