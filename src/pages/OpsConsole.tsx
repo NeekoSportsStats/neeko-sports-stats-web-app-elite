@@ -177,6 +177,14 @@ function LoginGate() {
 
 // ── Tab 1: Paste ──────────────────────────────────────────────────────────────
 
+interface BackfillResult {
+  ok: boolean;
+  error?: string;
+  players_processed?: number;
+  unresolved_count?: number;
+  rounds_written_per_round?: Record<string, number>;
+}
+
 function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => void }) {
   const [json, setJson] = useState("");
   const [round, setRound] = useState<number>(18);
@@ -185,6 +193,13 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   const [committing, setCommitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Backfill state
+  const [backfillFrom, setBackfillFrom] = useState<number>(14);
+  const [backfillTo, setBackfillTo] = useState<number>(17);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<BackfillResult | null>(null);
+  const [backfillError, setBackfillError] = useState<string | null>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -253,6 +268,48 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
       onUnresolved(result.unresolved ?? []);
     } finally {
       setCommitting(false);
+    }
+  }
+
+  async function handleBackfill() {
+    setBackfillError(null);
+    setBackfillResult(null);
+    if (!json.trim()) {
+      setBackfillError("Paste JSON is empty — paste the AFL Fantasy player array first.");
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json.trim());
+    } catch {
+      setBackfillError("Invalid JSON — could not parse the paste content.");
+      return;
+    }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      setBackfillError("Paste must be a non-empty JSON array.");
+      return;
+    }
+    setBackfilling(true);
+    try {
+      const { data, error: rpcErr } = await supabase!.rpc("backfill_prices_from_paste", {
+        p_json: parsed,
+        p_from_round: backfillFrom,
+        p_to_round: backfillTo,
+      });
+      if (rpcErr) {
+        setBackfillError(`RPC error: ${rpcErr.message}`);
+        return;
+      }
+      const res = data as BackfillResult;
+      if (!res?.ok) {
+        setBackfillError(res?.error ?? "Function returned ok:false with no message.");
+        return;
+      }
+      setBackfillResult(res);
+    } catch (err: unknown) {
+      setBackfillError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -374,6 +431,72 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
           </div>
         </div>
       )}
+
+      {/* ── Backfill price history ──────────────────────────────────── */}
+      <div className="border border-zinc-700 rounded-xl p-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-200">Backfill price history (rounds 14–17)</h3>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Writes missing historical rounds from the prices&#123;&#125; map in the pasted JSON.
+            Uses ON CONFLICT DO NOTHING — existing committed rounds are never overwritten.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-zinc-400 whitespace-nowrap">From round</label>
+          <input
+            type="number"
+            min={0}
+            max={24}
+            value={backfillFrom}
+            onChange={(e) => setBackfillFrom(Number(e.target.value))}
+            className="w-20 bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-sm text-zinc-100 text-center"
+          />
+          <label className="text-xs text-zinc-400 whitespace-nowrap">To round</label>
+          <input
+            type="number"
+            min={0}
+            max={24}
+            value={backfillTo}
+            onChange={(e) => setBackfillTo(Number(e.target.value))}
+            className="w-20 bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-sm text-zinc-100 text-center"
+          />
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="px-4 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {backfilling ? "Backfilling…" : "Backfill price history"}
+          </button>
+        </div>
+
+        {backfillError && (
+          <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">
+            {backfillError}
+          </div>
+        )}
+
+        {backfillResult && (
+          <div className="bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 space-y-1 text-sm">
+            <p className="text-zinc-300 font-medium">Backfill complete</p>
+            <p className="text-zinc-400">
+              Players processed: <span className="text-zinc-100">{backfillResult.players_processed}</span>
+              {" · "}
+              Unresolved: <span className={backfillResult.unresolved_count! > 0 ? "text-amber-400" : "text-zinc-100"}>
+                {backfillResult.unresolved_count}
+              </span>
+            </p>
+            {backfillResult.rounds_written_per_round && (
+              <p className="text-zinc-400">
+                {Object.entries(backfillResult.rounds_written_per_round)
+                  .sort(([a], [b]) => Number(a) - Number(b))
+                  .map(([r, n]) => `Round ${r}: ${n} written`)
+                  .join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
