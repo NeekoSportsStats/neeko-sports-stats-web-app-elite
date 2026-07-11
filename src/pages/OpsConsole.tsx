@@ -209,6 +209,19 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   const [backfillError, setBackfillError] = useState<string | null>(null);
   const [refreshBanner, setRefreshBanner] = useState<{ type: 'green' | 'amber'; message: string } | null>(null);
 
+  function RefreshBannerBlock({ banner }: { banner: { type: 'green' | 'amber'; message: string } | null }) {
+    if (!banner) return null;
+    return (
+      <div className={`mt-2 rounded-lg px-4 py-3 text-sm ${
+        banner.type === 'green'
+          ? 'bg-green-950/50 border border-green-700 text-green-300'
+          : 'bg-amber-950/30 border border-amber-800 text-amber-300'
+      }`}>
+        {banner.message}
+      </div>
+    );
+  }
+
   function resolveRefreshBanner(res: WrapperResult): { type: 'green' | 'amber'; message: string } {
     if (res.refreshed) return { type: 'green', message: 'Prices saved and app updated.' };
     if (res.refresh_skipped_reason === 'cron_window') return { type: 'amber', message: "Prices saved. App will update after tonight's pipeline (cron window)." };
@@ -455,15 +468,7 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
             >
               {committing ? "Committing…" : `Commit ${result.resolved.length} prices (Round ${round})`}
             </button>
-            {refreshBanner && (
-              <div className={`mt-3 rounded-lg px-4 py-3 text-sm ${
-                refreshBanner.type === 'green'
-                  ? 'bg-green-950/50 border border-green-700 text-green-300'
-                  : 'bg-amber-950/30 border border-amber-800 text-amber-300'
-              }`}>
-                {refreshBanner.message}
-              </div>
-            )}
+            <RefreshBannerBlock banner={refreshBanner} />
           </div>
         </div>
       )}
@@ -514,15 +519,6 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
 
         {backfillResult && (
           <div className="bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 space-y-1 text-sm">
-            {refreshBanner && (
-              <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${
-                refreshBanner.type === 'green'
-                  ? 'bg-green-950/50 border border-green-700 text-green-300'
-                  : 'bg-amber-950/30 border border-amber-800 text-amber-300'
-              }`}>
-                {refreshBanner.message}
-              </div>
-            )}
             <p className="text-zinc-300 font-medium">Backfill complete</p>
             <p className="text-zinc-400">
               Players processed: <span className="text-zinc-100">{backfillResult.players_processed}</span>
@@ -539,6 +535,7 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
                   .join(" · ")}
               </p>
             )}
+            <RefreshBannerBlock banner={refreshBanner} />
           </div>
         )}
       </div>
