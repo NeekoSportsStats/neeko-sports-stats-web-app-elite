@@ -1,10 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/auth";
 
-// ── Interim shared secret (client-side only gate — FLAG: replace with server-side verification)
-const OPS_SECRET = "neeko-ops-2026";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ResolvedRow {
   fantasy_id: number;
@@ -45,6 +43,30 @@ interface SearchPlayer {
   player_pos: string;
 }
 
+interface MismatchRow {
+  player_name: string;
+  team_count: number;
+  teams: string[];
+  player_ids: number[];
+  record_count: number;
+}
+
+interface PipelineJob {
+  jobname: string;
+  active: boolean;
+  schedule: string;
+  last_start: string | null;
+  last_status: string | null;
+  seconds_since: number | null;
+  message: string;
+}
+
+interface PipelineHealth {
+  jobs: PipelineJob[];
+  alerts: { count: number; most_recent: string | null; most_recent_type: string | null };
+  generated_at: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function statusBg(status: string) {
@@ -59,15 +81,104 @@ function matchBadge(m: string) {
   return "bg-zinc-700 text-zinc-300";
 }
 
-// ── Tab 1: Paste ─────────────────────────────────────────────────────────────
+function relativeTime(isoStr: string | null): string {
+  if (!isoStr) return "never";
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
 
-function PasteTab({
-  onUnresolved,
-}: {
-  onUnresolved: (rows: UnresolvedRow[]) => void;
-}) {
+function jobColor(job: PipelineJob): "green" | "amber" | "red" {
+  if (!job.active || !job.last_status) return "red";
+  if (job.last_status === "failed") return "red";
+  if (job.last_status === "succeeded" && (job.seconds_since ?? Infinity) >= 93600) return "amber";
+  if (job.last_status === "succeeded") return "green";
+  return "red";
+}
+
+const colorDot: Record<string, string> = {
+  green: "bg-green-500",
+  amber: "bg-amber-400",
+  red: "bg-red-500",
+};
+const colorText: Record<string, string> = {
+  green: "text-green-400",
+  amber: "text-amber-400",
+  red: "text-red-400",
+};
+
+// ── Login Gate ────────────────────────────────────────────────────────────────
+
+function LoginGate() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { error: authErr } = await supabase!.auth.signInWithPassword({ email, password });
+      if (authErr) setError(authErr.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div>
+          <h1 className="text-lg font-semibold text-zinc-100">Ops Console</h1>
+          <p className="text-xs text-zinc-500 mt-1">Admin access required</p>
+        </div>
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-xs text-zinc-400">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs text-zinc-400">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500"
+            />
+          </div>
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab 1: Paste ──────────────────────────────────────────────────────────────
+
+function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => void }) {
   const [json, setJson] = useState("");
-  const [secret, setSecret] = useState("");
   const [round, setRound] = useState<number>(18);
   const [result, setResult] = useState<ResolveResult | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -75,11 +186,9 @@ function PasteTab({
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const secretOk = secret.trim() === OPS_SECRET;
-
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 5000);
+    setTimeout(() => setToast(null), 6000);
   }
 
   async function handlePreview() {
@@ -98,13 +207,8 @@ function PasteTab({
         setError("Expected a JSON array at the top level.");
         return;
       }
-      const { data, error: rpcErr } = await supabase!.rpc("resolve_fantasy_paste", {
-        p_json: parsed,
-      });
-      if (rpcErr) {
-        setError(`RPC error: ${rpcErr.message}`);
-        return;
-      }
+      const { data, error: rpcErr } = await supabase!.rpc("resolve_fantasy_paste", { p_json: parsed });
+      if (rpcErr) { setError(`RPC error: ${rpcErr.message}`); return; }
       const res = data as ResolveResult;
       setResult(res);
       onUnresolved(res.unresolved ?? []);
@@ -114,45 +218,32 @@ function PasteTab({
   }
 
   async function handleCommit() {
-    if (!result || !secretOk) return;
+    if (!result) return;
     setCommitting(true);
     setError(null);
-
     let priceCount = 0;
     let statusCount = 0;
     const skipped: string[] = [];
-
     try {
-      // Build price rows for commit_price_round
-      const priceRows = result.resolved.map((r) => ({
-        player_id: r.player_id,
-        price: r.price,
-      }));
-
+      const priceRows = result.resolved.map((r) => ({ player_id: r.player_id, price: r.price }));
       const { error: priceErr } = await supabase!.rpc("commit_price_round", {
         p_rows: priceRows,
         p_season: 2026,
         p_round: round,
       });
-
-      if (priceErr) {
-        setError(`commit_price_round failed: ${priceErr.message}`);
-        return;
-      }
+      if (priceErr) { setError(`commit_price_round failed: ${priceErr.message}`); return; }
       priceCount = priceRows.length;
 
-      // Update status for non-AVAILABLE players
       for (const row of result.resolved) {
         if (row.status !== "AVAILABLE") {
+          const canonicalStatus = row.status === "OUT" || row.status === "TEST" ? row.status : null;
+          if (!canonicalStatus) continue;
           const { error: statusErr } = await supabase!.rpc("admin_update_player_status", {
             p_player_id: row.player_id,
-            p_status: row.status === "OUT" ? "OUT" : row.status === "TEST" ? "TEST" : null,
+            p_status: canonicalStatus,
           });
-          if (statusErr) {
-            skipped.push(row.player_name);
-          } else {
-            statusCount++;
-          }
+          if (statusErr) skipped.push(row.player_name);
+          else statusCount++;
         }
       }
 
@@ -214,22 +305,20 @@ function PasteTab({
 
       {result && (
         <div className="space-y-4">
-          {/* Summary strip */}
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Total", val: result.summary.total },
+              { label: "Total", val: result.summary.total, color: "text-zinc-100" },
               { label: "Resolved", val: result.summary.resolved_count, color: "text-green-400" },
               { label: "Unresolved", val: result.summary.unresolved_count, color: result.summary.unresolved_count > 0 ? "text-red-400" : "text-zinc-400" },
               { label: "New Mappings", val: result.summary.new_mapping_count, color: "text-blue-400" },
             ].map((s) => (
               <div key={s.label} className="bg-zinc-900 rounded-lg p-3 text-center">
-                <div className={`text-2xl font-bold ${s.color ?? "text-zinc-100"}`}>{s.val}</div>
+                <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
                 <div className="text-xs text-zinc-500 mt-1">{s.label}</div>
               </div>
             ))}
           </div>
 
-          {/* Resolved table */}
           {result.resolved.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -259,7 +348,6 @@ function PasteTab({
             </div>
           )}
 
-          {/* Unresolved list */}
           {result.unresolved.length > 0 && (
             <div className="bg-red-950/30 border border-red-900/50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-red-300 mb-2">
@@ -275,28 +363,10 @@ function PasteTab({
             </div>
           )}
 
-          {/* Commit section */}
-          <div className="border-t border-zinc-800 pt-4 space-y-3">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Ops Secret (required to commit)
-              </label>
-              <input
-                type="password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                placeholder="Enter ops secret…"
-                className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 w-64"
-              />
-              {/* ⚠️ INTERIM FLAG: secret is verified client-side against a hardcoded constant.
-                  Replace with a server-side RPC param or edge function auth before production use. */}
-              <p className="text-xs text-amber-600">
-                ⚠ Interim: secret is checked client-side only. Upgrade to server-side verification before broader use.
-              </p>
-            </div>
+          <div className="border-t border-zinc-800 pt-4">
             <button
               onClick={handleCommit}
-              disabled={!secretOk || committing || result.resolved.length === 0}
+              disabled={committing || result.resolved.length === 0}
               className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
             >
               {committing ? "Committing…" : `Commit ${result.resolved.length} prices (Round ${round})`}
@@ -320,16 +390,10 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
 
   async function search(fantasyId: number, q: string) {
     setSearchMap((m) => ({ ...m, [fantasyId]: q }));
-    if (!q.trim()) {
-      setResultsMap((m) => ({ ...m, [fantasyId]: [] }));
-      return;
-    }
+    if (!q.trim()) { setResultsMap((m) => ({ ...m, [fantasyId]: [] })); return; }
     clearTimeout(debounceRef.current[fantasyId]);
     debounceRef.current[fantasyId] = setTimeout(async () => {
-      const { data } = await supabase!.rpc("search_available_players", {
-        p_query: q,
-        p_limit: 10,
-      });
+      const { data } = await supabase!.rpc("search_available_players", { p_query: q, p_limit: 10 });
       setResultsMap((m) => ({ ...m, [fantasyId]: (data as SearchPlayer[]) ?? [] }));
     }, 300);
   }
@@ -344,15 +408,9 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
         p_club: row.club ?? "",
         p_player_id: player.player_id,
       });
-      if (!error) {
-        setConfirmedSet((s) => new Set([...s, row.fantasy_id]));
-      }
+      if (!error) setConfirmedSet((s) => new Set([...s, row.fantasy_id]));
     } finally {
-      setLoadingSet((s) => {
-        const n = new Set(s);
-        n.delete(row.fantasy_id);
-        return n;
-      });
+      setLoadingSet((s) => { const n = new Set(s); n.delete(row.fantasy_id); return n; });
     }
   }
 
@@ -368,14 +426,13 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
-        {rows.length} unresolved name{rows.length !== 1 ? "s" : ""} from last preview. Search for the correct player and confirm the alias — it will resolve automatically on future pastes.
+        {rows.length} unresolved name{rows.length !== 1 ? "s" : ""} from last preview. Search and confirm — aliases persist and auto-resolve on future pastes.
       </p>
       {rows.map((row) => {
         const isConfirmed = confirmedSet.has(row.fantasy_id);
         const selected = selectedMap[row.fantasy_id] ?? null;
         const results = resultsMap[row.fantasy_id] ?? [];
         const q = searchMap[row.fantasy_id] ?? "";
-
         return (
           <div
             key={row.fantasy_id}
@@ -387,11 +444,8 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
                 <span className="ml-2 text-xs text-zinc-500">{row.club ?? `squadId:${row.squad_id}`}</span>
                 <span className="ml-2 text-xs text-zinc-400">${row.price?.toLocaleString()}</span>
               </div>
-              {isConfirmed && (
-                <span className="text-xs bg-green-800 text-green-200 px-2 py-0.5 rounded">Alias saved</span>
-              )}
+              {isConfirmed && <span className="text-xs bg-green-800 text-green-200 px-2 py-0.5 rounded">Alias saved</span>}
             </div>
-
             {!isConfirmed && (
               <div className="space-y-2">
                 <input
@@ -419,12 +473,7 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-3 py-1.5 text-xs text-zinc-200">
                       Matched: <span className="font-medium">{selected.player_name}</span> ({selected.team})
-                      <button
-                        onClick={() => setSelectedMap((m) => ({ ...m, [row.fantasy_id]: null }))}
-                        className="ml-2 text-zinc-500 hover:text-zinc-300"
-                      >
-                        ✕
-                      </button>
+                      <button onClick={() => setSelectedMap((m) => ({ ...m, [row.fantasy_id]: null }))} className="ml-2 text-zinc-500 hover:text-zinc-300">✕</button>
                     </div>
                     <button
                       onClick={() => confirm(row)}
@@ -444,14 +493,156 @@ function ResolveQueueTab({ rows }: { rows: UnresolvedRow[] }) {
   );
 }
 
-// ── Placeholder Tab ───────────────────────────────────────────────────────────
+// ── Tab 3: Mismatches ─────────────────────────────────────────────────────────
 
-function PlaceholderTab({ title }: { title: string }) {
+function MismatchesTab() {
+  const [rows, setRows] = useState<MismatchRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error: err } = await supabase!
+          .schema("afl" as never)
+          .from("v_team_mismatch_audit")
+          .select("player_name, team_count, teams, player_ids, record_count")
+          .order("player_name");
+        if (err) { setError(err.message); return; }
+        setRows((data as MismatchRow[]) ?? []);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <div className="py-20 text-center text-xs text-zinc-500">Loading…</div>;
+  if (error) return <div className="py-10 text-center text-xs text-red-400">{error}</div>;
+  if (rows.length === 0) return <div className="py-20 text-center text-xs text-zinc-500">No mismatches found.</div>;
+
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-zinc-600">
-      <div className="text-3xl mb-3">🛠</div>
-      <p className="text-sm font-medium text-zinc-500">{title}</p>
-      <p className="text-xs mt-1">Coming in next update</p>
+    <div className="space-y-4">
+      <div className="bg-amber-950/30 border border-amber-900/50 rounded-lg px-4 py-3">
+        <p className="text-xs text-amber-300">
+          <span className="font-medium">Read-only reference.</span> These {rows.length} names match multiple players on different teams — the Resolve Queue will prompt you to pick the right one when they appear in a paste.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-zinc-800">
+              {["Name", "Teams", "Player IDs"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 text-zinc-500 font-medium">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.player_name} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                <td className="py-3 px-3 font-medium text-zinc-100">{row.player_name}</td>
+                <td className="py-3 px-3">
+                  <div className="flex flex-wrap gap-1">
+                    {row.teams?.map((t, i) => (
+                      <span key={i} className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded text-xs">{t}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="py-3 px-3 text-zinc-400 font-mono">
+                  {row.player_ids?.join(", ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab 4: Pipeline Health ────────────────────────────────────────────────────
+
+function PipelineHealthTab() {
+  const [health, setHealth] = useState<PipelineHealth | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error: err } = await supabase!.rpc("get_pipeline_health");
+        if (err) { setError(err.message); return; }
+        setHealth(data as PipelineHealth);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <div className="py-20 text-center text-xs text-zinc-500">Loading…</div>;
+  if (error) return <div className="py-10 text-center text-xs text-red-400">{error}</div>;
+  if (!health) return null;
+
+  const colors = health.jobs.map(jobColor);
+  const greenCount = colors.filter((c) => c === "green").length;
+  const amberCount = colors.filter((c) => c === "amber").length;
+  const redCount = colors.filter((c) => c === "red").length;
+  const total = health.jobs.length;
+
+  const summaryColor = redCount > 0 ? "text-red-400" : amberCount > 0 ? "text-amber-400" : "text-green-400";
+
+  return (
+    <div className="space-y-5">
+      {/* Header summary */}
+      <div className="flex items-center gap-4 bg-zinc-900 rounded-lg px-4 py-3">
+        <div className={`text-sm font-semibold ${summaryColor}`}>
+          {greenCount === total ? `${total}/${total} green` : `${greenCount} green · ${amberCount} amber · ${redCount} red`}
+        </div>
+        <div className="text-xs text-zinc-500">
+          {health.alerts.count > 0
+            ? `${health.alerts.count} alerts — most recent: ${health.alerts.most_recent_type ?? "unknown"} (${relativeTime(health.alerts.most_recent)})`
+            : "No alerts"}
+        </div>
+        <div className="ml-auto text-xs text-zinc-600">
+          Checked {relativeTime(health.generated_at)}
+        </div>
+      </div>
+
+      {/* Jobs table */}
+      <div className="space-y-2">
+        {health.jobs.map((job, i) => {
+          const color = colors[i];
+          return (
+            <div
+              key={job.jobname}
+              className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
+            >
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDot[color]}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-zinc-200 font-mono truncate">{job.jobname}</span>
+                  {!job.active && (
+                    <span className="text-xs bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">inactive</span>
+                  )}
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">
+                  {job.schedule} · last run {relativeTime(job.last_start)}
+                </div>
+              </div>
+              <div className={`text-xs font-medium ${colorText[color]}`}>
+                {job.last_status ?? "no run"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {health.alerts.count > 0 && (
+        <div className="bg-amber-950/30 border border-amber-900/50 rounded-lg px-4 py-3 text-xs text-amber-300">
+          {health.alerts.count} pipeline alert{health.alerts.count !== 1 ? "s" : ""} in the log.
+          Most recent type: <span className="font-medium">{health.alerts.most_recent_type ?? "unknown"}</span>{" "}
+          — {relativeTime(health.alerts.most_recent)}.
+        </div>
+      )}
     </div>
   );
 }
@@ -462,6 +653,7 @@ const TABS = ["Paste", "Resolve Queue", "Mismatches", "Pipeline Health"] as cons
 type Tab = typeof TABS[number];
 
 export default function OpsConsole() {
+  const { user, loading, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("Paste");
   const [unresolvedRows, setUnresolvedRows] = useState<UnresolvedRow[]>([]);
 
@@ -473,13 +665,45 @@ export default function OpsConsole() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) return <LoginGate />;
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+        <p className="text-sm text-zinc-400">Not authorized.</p>
+        <button
+          onClick={signOut}
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline"
+        >
+          Sign out
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-xl font-semibold text-zinc-100">Ops Console</h1>
-          <p className="text-xs text-zinc-500 mt-1">Internal price ingest + resolution — not indexed, not linked</p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-100">Ops Console</h1>
+            <p className="text-xs text-zinc-500 mt-1">Internal price ingest + resolution — not indexed, not linked</p>
+          </div>
+          <button
+            onClick={signOut}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Sign out
+          </button>
         </div>
 
         {/* Tab bar */}
@@ -506,16 +730,10 @@ export default function OpsConsole() {
 
         {/* Tab content */}
         <div>
-          {activeTab === "Paste" && (
-            <PasteTab
-              onUnresolved={(rows) => {
-                setUnresolvedRows(rows);
-              }}
-            />
-          )}
+          {activeTab === "Paste" && <PasteTab onUnresolved={setUnresolvedRows} />}
           {activeTab === "Resolve Queue" && <ResolveQueueTab rows={unresolvedRows} />}
-          {activeTab === "Mismatches" && <PlaceholderTab title="Mismatches" />}
-          {activeTab === "Pipeline Health" && <PlaceholderTab title="Pipeline Health" />}
+          {activeTab === "Mismatches" && <MismatchesTab />}
+          {activeTab === "Pipeline Health" && <PipelineHealthTab />}
         </div>
       </div>
     </div>
