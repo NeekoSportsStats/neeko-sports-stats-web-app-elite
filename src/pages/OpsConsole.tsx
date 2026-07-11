@@ -185,6 +185,13 @@ interface BackfillResult {
   rounds_written_per_round?: Record<string, number>;
 }
 
+interface WrapperResult {
+  write_result: Record<string, unknown>;
+  refreshed: boolean;
+  refresh_skipped_reason: string | null;
+  error_detail: string | null;
+}
+
 function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => void }) {
   const [json, setJson] = useState("");
   const [round, setRound] = useState<number>(18);
@@ -200,6 +207,15 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<BackfillResult | null>(null);
   const [backfillError, setBackfillError] = useState<string | null>(null);
+  const [refreshBanner, setRefreshBanner] = useState<{ type: 'green' | 'amber'; message: string } | null>(null);
+
+  function resolveRefreshBanner(res: WrapperResult): { type: 'green' | 'amber'; message: string } {
+    if (res.refreshed) return { type: 'green', message: 'Prices saved and app updated.' };
+    if (res.refresh_skipped_reason === 'cron_window') return { type: 'amber', message: "Prices saved. App will update after tonight's pipeline (cron window)." };
+    if (res.refresh_skipped_reason === 'pipeline_running') return { type: 'amber', message: 'Prices saved. App will update shortly (pipeline running).' };
+    if (res.refresh_skipped_reason === 'error') return { type: 'amber', message: `Prices saved, but refresh failed — will update on next pipeline run.${res.error_detail ? ` ${res.error_detail}` : ''}` };
+    return { type: 'amber', message: 'Prices saved. Refresh status unknown.' };
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -236,18 +252,24 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
     if (!result) return;
     setCommitting(true);
     setError(null);
-    let priceCount = 0;
+    setRefreshBanner(null);
     let statusCount = 0;
     const skipped: string[] = [];
     try {
       const priceRows = result.resolved.map((r) => ({ player_id: r.player_id, price: r.price }));
-      const { error: priceErr } = await supabase!.rpc("commit_price_round", {
+      const { data, error: rpcErr } = await supabase!.rpc("commit_prices_and_refresh", {
+        p_action: "commit",
         p_rows: priceRows,
         p_season: 2026,
         p_round: round,
       });
-      if (priceErr) { setError(`commit_price_round failed: ${priceErr.message}`); return; }
-      priceCount = priceRows.length;
+      if (rpcErr) { setError(`commit_prices_and_refresh failed: ${rpcErr.message}`); return; }
+      const res = data as WrapperResult;
+      if (res.refresh_skipped_reason === "write_failed" || (res.write_result as BackfillResult)?.ok === false) {
+        setError(`Write failed: ${(res.write_result as BackfillResult)?.error ?? res.error_detail ?? "unknown error"}`);
+        return;
+      }
+      setRefreshBanner(resolveRefreshBanner(res));
 
       for (const row of result.resolved) {
         if (row.status !== "AVAILABLE") {
@@ -263,7 +285,7 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
       }
 
       showToast(
-        `Updated ${priceCount} prices, marked ${statusCount} as OUT/TEST${skipped.length ? `, ${skipped.length} status errors` : ""}. ${result.unresolved?.length ?? 0} unresolved → check Resolve Queue.`
+        `Updated ${priceRows.length} prices, marked ${statusCount} as OUT/TEST${skipped.length ? `, ${skipped.length} status errors` : ""}. ${result.unresolved?.length ?? 0} unresolved → check Resolve Queue.`
       );
       onUnresolved(result.unresolved ?? []);
     } finally {
@@ -274,6 +296,7 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   async function handleBackfill() {
     setBackfillError(null);
     setBackfillResult(null);
+    setRefreshBanner(null);
     if (!json.trim()) {
       setBackfillError("Paste JSON is empty — paste the AFL Fantasy player array first.");
       return;
@@ -291,8 +314,10 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
     }
     setBackfilling(true);
     try {
-      const { data, error: rpcErr } = await supabase!.rpc("backfill_prices_from_paste", {
-        p_json: parsed,
+      const { data, error: rpcErr } = await supabase!.rpc("commit_prices_and_refresh", {
+        p_action: "backfill",
+        p_rows: parsed,
+        p_season: 2026,
         p_from_round: backfillFrom,
         p_to_round: backfillTo,
       });
@@ -300,12 +325,14 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
         setBackfillError(`RPC error: ${rpcErr.message}`);
         return;
       }
-      const res = data as BackfillResult;
-      if (!res?.ok) {
-        setBackfillError(res?.error ?? "Function returned ok:false with no message.");
+      const res = data as WrapperResult;
+      const writeResult = res.write_result as BackfillResult;
+      if (res.refresh_skipped_reason === "write_failed" || !writeResult?.ok) {
+        setBackfillError(writeResult?.error ?? res.error_detail ?? "Function returned ok:false with no message.");
         return;
       }
-      setBackfillResult(res);
+      setBackfillResult(writeResult);
+      setRefreshBanner(resolveRefreshBanner(res));
     } catch (err: unknown) {
       setBackfillError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -428,6 +455,15 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
             >
               {committing ? "Committing…" : `Commit ${result.resolved.length} prices (Round ${round})`}
             </button>
+            {refreshBanner && (
+              <div className={`mt-3 rounded-lg px-4 py-3 text-sm ${
+                refreshBanner.type === 'green'
+                  ? 'bg-green-950/50 border border-green-700 text-green-300'
+                  : 'bg-amber-950/30 border border-amber-800 text-amber-300'
+              }`}>
+                {refreshBanner.message}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -478,6 +514,15 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
 
         {backfillResult && (
           <div className="bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 space-y-1 text-sm">
+            {refreshBanner && (
+              <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${
+                refreshBanner.type === 'green'
+                  ? 'bg-green-950/50 border border-green-700 text-green-300'
+                  : 'bg-amber-950/30 border border-amber-800 text-amber-300'
+              }`}>
+                {refreshBanner.message}
+              </div>
+            )}
             <p className="text-zinc-300 font-medium">Backfill complete</p>
             <p className="text-zinc-400">
               Players processed: <span className="text-zinc-100">{backfillResult.players_processed}</span>
