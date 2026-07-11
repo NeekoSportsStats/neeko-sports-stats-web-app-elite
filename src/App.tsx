@@ -17,6 +17,9 @@ import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 
+// ── Internal ops — unlinked, not in sitemap, no auth wrapper ─────────────────
+const OpsConsole = React.lazy(() => import("@/pages/OpsConsole"));
+
 /* =========================
    Core Pages — lazy
 ========================= */
@@ -130,6 +133,16 @@ function App() {
           <Route path="admin" element={<Navigate to="/admin/internal-ops" replace />} />
         </Route>
       </Route>
+
+      {/* ── Internal ops console — unlinked, not in sitemap ── */}
+      <Route
+        path="/ops-r7x2k4"
+        element={
+          <React.Suspense fallback={<div className="min-h-screen bg-zinc-950" />}>
+            <OpsConsole />
+          </React.Suspense>
+        }
+      />
 
       {/* Legacy / deprecated routes — explicit 404 to prevent soft-404 indexing */}
       <Route path="/nba/*" element={<NotFound />} />
