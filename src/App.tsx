@@ -2,11 +2,8 @@ import React, { Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { trackPageView, captureAttribution, startEngagementTracking, stopEngagementTracking } from "@/lib/analytics";
 import { useCanonical } from "@/hooks/useCanonical";
-import { Layout } from "@/components/Layout";
 import { LandingLayout } from "@/components/LandingLayout";
 import { PublicPageLayout } from "@/components/PublicPageLayout";
-import { RequireAuth } from "@/components/RequireAuth";
-import { RequireAdmin } from "@/components/RequireAdmin";
 import {
   GenericPageSkeleton,
 } from "@/components/skeletons/PageSkeletons";
@@ -23,22 +20,6 @@ const OpsConsole = React.lazy(() => import("@/pages/OpsConsole"));
 /* =========================
    Core Pages — lazy
 ========================= */
-import {
-  AdminShell,
-  AdminDashboardPage,
-  AdminHealthPage,
-  AdminUserMetricsPage,
-  AdminCommandPage,
-  AdminContentIntelPage,
-  AdminPlayerLabPage,
-  AdminMarketingPage,
-  AdminPlayerIdentityPage,
-  AdminInternalOpsPage,
-  AdminConversionTestPage,
-  AdminSocialPlannerPage,
-} from "@/pages/Admin";
-
-const Account           = React.lazy(() => import("@/pages/Account"));
 const About             = React.lazy(() => import("@/pages/About"));
 const Contact           = React.lazy(() => import("@/pages/Contact"));
 const CreatePassword    = React.lazy(() => import("@/pages/CreatePassword"));
@@ -103,36 +84,17 @@ function App() {
         <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
       </Route>
 
-      {/* ── App shell — sidebar + stats board top bar ────────────────────── */}
-      <Route element={<Layout />}>
-        {/* SEO-ONLY ROUTES: player/team/position pages kept for deindexing crawl */}
-        <Route path="/sports/afl/players/:slug" element={<Navigate to="/" replace />} />
-        <Route path="/sports/afl/teams/:team" element={<Navigate to="/" replace />} />
-        <Route path="/sports/afl/positions/:position" element={<Navigate to="/" replace />} />
+      {/* ── SEO-ONLY ROUTES: player/team/position pages kept for deindexing crawl */}
+      <Route path="/sports/afl/players/:slug" element={<Navigate to="/" replace />} />
+      <Route path="/sports/afl/teams/:team" element={<Navigate to="/" replace />} />
+      <Route path="/sports/afl/positions/:position" element={<Navigate to="/" replace />} />
 
-        <Route path="/account" element={<RequireAuth><S fallback={Generic}><Account /></S></RequireAuth>} />
-
-        <Route path="/checkout" element={<Navigate to="/" replace />} />
-        <Route path="/success" element={<Navigate to="/" replace />} />
-        <Route path="/cancel" element={<Navigate to="/" replace />} />
-
-        <Route path="/admin" element={<RequireAdmin><AdminShell /></RequireAdmin>}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="health" element={<AdminHealthPage />} />
-          <Route path="users" element={<AdminUserMetricsPage />} />
-          <Route path="command" element={<AdminCommandPage />} />
-          <Route path="content-intel" element={<AdminContentIntelPage />} />
-          <Route path="player-lab" element={<AdminPlayerLabPage />} />
-          <Route path="player-identity" element={<AdminPlayerIdentityPage />} />
-          <Route path="internal-ops" element={<AdminInternalOpsPage />} />
-          <Route path="social-planner" element={<AdminSocialPlannerPage />} />
-          <Route path="marketing" element={<AdminMarketingPage />} />
-          <Route path="marketing-insights" element={<Navigate to="/admin/users" replace />} />
-          <Route path="conversion-test" element={<AdminConversionTestPage />} />
-          <Route path="admin" element={<Navigate to="/admin/internal-ops" replace />} />
-        </Route>
-      </Route>
+      {/* ── Deprecated checkout routes — redirect to landing */}
+      <Route path="/account" element={<Navigate to="/" replace />} />
+      <Route path="/checkout" element={<Navigate to="/" replace />} />
+      <Route path="/success" element={<Navigate to="/" replace />} />
+      <Route path="/cancel" element={<Navigate to="/" replace />} />
+      <Route path="/admin/*" element={<Navigate to="/" replace />} />
 
       {/* ── Internal ops console — unlinked, not in sitemap ── */}
       <Route

@@ -178,16 +178,11 @@ const Auth = () => {
   const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
   const [confirmedPlanKey, setConfirmedPlanKey] = useState<string | null>(null);
 
-  const SAFE_REDIRECTS = new Set(["/", "/account", "/dashboard", "checkout", "account"]);
+  const SAFE_REDIRECTS = new Set(["/", "/dashboard"]);
   const rawRedirect = searchParams.get("redirect") || "/";
 
   function getPostAuthPath(overridePlan?: string): string {
-    const effectivePlan = overridePlan ?? planKey;
-    if (effectivePlan) {
-      return `/checkout?plan_key=${effectivePlan}`;
-    }
-    if (rawRedirect === "checkout") return "/checkout";
-    if (rawRedirect === "account") return "/account";
+    if (rawRedirect === "dashboard") return "/dashboard";
     if (SAFE_REDIRECTS.has(rawRedirect)) return rawRedirect;
     return "/";
   }
