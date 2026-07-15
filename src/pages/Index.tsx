@@ -46,10 +46,20 @@ const FEATURES = [
 ];
 
 const SCREENSHOTS = [
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_12_PM_(2).png", caption: "AFL Stat Board",    sub: "Hit rates & form by match" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(5).png", caption: "Player Profile",   sub: "Trends, averages & history" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(3).png", caption: "Hit Rate Builder", sub: "Deep stat lens & thresholds" },
-  { src: "/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(6).png", caption: "Team Trends",      sub: "Ladder, scoring & form" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_10_1242x2688.png", caption: "Hit Rate Builder", sub: "Any player, any line, any split",
+    alt: "Hit Rate Builder showing Bailey Smith at 30+ disposals, 81 percent for the season, with a last-10 game history" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_02_1242x2688.png", caption: "Player Profile", sub: "Career highs, form & head-to-head",
+    alt: "Harry Sheezel player profile showing disposals summary, career high, consistency score and head-to-head history against Melbourne" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_01_1242x2688.png", caption: "Trend Stack", sub: "Up to six players at once",
+    alt: "Trend Stack showing three players researched together and how often all three cleared their lines in the same round" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_03_1242x2688.png", caption: "Team Trends", sub: "Ladder, scoring & team leaders",
+    alt: "Hawthorn team page showing season record, scoring profile and team leaders" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_05_1242x2688.png", caption: "Hot & Cold", sub: "Last 5 against season average",
+    alt: "Fantasy HQ hot and cold showing last-5 average against season average for 477 players" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_06_1242x2688.png", caption: "Value", sub: "Projected points per $100k",
+    alt: "Fantasy HQ value showing projected points per $100k for 361 players" },
+  { src: "/images/app-screenshots/Neeko_Screenshot_07_1242x2688.png", caption: "Captains", sub: "Highest projected scores",
+    alt: "Fantasy HQ captains showing the highest projected scores for Round 19" },
 ];
 
 const PRO_FEATURES = [
@@ -154,34 +164,34 @@ export default function Index() {
               {/* Left rear — Combo Tracker */}
               <div className="ix-phone ix-phone-left">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_13_PM_(4).png"
-                  alt="Neeko Stats Combo Tracker showing multi-leg hit rates"
+                  src="/images/app-screenshots/Neeko_Screenshot_08_1242x2688.png"
+                  alt="Neeko Stats home screen showing Round 19 fixtures, watchlist players with breakeven, projection and form, and top season stat lines"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="1170"
-                  height="2532"
+                  width="1242"
+                  height="2688"
                 />
               </div>
               {/* Centre front — Home screen */}
               <div className="ix-phone ix-phone-center">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_12_PM_(1).png"
-                  alt="Neeko Stats home screen showing round stat lines and match boards"
+                  src="/images/app-screenshots/Neeko_Screenshot_09_1242x2688.png"
+                  alt="Neeko Stats match board for Collingwood v Carlton showing projections and 15+, 20+, 25+ and 30+ disposal hit rates, with Nick Daicos expanded"
                   className="ix-phone-img"
                   loading="eager"
-                  width="1170"
-                  height="2532"
+                  width="1242"
+                  height="2688"
                 />
               </div>
               {/* Right rear — More / Pro overview */}
               <div className="ix-phone ix-phone-right">
                 <img
-                  src="/images/app-screenshots/ChatGPT_Image_Jul_7,_2026,_02_26_14_PM_(7).png"
-                  alt="Neeko Stats Pro overview screen"
+                  src="/images/app-screenshots/Neeko_Screenshot_04_1242x2688.png"
+                  alt="Neeko Stats Fantasy HQ rankings showing live breakevens and projections for 487 players"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="1170"
-                  height="2532"
+                  width="1242"
+                  height="2688"
                 />
               </div>
             </div>
@@ -220,10 +230,10 @@ export default function Index() {
       <section className="ix-marquee-section" aria-label="App screenshots">
         {/* Mobile / tablet: auto-scroll marquee */}
         <div className="ix-marquee-track" aria-hidden="true">
-          {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub }, i) => (
+          {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub, alt }, i) => (
             <div key={i} className="ix-marquee-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="1170" height="2532" />
+                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="1242" height="2688" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -233,10 +243,10 @@ export default function Index() {
 
         {/* Desktop: static premium gallery (4 screenshots, centred) */}
         <div className="ix-screenshot-grid ix-container">
-          {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub }) => (
+          {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub, alt }) => (
             <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={caption} className="ix-shot-img" loading="lazy" width="1170" height="2532" />
+                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="1242" height="2688" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
