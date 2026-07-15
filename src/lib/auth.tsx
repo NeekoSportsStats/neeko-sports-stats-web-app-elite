@@ -60,14 +60,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const premiumFetchInFlightRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
 
-  const fetchPremiumStatus = useCallback(async (_userId: string) => {
+  const fetchPremiumStatus = useCallback(async (userId: string) => {
     if (!supabase) {
       setPremiumLoading(false);
       return;
     }
     setPremiumLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_access_state");
+      const { data, error } = await supabase.rpc("get_access_context", {
+        p_user_id: userId,
+        p_is_bot: false,
+      });
 
       if (error) {
         console.error("Premium status error:", error);
