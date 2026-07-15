@@ -812,6 +812,135 @@ function PipelineHealthTab() {
   );
 }
 
+// ── Pipeline Health Banner ────────────────────────────────────────────────────
+
+interface OperatorState {
+  system: {
+    overall_health: string;
+    pipeline_status: string;
+    partial_runs_24h: number;
+    last_pipeline_run_at: string | null;
+    last_successful_run_at: string | null;
+  };
+  pipeline: {
+    health: string;
+    status: string;
+    last_run_at: string | null;
+    last_success_at: string | null;
+    last_finished_at: string | null;
+    failed_steps_24h: number;
+    partial_runs_24h: number;
+    recent_runs_7d: number;
+  };
+  generated_at: string;
+}
+
+function melbourneTime(iso: string | null): string {
+  if (!iso) return "never";
+  try {
+    return new Date(iso).toLocaleString("en-AU", {
+      timeZone: "Australia/Melbourne",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function hoursAgo(iso: string | null): number | null {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  return Math.abs(diff) / 3_600_000;
+}
+
+function PipelineBanner() {
+  const [state, setState] = useState<OperatorState | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error: err } = await supabase.rpc("get_operator_console_state");
+        if (err) { if (!cancelled) setError(true); return; }
+        if (!cancelled) setState(data as OperatorState);
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (error) {
+    return (
+      <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-900/60 px-4 py-3 text-xs text-zinc-500">
+        Couldn't load pipeline status.
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <div className="mb-6 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-600">
+        Loading pipeline status…
+      </div>
+    );
+  }
+
+  const lastSuccess = state.system.last_successful_run_at ?? state.pipeline.last_success_at;
+  const hrs = hoursAgo(lastSuccess);
+  const failedSteps = state.pipeline.failed_steps_24h ?? 0;
+  const partialRuns = state.system.partial_runs_24h ?? state.pipeline.partial_runs_24h ?? 0;
+  const status = state.system.pipeline_status ?? state.pipeline.status ?? "unknown";
+
+  const isStale = !lastSuccess || (hrs !== null && hrs > 24);
+  const isAmber = !isStale && (status === "partial" || partialRuns > 0 || failedSteps > 0);
+  const isGreen = !isStale && !isAmber && status === "complete";
+
+  const lastRunLabel = lastSuccess ? `${hrs !== null ? `${Math.floor(hrs)}h` : "?"} ago` : "never";
+  const melbLabel = melbourneTime(lastSuccess);
+
+  let bg = "bg-zinc-900/40 border-zinc-800";
+  let text = "text-zinc-400";
+  let dot = "bg-zinc-500";
+  let message: string;
+
+  if (isStale) {
+    bg = "bg-red-950/40 border-red-800";
+    text = "text-red-300";
+    dot = "bg-red-500";
+    const agoStr = lastSuccess ? `${Math.floor(hrs ?? 0)}h ago` : "never";
+    message = `Pipeline STALE — last successful run ${agoStr} (${melbLabel} Melbourne). Scheduled run may not have fired.`;
+  } else if (isAmber) {
+    bg = "bg-amber-950/30 border-amber-800";
+    text = "text-amber-300";
+    dot = "bg-amber-400";
+    const reasons: string[] = [];
+    if (status === "partial") reasons.push("partial status");
+    if (partialRuns > 0) reasons.push(`${partialRuns} partial run${partialRuns !== 1 ? "s" : ""} in 24h`);
+    if (failedSteps > 0) reasons.push(`${failedSteps} failed step${failedSteps !== 1 ? "s" : ""} in 24h`);
+    message = `Pipeline partial — last run ${lastRunLabel} · ${reasons.join(" · ")}. Check steps.`;
+  } else if (isGreen) {
+    bg = "bg-green-950/30 border-green-800";
+    text = "text-green-300";
+    dot = "bg-green-500";
+    message = `Pipeline healthy · last run ${lastRunLabel} ago · ${melbLabel} Melbourne`;
+  } else {
+    message = `Pipeline status: ${status} · last run ${lastRunLabel}`;
+  }
+
+  return (
+    <div className={`mb-6 rounded-lg border ${bg} px-4 py-3 flex items-center gap-3`}>
+      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dot} ${isStale ? "animate-pulse" : ""}`} />
+      <p className={`text-xs ${text}`}>{message}</p>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const TABS = ["Paste", "Resolve Queue", "Mismatches", "Pipeline Health"] as const;
@@ -870,6 +999,9 @@ export default function OpsConsole() {
             Sign out
           </button>
         </div>
+
+        {/* Pipeline health banner */}
+        <PipelineBanner />
 
         {/* Tab bar */}
         <div className="flex border-b border-zinc-800 mb-6">
