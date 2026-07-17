@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import html2canvas from "html2canvas";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,77 +87,6 @@ function fmtGap(gap: number | null): string {
   return `(${sign}${gap.toFixed(1)})`;
 }
 
-function hookOptions(r: RankedRow): [string, string][] {
-  const LENS = r.lens.toUpperCase();
-  const misses = r.games - r.hits;
-  if (r.rate === 100) {
-    return [
-      [`HE HASN'T MISSED.`, `ONCE.`],
-      [`${r.hits} FROM ${r.games}.`, `PERFECT SEASON.`],
-      [`100%.`, `ALL ${r.games} GAMES.`],
-    ];
-  }
-  return [
-    [`${r.hits} OF HIS LAST ${r.games}.`, `${r.threshold}+ ${LENS}.`],
-    [`${r.rate}%.`, `${r.threshold}+ ${LENS}.`],
-    [`ONLY ${misses} MISSES.`, `ALL SEASON.`],
-  ];
-}
-
-// ── PNG card ────────────────────────────────────────────────────────────────
-
-function CardImage({ row, hookIdx }: { row: RankedRow; hookIdx: number }) {
-  const LENS = row.lens.toUpperCase();
-  const hooks = hookOptions(row);
-  const [h1, h2] = hooks[hookIdx % hooks.length];
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: "-9999px",
-        top: 0,
-        width: 1080,
-        height: 1920,
-        background: "#050505",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-        fontWeight: 800,
-        letterSpacing: "-0.02em",
-        color: "#FFFFFF",
-      }}
-    >
-      <div style={{ position: "absolute", top: 170, width: 1080, textAlign: "center", fontSize: 72, fontWeight: 800 }}>{h1}</div>
-      <div style={{ position: "absolute", top: 262, width: 1080, textAlign: "center", fontSize: 96, fontWeight: 800, color: "#22C55E" }}>{h2}</div>
-      <div style={{ position: "absolute", top: 400, width: 1080, textAlign: "center", fontSize: 32, color: "#8A8F96", fontWeight: 600 }}>
-        {row.player_name} · {row.team_name} · v {row.opponent_team_name ?? "—"}
-      </div>
-      {/* Panel */}
-      <div style={{ position: "absolute", left: 100, top: 500, width: 880, height: 420, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226" }}>
-        <div style={{ position: "absolute", top: 60, width: 880, textAlign: "center", fontSize: 40, color: "#F5C442", fontWeight: 700 }}>
-          {row.threshold}+ {LENS}
-        </div>
-        <div style={{ position: "absolute", top: 140, width: 880, textAlign: "center", fontSize: 130, fontWeight: 800 }}>
-          {row.hits}/{row.games}
-        </div>
-        <div style={{ position: "absolute", top: 310, width: 880, textAlign: "center", fontSize: 56, color: "#22C55E", fontWeight: 700 }}>
-          {row.rate}%
-        </div>
-      </div>
-      <div style={{ position: "absolute", top: 1000, width: 1080, textAlign: "center", fontSize: 34, color: "#8A8F96", fontWeight: 600 }}>
-        Season average {row.season_avg !== null ? row.season_avg.toFixed(1) : "—"}
-      </div>
-      {/* CTA pill */}
-      <div style={{ position: "absolute", top: 1120, width: 1080, display: "flex", justifyContent: "center" }}>
-        <div style={{ background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>
-          FREE ON THE APP STORE
-        </div>
-      </div>
-      <div style={{ position: "absolute", top: 1230, width: 1080, textAlign: "center", fontSize: 26, color: "#565A60", fontWeight: 700 }}>
-        NEEKO STATS
-      </div>
-    </div>
-  );
-}
-
 function makeBrief(r: RankedRow): string {
   const tag = statusTag(r.player_status).label;
   const opp = r.opponent_team_name ?? "—";
@@ -178,11 +106,6 @@ export default function ContentSheet() {
   const [error, setError] = useState<string | null>(null);
   const [lensFilter, setLensFilter] = useState<Lens | "All">("All");
   const [copyState, setCopyState] = useState<string | null>(null);
-  const [pngBusy, setPngBusy] = useState<string | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
-  const cardHostRef = useRef<HTMLDivElement | null>(null);
-  const [cardRow, setCardRow] = useState<RankedRow | null>(null);
-  const [cardHookIdx, setCardHookIdx] = useState(0);
 
   // Step 1: resolve current round + fixtures
   useEffect(() => {
@@ -329,67 +252,6 @@ export default function ContentSheet() {
     });
   }
 
-  // ── PNG export ──────────────────────────────────────────────────────────────
-
-  const renderCardPng = useCallback(async (row: RankedRow, idx: number): Promise<Blob | null> => {
-    setCardRow(row);
-    setCardHookIdx(idx);
-    // wait for DOM paint
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    const node = cardHostRef.current?.querySelector("[data-card-root]") as HTMLElement | null;
-    if (!node) return null;
-    const canvas = await html2canvas(node, {
-      width: 1080,
-      height: 1920,
-      scale: 1,
-      backgroundColor: "#050505",
-      useCORS: true,
-    });
-    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
-  }, []);
-
-  function downloadPng(row: RankedRow, hookIdx: number) {
-    const key = row.player_name + row.lens + row.threshold;
-    setPngBusy(key);
-    renderCardPng(row, hookIdx).then((blob) => {
-      setPngBusy(null);
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${row.player_name.replace(/\s+/g, "_")}_${row.lens}_${row.threshold}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  async function downloadAllVisible() {
-    const rows = visibleRows;
-    setBulkProgress({ done: 0, total: rows.length });
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      setPngBusy(row.player_name + row.lens + row.threshold);
-      const blob = await renderCardPng(row, 0);
-      setPngBusy(null);
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${row.player_name.replace(/\s+/g, "_")}_${row.lens}_${row.threshold}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-      setBulkProgress({ done: i + 1, total: rows.length });
-      await new Promise((r) => setTimeout(r, 200)); // throttle downloads
-    }
-    setBulkProgress(null);
-  }
-
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
     const map = new Map<Lens, RankedRow[]>();
@@ -457,27 +319,13 @@ export default function ContentSheet() {
             {LENS_LABELS[lens]}
           </button>
         ))}
-        <div className="ml-auto flex items-center gap-2">
-          {bulkProgress && (
-            <span className="text-xs text-zinc-500">
-              {bulkProgress.done}/{bulkProgress.total}
-            </span>
-          )}
-          <button
-            onClick={copyAll}
-            disabled={visibleRows.length === 0 || !!bulkProgress}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
-          >
-            {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
-          </button>
-          <button
-            onClick={downloadAllVisible}
-            disabled={visibleRows.length === 0 || !!bulkProgress}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
-          >
-            {bulkProgress ? `↓ ${bulkProgress.done}/${bulkProgress.total}` : "↓ Download All Visible"}
-          </button>
-        </div>
+        <button
+          onClick={copyAll}
+          disabled={visibleRows.length === 0}
+          className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
+        >
+          {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
+        </button>
       </div>
 
       {/* Rows */}
@@ -530,14 +378,6 @@ export default function ContentSheet() {
                       >
                         {copied ? "Copied!" : "⧉"}
                       </button>
-                      <button
-                        onClick={() => downloadPng(r, 0)}
-                        disabled={pngBusy === r.player_name + r.lens + r.threshold}
-                        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0 disabled:opacity-30"
-                        title="Download PNG card"
-                      >
-                        {pngBusy === r.player_name + r.lens + r.threshold ? "…" : "↓ PNG"}
-                      </button>
                     </div>
                   );
                 })}
@@ -546,15 +386,6 @@ export default function ContentSheet() {
           })}
         </div>
       )}
-
-      {/* Hidden off-screen card host for PNG rendering */}
-      <div ref={cardHostRef} aria-hidden style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
-        {cardRow && (
-          <div data-card-root>
-            <CardImage row={cardRow} hookIdx={cardHookIdx} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }
