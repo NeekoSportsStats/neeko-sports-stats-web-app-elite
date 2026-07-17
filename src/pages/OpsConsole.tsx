@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
+import ContentSheet from "@/pages/ops/ContentSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -943,7 +944,7 @@ function PipelineBanner() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-const TABS = ["Paste", "Resolve Queue", "Mismatches", "Pipeline Health"] as const;
+const TABS = ["Paste", "Resolve Queue", "Mismatches", "Pipeline Health", "Content"] as const;
 type Tab = typeof TABS[number];
 
 export default function OpsConsole() {
@@ -1031,6 +1032,7 @@ export default function OpsConsole() {
           {activeTab === "Resolve Queue" && <ResolveQueueTab rows={unresolvedRows} />}
           {activeTab === "Mismatches" && <MismatchesTab />}
           {activeTab === "Pipeline Health" && <PipelineHealthTab />}
+          {activeTab === "Content" && <ContentSheet />}
         </div>
       </div>
     </div>
