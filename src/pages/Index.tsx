@@ -962,13 +962,13 @@ export default function Index() {
           .ix-hero-text   { order: -1; padding-bottom: clamp(40px, 5vw, 72px); }
           .ix-hero-visual { order: 1; }
           .ix-phone-stack {
-            width: clamp(360px, 28vw, 460px);
+            width: clamp(456px, 34vw, 556px);
             height: clamp(380px, 36vw, 520px);
             animation: ixFadeUp 0.70s cubic-bezier(0.22,1,0.36,1) 0.55s forwards, ixFloat 5s ease-in-out 1.4s infinite;
           }
           .ix-phone-center { width: clamp(160px, 14vw, 210px); }
-          .ix-phone-left,
-          .ix-phone-right  { width: clamp(110px, 10vw, 148px); }
+          .ix-phone-left  { width: clamp(110px, 10vw, 148px); left: 48px; }
+          .ix-phone-right { width: clamp(110px, 10vw, 148px); right: 48px; }
           .ix-trust-inner { grid-template-columns: 1fr 1fr; }
           .ix-trust-stats { grid-template-columns: 1fr; gap: 10px; }
           .ix-trust-card {
