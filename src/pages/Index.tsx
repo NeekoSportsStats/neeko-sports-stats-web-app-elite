@@ -60,19 +60,19 @@ const FEATURES = [
 ];
 
 const SCREENSHOTS = [
-  { src: "/images/app-screenshots/Neeko_Screenshot_10_1242x2688.png", caption: "Hit Rate Builder", sub: "Any player, any line, any split",
+  { src: "/images/app-screenshots/Neeko_Screenshot_03_1242x2688.png", caption: "Hit Rate Builder", sub: "Any player, any line, any split",
     alt: "Hit Rate Builder showing Bailey Smith at 30+ disposals, 81 percent for the season, with a last-10 game history" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_02_1242x2688.png", caption: "Player Profile", sub: "Career highs, form & head-to-head",
+  { src: "/images/app-screenshots/Neeko_Screenshot_05_1242x2688.png", caption: "Player Profile", sub: "Career highs, form & head-to-head",
     alt: "Harry Sheezel player profile showing disposals summary, career high, consistency score and head-to-head history against Melbourne" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_01_1242x2688.png", caption: "Trend Stack", sub: "Up to six players at once",
+  { src: "/images/app-screenshots/Neeko_Screenshot_04_1242x2688.png", caption: "Trend Stack", sub: "Up to six players at once",
     alt: "Trend Stack showing three players researched together and how often all three cleared their lines in the same round" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_03_1242x2688.png", caption: "Team Trends", sub: "Ladder, scoring & team leaders",
+  { src: "/images/app-screenshots/Neeko_Screenshot_06_1242x2688.png", caption: "Team Trends", sub: "Ladder, scoring & team leaders",
     alt: "Hawthorn team page showing season record, scoring profile and team leaders" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_05_1242x2688.png", caption: "Hot & Cold", sub: "Last 5 against season average",
+  { src: "/images/app-screenshots/Neeko_Screenshot_08_1242x2688.png", caption: "Hot & Cold", sub: "Last 5 against season average",
     alt: "Fantasy HQ hot and cold showing last-5 average against season average for 477 players" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_06_1242x2688.png", caption: "Value", sub: "Projected points per $100k",
+  { src: "/images/app-screenshots/Neeko_Screenshot_09_1242x2688.png", caption: "Value", sub: "Projected points per $100k",
     alt: "Fantasy HQ value showing projected points per $100k for 361 players" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_07_1242x2688.png", caption: "Captains", sub: "Highest projected scores",
+  { src: "/images/app-screenshots/Neeko_Screenshot_10_1242x2688.png", caption: "Captains", sub: "Highest projected scores",
     alt: "Fantasy HQ captains showing the highest projected scores for Round 19" },
 ];
 
@@ -175,10 +175,10 @@ export default function Index() {
           {/* 3-phone layered composition */}
           <div className="ix-hero-visual" aria-hidden="true">
             <div className="ix-phone-stack">
-              {/* Left rear — Combo Tracker */}
+              {/* Left rear — Home screen */}
               <div className="ix-phone ix-phone-left">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_08_1242x2688.png"
+                  src="/images/app-screenshots/Neeko_Screenshot_01_1242x2688.png"
                   alt="Neeko Stats home screen showing Round 19 fixtures, watchlist players with breakeven, projection and form, and top season stat lines"
                   className="ix-phone-img"
                   loading="lazy"
@@ -186,10 +186,10 @@ export default function Index() {
                   height="2688"
                 />
               </div>
-              {/* Centre front — Home screen */}
+              {/* Centre front — Round board, COL v CAR */}
               <div className="ix-phone ix-phone-center">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_09_1242x2688.png"
+                  src="/images/app-screenshots/Neeko_Screenshot_02_1242x2688.png"
                   alt="Neeko Stats match board for Collingwood v Carlton showing projections and 15+, 20+, 25+ and 30+ disposal hit rates, with Nick Daicos expanded"
                   className="ix-phone-img"
                   loading="eager"
@@ -197,10 +197,10 @@ export default function Index() {
                   height="2688"
                 />
               </div>
-              {/* Right rear — More / Pro overview */}
+              {/* Right rear — Fantasy HQ Rankings */}
               <div className="ix-phone ix-phone-right">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_04_1242x2688.png"
+                  src="/images/app-screenshots/Neeko_Screenshot_07_1242x2688.png"
                   alt="Neeko Stats Fantasy HQ rankings showing live breakevens and projections for 487 players"
                   className="ix-phone-img"
                   loading="lazy"
