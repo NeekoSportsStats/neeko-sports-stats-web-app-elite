@@ -30,6 +30,7 @@ interface StatBoardPlayer {
   threshold: number | null;
   hit_rate_last_10: number | null;
   season_threshold_hit_rates: Record<string, ThresholdHit> | null;
+  season_avg: string | null;
   player_status: string;
   is_locked: boolean;
 }
@@ -43,6 +44,8 @@ interface RankedRow {
   hits: number;
   games: number;
   rate: number;
+  season_avg: number | null;
+  gap: number | null;
   player_status: string;
 }
 
@@ -78,10 +81,17 @@ function statusTag(status: string): { label: string; cls: string } {
   return { label: "PLAYING", cls: "bg-green-900/60 text-green-300" };
 }
 
+function fmtGap(gap: number | null): string {
+  if (gap === null) return "";
+  const sign = gap >= 0 ? "+" : "";
+  return `(${sign}${gap.toFixed(1)})`;
+}
+
 function makeBrief(r: RankedRow): string {
   const tag = statusTag(r.player_status).label;
   const opp = r.opponent_team_name ?? "—";
-  return `${r.player_name} | ${r.team_name} v ${opp} | ${r.threshold}+ ${r.lens} | ${r.hits}/${r.games} (${r.rate}%) | ${tag}`;
+  const avg = r.season_avg !== null ? ` | season avg ${r.season_avg.toFixed(1)} ${fmtGap(r.gap)}` : "";
+  return `${r.player_name} | ${r.team_name} v ${opp} | ${r.threshold}+ ${r.lens} | ${r.hits}/${r.games} (${r.rate}%)${avg} | ${tag}`;
 }
 
 // ── Tab ───────────────────────────────────────────────────────────────────────
@@ -186,6 +196,8 @@ export default function ContentSheet() {
           const hit = sthr[String(threshold)];
           if (!hit) continue;
           if (hit.games < 10) continue; // GUARD: exclude < 10 games
+          const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
+          const gap = seasonAvg !== null ? seasonAvg - threshold : null;
           candidates.push({
             player_name: p.player_name,
             team_name: p.team_name,
@@ -195,10 +207,19 @@ export default function ContentSheet() {
             hits: hit.hits,
             games: hit.games,
             rate: hit.rate,
+            season_avg: seasonAvg,
+            gap,
             player_status: p.player_status,
           });
         }
-        candidates.sort((a, b) => b.rate - a.rate || b.games - a.games);
+        candidates.sort((a, b) => {
+          const a100 = a.rate === 100;
+          const b100 = b.rate === 100;
+          if (a100 && b100) return (a.gap ?? Infinity) - (b.gap ?? Infinity);
+          if (a100) return -1;
+          if (b100) return 1;
+          return b.rate - a.rate || b.games - a.games;
+        });
         stories.push(...candidates.slice(0, 10));
       }
     }
@@ -335,6 +356,11 @@ export default function ContentSheet() {
                         <div className="text-xs text-zinc-300 mt-0.5">
                           {r.hits}/{r.games} · {r.rate}%
                         </div>
+                        {r.season_avg !== null && (
+                          <div className="text-xs text-zinc-500 mt-0.5">
+                            season avg {r.season_avg.toFixed(1)} {fmtGap(r.gap)}
+                          </div>
+                        )}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded font-medium ${tag.cls}`}>
                         {tag.label}
