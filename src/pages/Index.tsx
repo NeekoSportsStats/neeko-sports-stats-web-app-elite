@@ -17,15 +17,36 @@ const APPLE_ICON = (
 const FEATURES = [
   {
     label: "Match Boards",
-    copy:  "Player lines, hit rates and recent form across every stat in one view.",
+    copy:  "Every game, every round. Six stat lenses and hit rates for every line.",
     stat:  "Round-by-round",
     color: TEAL,
     icon:  "▦",
   },
   {
+    label: "Fantasy HQ",
+    copy:  "Live breakevens, projections, hot and cold form, and value.",
+    stat:  "487 players",
+    color: GOLD,
+    icon:  "◆",
+  },
+  {
+    label: "Hit Rate Builder",
+    copy:  "Pick a player, a stat and a line. Season, last 10, last 5, home and away.",
+    stat:  "Any player, any line",
+    color: TEAL,
+    icon:  "◎",
+  },
+  {
+    label: "Trend Stack",
+    copy:  "Research six players at once and see how often they all cleared in the same round.",
+    stat:  "Up to six players",
+    color: "#60a5fa",
+    icon:  "◉",
+  },
+  {
     label: "Player Profiles",
-    copy:  "Season averages, recent results, trend charts and hit-rate lines by stat.",
-    stat:  "600+ players",
+    copy:  "Career highs, consistency, venue splits, head-to-head and percentile rankings.",
+    stat:  "Career and form",
     color: GOLD,
     icon:  "◎",
   },
@@ -34,14 +55,7 @@ const FEATURES = [
     copy:  "Compare scoring, defence and last-5 form across every AFL team.",
     stat:  "All 18 teams",
     color: "#60a5fa",
-    icon:  "◉",
-  },
-  {
-    label: "Neeko Pro",
-    copy:  "Full-round boards, all stat lenses, matchup compare and fine thresholds.",
-    stat:  "$9.99/month",
-    color: GOLD,
-    icon:  "◆",
+    icon:  "▦",
   },
 ];
 
@@ -63,11 +77,11 @@ const SCREENSHOTS = [
 ];
 
 const PRO_FEATURES = [
-  "Every match board this round",
+  "Every match board, every round",
   "All six stat lenses: disposals, goals, marks, tackles, kicks and fantasy",
-  "Full hit-rate lines and fine thresholds",
-  "Matchup Compare access",
-  "Team and match context",
+  "Fantasy HQ — all 487 players, every sort and filter",
+  "Hit Rate Builder and Trend Stack for every player",
+  "Matchup context and team trends",
 ];
 
 function useReveal() {
@@ -141,7 +155,7 @@ export default function Index() {
               </span>
             </h1>
             <p className="ix-sub">
-              Player hit rates, match boards, team form and recent trends — built for iPhone.
+              Hit rates, live breakevens and player trends. 487 AFL players, refreshed every morning — built for iPhone.
             </p>
 
             <div className="ix-ctas">
@@ -152,7 +166,7 @@ export default function Index() {
             </div>
 
             <div className="ix-chips">
-              <span className="ix-chip">600+ players</span>
+              <span className="ix-chip">487 players</span>
               <span className="ix-chip">Refreshed every morning during the season</span>
               <span className="ix-chip">Stats research only</span>
             </div>
@@ -318,7 +332,7 @@ export default function Index() {
             </div>
             <div className="ix-trust-stats reveal" style={{ "--delay": "0.12s" } as React.CSSProperties}>
               {[
-                { n: "600+",   label: "AFL players tracked",  color: TEAL    },
+                { n: "487",     label: "AFL players tracked",  color: TEAL    },
                 { n: "18",     label: "teams, all positions", color: GOLD    },
                 { n: "iOS",    label: "native iPhone app",    color: "#60a5fa" },
               ].map(({ n, label, color }) => (
@@ -337,10 +351,10 @@ export default function Index() {
         <div className="ix-container" style={{ textAlign: "center" }}>
           <p className="ix-eyebrow" style={{ animationDelay: "0s" }}>Available now</p>
           <h2 className="ix-h2" style={{ fontSize: "clamp(24px, 3vw, 40px)", marginBottom: 14 }}>
-            Get the edge before bounce.
+            Ready before first bounce.
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.48)", marginBottom: 32, lineHeight: 1.6 }}>
-            Download Neeko Stats free on iPhone. Upgrade to Pro when you're ready.
+            Download Neeko Stats free on iPhone. Follow your players, read the free boards, and upgrade to Pro when you're ready.
           </p>
           <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary ix-btn-lg">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
