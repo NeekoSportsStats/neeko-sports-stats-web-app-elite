@@ -183,45 +183,51 @@ export default function ContentSheet() {
     return () => { cancelled = true; };
   }, [fixtures]);
 
-  // Rank: for each lens+threshold, top 10 by rate DESC, ties by games DESC
+  // Rank: one row per player per lens — their best (highest) qualifying threshold
   const rankedRows = useMemo<RankedRow[]>(() => {
     const stories: RankedRow[] = [];
     for (const lens of LENSES) {
       const lensPlayers = players.filter((p) => p.lens === lens);
-      for (const threshold of KEY_THRESHOLDS[lens]) {
-        const candidates: RankedRow[] = [];
-        for (const p of lensPlayers) {
-          const sthr = p.season_threshold_hit_rates;
-          if (!sthr) continue;
+      const headlines: RankedRow[] = [];
+      for (const p of lensPlayers) {
+        const sthr = p.season_threshold_hit_rates;
+        if (!sthr) continue;
+        const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
+        // Find the HIGHEST key threshold with rate >= 75% and games >= 10
+        let best: { threshold: number; hit: ThresholdHit } | null = null;
+        for (const threshold of KEY_THRESHOLDS[lens]) {
           const hit = sthr[String(threshold)];
           if (!hit) continue;
-          if (hit.games < 10) continue; // GUARD: exclude < 10 games
-          const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
-          const gap = seasonAvg !== null ? seasonAvg - threshold : null;
-          candidates.push({
-            player_name: p.player_name,
-            team_name: p.team_name,
-            opponent_team_name: p.opponent_team_name,
-            lens,
-            threshold,
-            hits: hit.hits,
-            games: hit.games,
-            rate: hit.rate,
-            season_avg: seasonAvg,
-            gap,
-            player_status: p.player_status,
-          });
+          if (hit.games < 10) continue;   // GUARD: exclude < 10 games
+          if (hit.rate < 75) continue;    // must clear 75%
+          if (best === null || threshold > best.threshold) {
+            best = { threshold, hit };
+          }
         }
-        candidates.sort((a, b) => {
-          const a100 = a.rate === 100;
-          const b100 = b.rate === 100;
-          if (a100 && b100) return (a.gap ?? Infinity) - (b.gap ?? Infinity);
-          if (a100) return -1;
-          if (b100) return 1;
-          return b.rate - a.rate || b.games - a.games;
+        if (!best) continue; // no qualifying threshold — player does not appear
+        const gap = seasonAvg !== null ? seasonAvg - best.threshold : null;
+        headlines.push({
+          player_name: p.player_name,
+          team_name: p.team_name,
+          opponent_team_name: p.opponent_team_name,
+          lens,
+          threshold: best.threshold,
+          hits: best.hit.hits,
+          games: best.hit.games,
+          rate: best.hit.rate,
+          season_avg: seasonAvg,
+          gap,
+          player_status: p.player_status,
         });
-        stories.push(...candidates.slice(0, 10));
       }
+      // Rank: threshold DESC, rate DESC, games DESC; OUT demoted below PLAYING
+      headlines.sort((a, b) => {
+        const aOut = statusTag(a.player_status).label === "OUT";
+        const bOut = statusTag(b.player_status).label === "OUT";
+        if (aOut !== bOut) return aOut ? 1 : -1;
+        return b.threshold - a.threshold || b.rate - a.rate || b.games - a.games;
+      });
+      stories.push(...headlines.slice(0, 10));
     }
     return stories;
   }, [players]);
