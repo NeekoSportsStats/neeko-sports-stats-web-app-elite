@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -142,12 +142,24 @@ const CTA_OPTIONS = [
 ] as const;
 
 const SORT_OPTIONS = [
-  { value: "default",  label: "Default" },
-  { value: "hot",      label: "Hot 🔥" },
-  { value: "cold",     label: "Cold 🧊" },
-  { value: "l5",       label: "L5 Avg" },
-  { value: "l3",       label: "L3 Avg" },
+  { value: "default",    label: "Default" },
+  { value: "hot",        label: "Hot 🔥" },
+  { value: "cold",       label: "Cold 🧊" },
+  { value: "l5",         label: "L5 Avg" },
+  { value: "l3",         label: "L3 Avg" },
+  { value: "value",      label: "Value 💎" },
+  { value: "overrated",  label: "Overrated 📉" },
+  { value: "expensive",  label: "Expensive 💸" },
+  { value: "be",         label: "BE Pressure ⚠️" },
 ] as const;
+
+type RankingsEntry = {
+  value_score: number | null;
+  price: number | null;
+  breakeven: number | null;
+  projection: number | null;
+};
+type RankingsLookup = Map<string, RankingsEntry>;
 
 type HookGroup = { label: string; hooks: [string, string][] };
 
@@ -161,11 +173,42 @@ function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts:
   return { flat, starts };
 }
 
-function sortRows<T extends { last_5_avg: number | null; last_3_avg: number | null; season_avg: number | null }>(
+function sortRows<T extends { player_name: string; last_5_avg: number | null; last_3_avg: number | null; season_avg: number | null }>(
   rows: T[],
-  sortView: string
+  sortView: string,
+  rankings?: RankingsLookup | null
 ): T[] {
   if (sortView === "default") return rows;
+
+  if (sortView === "value" || sortView === "overrated" || sortView === "expensive" || sortView === "be") {
+    return [...rows].sort((a, b) => {
+      const ar = rankings?.get(a.player_name);
+      const br = rankings?.get(b.player_name);
+      if (!!ar !== !!br) return ar ? -1 : 1;   // no rankings match → bottom
+      if (!ar || !br) return 0;
+      switch (sortView) {
+        case "value": {
+          const av = Number(ar.value_score), bv = Number(br.value_score);
+          return bv - av;   // value_score DESC
+        }
+        case "overrated": {
+          const score = (r: RankingsEntry): number | null =>
+            r.price !== null && r.price >= 600000 && r.breakeven !== null && r.projection !== null
+              ? r.breakeven - r.projection
+              : null;
+          const as = score(ar), bs = score(br);
+          if (as === null && bs === null) return 0;
+          if (as === null) return 1;    // doesn't meet price gate → below
+          if (bs === null) return -1;
+          return bs - as;               // (breakeven - projection) DESC
+        }
+        case "expensive": return Number(br.price) - Number(ar.price);          // price DESC
+        case "be":        return Number(br.breakeven) - Number(ar.breakeven);  // breakeven DESC
+        default:          return 0;
+      }
+    });
+  }
+
   return [...rows].sort((a, b) => {
     const sa = Number(a.season_avg), sb = Number(b.season_avg);
     const la = Number(a.last_5_avg), lb = Number(b.last_5_avg);
@@ -1104,6 +1147,7 @@ export default function ContentSheet() {
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
+  const rankingsRef = useRef<RankingsLookup | null>(null);
 
   // Step 1: resolve current round + fixtures
   useEffect(() => {
@@ -1132,6 +1176,36 @@ export default function ContentSheet() {
         setLoadingFixtures(false);
       } finally {
         if (!cancelled) setLoadingFixtures(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Rankings enrichment: fetch once on mount, store in ref (no re-renders)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase!.rpc("get_rankings_safe", {
+          p_user_id: null,
+          p_is_bot: false,
+          p_limit: 500,
+        });
+        if (cancelled || error || !data) return;
+        const map: RankingsLookup = new Map();
+        for (const r of data as Array<Record<string, unknown>>) {
+          const name = r.player_name as string | undefined;
+          if (!name) continue;
+          map.set(name, {
+            value_score: r.value_score !== null && r.value_score !== undefined ? Number(r.value_score) : null,
+            price:       r.price !== null && r.price !== undefined ? Number(r.price) : null,
+            breakeven:   r.breakeven !== null && r.breakeven !== undefined ? Number(r.breakeven) : null,
+            projection:  r.projection !== null && r.projection !== undefined ? Number(r.projection) : null,
+          });
+        }
+        if (!cancelled) rankingsRef.current = map;
+      } catch {
+        // best-effort — sort falls back to no-match → bottom
       }
     })();
     return () => { cancelled = true; };
@@ -1281,8 +1355,8 @@ export default function ContentSheet() {
   const hideOutFilter = <T extends { player_status: string }>(rows: T[]): T[] =>
     hideOut ? rows.filter((r) => (r.player_status ?? "").toLowerCase() === "active") : rows;
 
-  const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView);
-  const visibleFormRows = sortRows(hideOutFilter(formRows), sortView);
+  const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView, rankingsRef.current);
+  const visibleFormRows = sortRows(hideOutFilter(formRows), sortView, rankingsRef.current);
 
   function copyBrief(r: RankedRow) {
     navigator.clipboard.writeText(makeBrief(r)).then(() => {
