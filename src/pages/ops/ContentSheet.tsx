@@ -136,6 +136,7 @@ function buildHooks(r: RankedRow): [string, string][] {
 function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
   const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
   const avg = row.season_avg !== null ? row.season_avg.toFixed(1) : "—";
+  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
       id="neeko-card"
@@ -150,11 +151,9 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 170, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
-        {hook[0]}
-      </div>
-      <div style={{ position: "absolute", left: 0, top: 318, width: 1080, textAlign: "center", color: accent, fontSize: 92, fontWeight: 800, lineHeight: 1 }}>
-        {hook[1]}
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
+        <div style={{ color: accent, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
       </div>
       <div style={{ position: "absolute", left: 0, top: 450, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · v {row.opponent_team_name}
@@ -224,11 +223,12 @@ function buildFormHooks(r: FormRow): [string, string][] {
   ];
 }
 
-function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hook: [string, string] }) {
+function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWindow; hook: [string, string] }) {
   const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
-  const lastLabel = window === "L3" ? "LAST 3" : "LAST 5";
-  const lastVal = window === "L3" ? row.last_3_avg.toFixed(1) : row.last_5_avg.toFixed(1);
+  const lastLabel = formWindow === "L3" ? "LAST 3" : "LAST 5";
+  const lastVal = formWindow === "L3" ? row.last_3_avg.toFixed(1) : row.last_5_avg.toFixed(1);
+  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
       id="neeko-card"
@@ -243,11 +243,9 @@ function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hoo
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
-        {hook[0]}
-      </div>
-      <div style={{ position: "absolute", left: 0, top: 268, width: 1080, textAlign: "center", color: accent, fontSize: 84, fontWeight: 800, lineHeight: 1 }}>
-        {hook[1]}
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
+        <div style={{ color: accent, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
       </div>
       <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · {row.position}
@@ -302,7 +300,7 @@ function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hoo
   );
 }
 
-function FormCardModal({ row, window, onClose }: { row: FormRow; window: FormWindow; onClose: () => void }) {
+function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow: FormWindow; onClose: () => void }) {
   const hooks = useMemo(() => buildFormHooks(row), [row]);
   const [hookIdx, setHookIdx] = useState(0);
   const [downloading, setDownloading] = useState(false);
@@ -331,7 +329,7 @@ function FormCardModal({ row, window, onClose }: { row: FormRow; window: FormWin
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const filename = `${row.player_name}_form_${window}.png`.replace(/\s+/g, "_");
+      const filename = `${row.player_name}_form_${formWindow}.png`.replace(/\s+/g, "_");
       a.href = url;
       a.download = filename;
       a.click();
@@ -364,7 +362,7 @@ function FormCardModal({ row, window, onClose }: { row: FormRow; window: FormWin
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <FormCard row={row} window={window} hook={hook} />
+            <FormCard row={row} formWindow={formWindow} hook={hook} />
           </div>
         </div>
 
@@ -922,7 +920,7 @@ export default function ContentSheet() {
       )}
       {cardRow && <CardModal row={cardRow} onClose={() => setCardRow(null)} />}
       {formCardRow && (
-        <FormCardModal row={formCardRow} window={formWindow} onClose={() => setFormCardRow(null)} />
+        <FormCardModal row={formCardRow} formWindow={formWindow} onClose={() => setFormCardRow(null)} />
       )}
     </div>
   );
