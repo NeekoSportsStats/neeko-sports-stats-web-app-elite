@@ -56,6 +56,8 @@ interface FormRow {
   player_status: string;
   delta: number;
   tag: "HOT" | "COLD";
+  match_id: number;
+  match_label: string;
 }
 
 interface RankedRow {
@@ -1749,8 +1751,9 @@ export default function ContentSheet() {
     const byPlayer = new Map<string, StatBoardPlayer>();
     for (const p of players) {
       if (p.lens !== "fantasy") continue;
-      if (byPlayer.has(p.player_name)) continue;
-      byPlayer.set(p.player_name, p);
+      const key = `${p.player_name}__${p.lens}__${p.match_id}`;
+      if (byPlayer.has(key)) continue;
+      byPlayer.set(key, p);
     }
     const out: FormRow[] = [];
     for (const p of byPlayer.values()) {
@@ -1776,6 +1779,8 @@ export default function ContentSheet() {
         player_status: p.player_status,
         delta,
         tag: delta > 0 ? "HOT" : "COLD",
+        match_id: p.match_id,
+        match_label: p.match_label,
       });
     }
     out.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
@@ -1792,11 +1797,17 @@ export default function ContentSheet() {
 
   const availableMatches = useMemo(() => {
     const seen = new Map<number, string>();
-    for (const r of thresholdFilteredRows) {
+    const sources: { match_id: number; match_label: string }[] =
+      storyType === "Form"
+        ? formRows
+        : storyType === "All"
+          ? [...thresholdFilteredRows, ...formRows]
+          : thresholdFilteredRows;
+    for (const r of sources) {
       if (!seen.has(r.match_id)) seen.set(r.match_id, r.match_label);
     }
     return Array.from(seen, ([match_id, match_label]) => ({ match_id, match_label }));
-  }, [thresholdFilteredRows]);
+  }, [thresholdFilteredRows, formRows, storyType]);
 
   const visibleRows = useMemo(
     () =>
@@ -1808,7 +1819,11 @@ export default function ContentSheet() {
     hideOut ? rows.filter((r) => (r.player_status ?? "").toLowerCase() === "active") : rows;
 
   const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView, rankingsRef.current);
-  const visibleFormRows = sortRows(hideOutFilter(formRows), sortView, rankingsRef.current);
+  const visibleFormRows = sortRows(
+    hideOutFilter(formRows.filter((r) => matchFilter === null || r.match_id === matchFilter)),
+    sortView,
+    rankingsRef.current
+  );
 
   // Price rows: derive from rankingsRef on demand when Prices tab is active.
   // No new RPC — uses the rankings already fetched on mount.
@@ -2069,7 +2084,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && (
+        {storyType !== "Prices" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
