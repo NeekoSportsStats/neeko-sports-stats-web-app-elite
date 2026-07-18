@@ -568,7 +568,12 @@ function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
       pair("DOING IT WEEKLY. STILL BEING OVERLOOKED."),
     ]},
     { label: "Honest", hooks: [
-      pair("FORM CAN CHANGE. THIS IS THE LAST 5."),
+      pair("FORM CAN CHANGE
+      )
+    ]
+    }
+  ]
+}. THIS IS THE LAST 5."),
       pair("NOT EVERY WEEK. BUT RIGHT NOW."),
       pair("THE FORM IS THERE. JUDGE THE FULL SEASON TOO."),
       pair("LAST 5 GAMES. THAT'S ALL THIS IS."),
