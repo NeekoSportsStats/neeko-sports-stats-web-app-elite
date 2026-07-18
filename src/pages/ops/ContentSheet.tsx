@@ -729,7 +729,6 @@ function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: Fo
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
   const lastLabel = formWindow === "L3" ? "LAST 3" : "LAST 5";
   const lastVal = formWindow === "L3" ? row.last_3_avg.toFixed(1) : row.last_5_avg.toFixed(1);
-  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
       id="neeko-card"
@@ -744,10 +743,11 @@ function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: Fo
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
-        <div style={{ color: accent, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
-      </div>
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: row.tag === "COLD" ? "#EF4444" : "#22C55E" }}>{hook[1]}</div>
+      )}
       <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · {row.position}
         {(row.player_status ?? "").toLowerCase() !== "active" && (
@@ -768,16 +768,16 @@ function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: Fo
         }}
       >
         <div style={{ position: "absolute", left: 0, top: 40, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>SEASON</div>
-        <div style={{ position: "absolute", left: 0, top: 80, width: 880, textAlign: "center", color: "#FFFFFF", fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 80, width: 880, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
           {row.season_avg.toFixed(1)}
         </div>
         <div style={{ position: "absolute", left: 0, top: 230, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>{lastLabel}</div>
-        <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: accent, fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
           {lastVal}
         </div>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: accent, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
         {deltaStr}
       </div>
 
