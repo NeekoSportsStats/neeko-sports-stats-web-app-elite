@@ -1275,8 +1275,8 @@ export default function ContentSheet() {
         for (const threshold of KEY_THRESHOLDS[lens]) {
           const hit = sthr[String(threshold)];
           if (!hit) continue;
-          if (hit.games < 10) continue;   // GUARD: exclude < 10 games
-          if (hit.rate < 75) continue;    // must clear 75%
+          if (hit.games < 8) continue;    // GUARD: exclude < 8 games
+          if (hit.rate < 60) continue;    // must clear 60%
           if (best === null || threshold > best.threshold) {
             best = { threshold, hit };
           }
@@ -1309,7 +1309,7 @@ export default function ContentSheet() {
         if (aOut !== bOut) return aOut ? 1 : -1;
         return b.threshold - a.threshold || b.rate - a.rate || b.games - a.games;
       });
-      stories.push(...headlines.slice(0, 10));
+      stories.push(...headlines.slice(0, 20));
     }
     return stories;
   }, [players]);
@@ -1330,7 +1330,7 @@ export default function ContentSheet() {
     }
     const out: FormRow[] = [];
     for (const p of byPlayer.values()) {
-      if (p.games_played < 10) continue;
+      if (p.games_played < 8) continue;
       const sa = Number(p.season_avg);
       const l5 = Number(p.last_5_avg);
       const l3 = Number(p.last_3_avg);
@@ -1338,7 +1338,7 @@ export default function ContentSheet() {
       const deltaL5 = l5 - sa;
       const deltaL3 = l3 - sa;
       const delta = formWindow === "L3" ? deltaL3 : deltaL5;
-      if (Math.abs(delta) < 12) continue;
+      if (Math.abs(delta) < 10) continue;
       out.push({
         player_name: p.player_name,
         team_name: p.team_name,
