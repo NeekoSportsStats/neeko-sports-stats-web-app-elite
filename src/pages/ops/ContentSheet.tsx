@@ -2,6 +2,22 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
 
+const ANTON_FONT_URL = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
+const ANTON_FONT = "'Anton', Impact, sans-serif";
+function antonFit(s: string, base: number): number {
+  if (s.length <= 16) return base;
+  if (s.length <= 24) return Math.round(base * 0.78);
+  return Math.round(base * 0.62);
+}
+function splitHook(hook: string): [string, string] {
+  const dot = hook.indexOf('.');
+  if (dot === -1 || dot === hook.length - 1) return [hook, ''];
+  return [hook.slice(0, dot + 1).trim(), hook.slice(dot + 1).trim()];
+}
+function AntonStyle() {
+  return <style dangerouslySetInnerHTML={{ __html: `@import url('${ANTON_FONT_URL}');` }} />;
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface StatBoardMatch {
