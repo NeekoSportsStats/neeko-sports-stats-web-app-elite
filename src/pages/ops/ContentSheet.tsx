@@ -32,8 +32,28 @@ interface StatBoardPlayer {
   hit_rate_last_10: number | null;
   season_threshold_hit_rates: Record<string, ThresholdHit> | null;
   season_avg: string | null;
+  last_5_avg: number | null;
+  last_3_avg: number | null;
+  position_group: string | null;
   player_status: string;
   is_locked: boolean;
+}
+
+type FormWindow = "L5" | "L3";
+type StoryType = "All" | "HitRates" | "Form";
+
+interface FormRow {
+  player_name: string;
+  team_name: string;
+  opponent_team_name: string;
+  position: string;
+  season_avg: number;
+  last_5_avg: number;
+  last_3_avg: number;
+  games_played: number;
+  player_status: string;
+  delta: number;
+  tag: "HOT" | "COLD";
 }
 
 interface RankedRow {
@@ -188,6 +208,182 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
   );
 }
 
+function buildFormHooks(r: FormRow): [string, string][] {
+  const sa = r.season_avg.toFixed(1);
+  const l5 = r.last_5_avg.toFixed(1);
+  const delta = (r.delta >= 0 ? "+" : "") + r.delta.toFixed(1);
+  const surname = r.player_name.split(" ").pop() ?? r.player_name;
+  if (r.tag === "COLD") {
+    return [
+      [`${sa} → ${l5}.`, `THAT'S ${delta}.`],
+      [`${delta}.`, "BIGGEST FALL IN THE GAME."],
+      ["CHECK YOUR TEAM.", `${surname.toUpperCase()} IS DROPPING.`],
+    ];
+  }
+  return [
+    [`${sa} → ${l5}.`, `THAT'S ${delta}.`],
+    [`${delta}.`, "NOBODY'S TALKING ABOUT IT."],
+    ["HE'S FOUND SOMETHING.", `${delta} IN FIVE GAMES.`],
+  ];
+}
+
+function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hook: [string, string] }) {
+  const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
+  const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
+  const subline = row.tag === "COLD" ? "Last 5 against his season average." : "Biggest riser in the game right now.";
+  const lastLabel = window === "L3" ? "LAST 3" : "LAST 5";
+  const lastVal = window === "L3" ? row.last_3_avg.toFixed(1) : row.last_5_avg.toFixed(1);
+  return (
+    <div
+      id="neeko-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", left: 0, top: 190, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
+        {row.player_name.toUpperCase()}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 272, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+        {row.team_name.toUpperCase()} · {row.position}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 380,
+          width: 880,
+          height: 480,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 44, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>SEASON</div>
+        <div style={{ position: "absolute", left: 0, top: 86, width: 880, textAlign: "center", color: "#FFFFFF", fontSize: 124, fontWeight: 800, lineHeight: 1 }}>
+          {row.season_avg.toFixed(1)}
+        </div>
+        <div style={{ position: "absolute", left: 0, top: 246, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>{lastLabel}</div>
+        <div style={{ position: "absolute", left: 0, top: 288, width: 880, textAlign: "center", color: accent, fontSize: 124, fontWeight: 800, lineHeight: 1 }}>
+          {lastVal}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 900, width: 1080, textAlign: "center", color: accent, fontSize: 104, fontWeight: 800, lineHeight: 1 }}>
+        {deltaStr}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 1030, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 34 }}>
+        {subline}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1140, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: "#F5C442",
+            borderRadius: 44,
+            padding: "22px 56px",
+            color: "#080808",
+            fontSize: 36,
+            fontWeight: 800,
+          }}
+        >
+          SEE ALL 477 FREE
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function FormCardModal({ row, window, onClose }: { row: FormRow; window: FormWindow; onClose: () => void }) {
+  const hooks = useMemo(() => buildFormHooks(row), [row]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const hook = hooks[hookIdx];
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-card");
+    if (!node) return;
+    setDownloading(true);
+    try {
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `${row.player_name}_form_${window}.png`.replace(/\s+/g, "_");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <select
+            value={hookIdx}
+            onChange={(e) => setHookIdx(Number(e.target.value))}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {hooks.map((h, i) => (
+              <option key={i} value={i}>
+                {h[0]} {h[1]}
+              </option>
+            ))}
+          </select>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <FormCard row={row} window={window} hook={hook} />
+          </div>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   const hooks = useMemo(() => buildHooks(row), [row]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -276,9 +472,13 @@ export default function ContentSheet() {
   const [players, setPlayers] = useState<StatBoardPlayer[]>([]);
   const [loadingFixtures, setLoadingFixtures] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [storyType, setStoryType] = useState<StoryType>("All");
   const [lensFilter, setLensFilter] = useState<Lens | "All">("All");
+  const [formWindow, setFormWindow] = useState<FormWindow>("L5");
+  const [hideOut, setHideOut] = useState(false);
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
+  const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
 
   // Step 1: resolve current round + fixtures
   useEffect(() => {
@@ -405,10 +605,50 @@ export default function ContentSheet() {
     return stories;
   }, [players]);
 
+  const formRows = useMemo<FormRow[]>(() => {
+    const byPlayer = new Map<string, StatBoardPlayer>();
+    for (const p of players) {
+      if (p.lens !== "fantasy") continue;
+      if (byPlayer.has(p.player_name)) continue;
+      byPlayer.set(p.player_name, p);
+    }
+    const out: FormRow[] = [];
+    for (const p of byPlayer.values()) {
+      if (p.games_played < 10) continue;
+      const sa = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : NaN;
+      if (!isFinite(sa) || p.last_5_avg === null || p.last_3_avg === null) continue;
+      const deltaL5 = p.last_5_avg - sa;
+      const deltaL3 = p.last_3_avg - sa;
+      const delta = formWindow === "L3" ? deltaL3 : deltaL5;
+      if (Math.abs(delta) < 12) continue;
+      out.push({
+        player_name: p.player_name,
+        team_name: p.team_name,
+        opponent_team_name: p.opponent_team_name,
+        position: (p.position_group ?? "").toUpperCase(),
+        season_avg: sa,
+        last_5_avg: p.last_5_avg,
+        last_3_avg: p.last_3_avg,
+        games_played: p.games_played,
+        player_status: p.player_status,
+        delta,
+        tag: delta > 0 ? "HOT" : "COLD",
+      });
+    }
+    out.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    return out.slice(0, 15);
+  }, [players, formWindow]);
+
   const visibleRows = useMemo(
     () => (lensFilter === "All" ? rankedRows : rankedRows.filter((r) => r.lens === lensFilter)),
     [rankedRows, lensFilter]
   );
+
+  const hideOutFilter = <T extends { player_status: string }>(rows: T[]): T[] =>
+    hideOut ? rows.filter((r) => (r.player_status ?? "").toLowerCase() === "active") : rows;
+
+  const visibleHitRateRows = hideOutFilter(visibleRows);
+  const visibleFormRows = hideOutFilter(formRows);
 
   function copyBrief(r: RankedRow) {
     navigator.clipboard.writeText(makeBrief(r)).then(() => {
@@ -467,42 +707,158 @@ export default function ContentSheet() {
         </div>
       </div>
 
-      {/* Lens filter + Copy All */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setLensFilter("All")}
-          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-            lensFilter === "All"
-              ? "bg-zinc-700 text-zinc-100"
-              : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
-          }`}
-        >
-          All
-        </button>
-        {LENSES.map((lens) => (
-          <button
-            key={lens}
-            onClick={() => setLensFilter(lens)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              lensFilter === lens
-                ? "bg-zinc-700 text-zinc-100"
-                : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            {LENS_LABELS[lens]}
-          </button>
-        ))}
-        <button
-          onClick={copyAll}
-          disabled={visibleRows.length === 0}
-          className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
-        >
-          {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
-        </button>
+      {/* Filter bar — STORY / LENS / WINDOW + Hide OUT */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
+          {(["All", "HitRates", "Form"] as StoryType[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStoryType(s)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                storyType === s
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {s === "HitRates" ? "Hit Rates" : s}
+            </button>
+          ))}
+          <label className="ml-auto flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hideOut}
+              onChange={(e) => setHideOut(e.target.checked)}
+              className="accent-zinc-500"
+            />
+            Hide OUT
+          </label>
+        </div>
+
+        {storyType !== "Form" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
+            <button
+              onClick={() => setLensFilter("All")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                lensFilter === "All"
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              All
+            </button>
+            {LENSES.map((lens) => (
+              <button
+                key={lens}
+                onClick={() => setLensFilter(lens)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  lensFilter === lens
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {LENS_LABELS[lens]}
+              </button>
+            ))}
+            <button
+              onClick={copyAll}
+              disabled={visibleHitRateRows.length === 0}
+              className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
+            >
+              {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
+            </button>
+          </div>
+        )}
+
+        {storyType === "Form" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Window</span>
+            {(["L5", "L3"] as FormWindow[]).map((w) => (
+              <button
+                key={w}
+                onClick={() => setFormWindow(w)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  formWindow === w
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Rows */}
-      {visibleRows.length === 0 && allDone ? (
+      {storyType === "Form" ? (
+        visibleFormRows.length === 0 ? (
+          <div className="py-10 text-center text-xs text-zinc-500">
+            No form movers with ≥10 games and |Δ| ≥ 12 {formWindow}.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+              Form · {formWindow} (top {visibleFormRows.length})
+            </div>
+            {visibleFormRows.map((r, i) => {
+              const status = statusTag(r.player_status);
+              const copied = copyState === r.player_name + "form" + i;
+              const lastVal = formWindow === "L3" ? r.last_3_avg.toFixed(1) : r.last_5_avg.toFixed(1);
+              const lastLbl = formWindow === "L3" ? "L3" : "L5";
+              const deltaStr = (r.delta >= 0 ? "+" : "") + r.delta.toFixed(1);
+              const tagCls = r.tag === "HOT" ? "bg-green-900/60 text-green-300" : "bg-red-900/60 text-red-300";
+              return (
+                <div
+                  key={`form-${r.player_name}-${i}`}
+                  className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-zinc-200 font-medium truncate">
+                      {r.player_name}{" "}
+                      <span className="text-zinc-500 font-normal">· {r.team_name} v {r.opponent_team_name ?? "—"}</span>
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-0.5">
+                      season {r.season_avg.toFixed(1)} → {lastLbl} {lastVal}
+                    </div>
+                    <div className="text-xs text-zinc-300 mt-0.5">
+                      {deltaStr}
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${tagCls}`}>
+                    {r.tag}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${status.cls}`}>
+                    {status.label}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `${r.player_name} | ${r.team_name} v ${r.opponent_team_name ?? "—"} | season ${r.season_avg.toFixed(1)} → ${lastLbl} ${lastVal} | ${deltaStr} | ${r.tag} | ${status.label}`
+                      ).then(() => {
+                        setCopyState(r.player_name + "form" + i);
+                        setTimeout(() => setCopyState(null), 1500);
+                      });
+                    }}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                    title="Copy brief"
+                  >
+                    {copied ? "Copied!" : "⧉"}
+                  </button>
+                  <button
+                    onClick={() => setFormCardRow(r)}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                    title="Export PNG"
+                  >
+                    PNG
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : visibleHitRateRows.length === 0 && allDone ? (
         <div className="py-10 text-center text-xs text-zinc-500">
           No players with ≥10 games at key thresholds.
         </div>
@@ -567,6 +923,9 @@ export default function ContentSheet() {
         </div>
       )}
       {cardRow && <CardModal row={cardRow} onClose={() => setCardRow(null)} />}
+      {formCardRow && (
+        <FormCardModal row={formCardRow} window={formWindow} onClose={() => setFormCardRow(null)} />
+      )}
     </div>
   );
 }
