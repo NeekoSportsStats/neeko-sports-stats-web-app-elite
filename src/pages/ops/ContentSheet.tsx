@@ -41,7 +41,7 @@ interface StatBoardPlayer {
 }
 
 type FormWindow = "L5" | "L3";
-type StoryType = "All" | "HitRates" | "Form";
+type StoryType = "All" | "HitRates" | "Form" | "Prices";
 
 interface FormRow {
   player_name: string;
@@ -167,9 +167,13 @@ const HIT_RATE_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
 const FORM_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
   o.value === "default" || o.value === "hot" || o.value === "cold" || o.value === "l5" || o.value === "l3"
 );
+const PRICES_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
+  o.value === "default" || o.value === "value" || o.value === "be" || o.value === "expensive" || o.value === "overrated"
+);
 
 function sortOptionsFor(storyType: StoryType): SortOption[] {
   if (storyType === "Form") return FORM_SORTS;
+  if (storyType === "Prices") return PRICES_SORTS;
   return HIT_RATE_SORTS;   // "HitRates" and "All"
 }
 
@@ -178,8 +182,58 @@ type RankingsEntry = {
   price: number | null;
   breakeven: number | null;
   projection: number | null;
+  season_avg: number | null;
+  last_5_avg: number | null;
+  games_played: number | null;
+  position: string | null;
+  team_name: string | null;
+  matchup_label: string | null;
+  status: string | null;
 };
 type RankingsLookup = Map<string, RankingsEntry>;
+
+type PriceRow = {
+  player_name: string;
+  team_name: string;
+  position: string;
+  price: number;
+  breakeven: number;
+  projection: number;
+  value_score: number;
+  season_avg: number;
+  last_5_avg: number;
+  be_delta: number;        // breakeven - projection (positive = pressure)
+  matchup_label: string | null;
+  status: string;          // "active" | "OUT" etc
+  story: "value" | "bargain" | "trap" | "expensive";
+};
+
+type PriceStory = PriceRow["story"];
+
+const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: string; text: string }> = {
+  trap:      { label: "PRICE TRAP",  badge: "TRAP",      bg: "#EF4444", text: "#FFFFFF" },
+  bargain:   { label: "BARGAIN",      badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
+  expensive: { label: "EXPENSIVE",    badge: "EXPENSIVE", bg: "#F5C442", text: "#080808" },
+  value:     { label: "VALUE PICK",   badge: "VALUE",    bg: "#3B82F6", text: "#FFFFFF" },
+};
+
+// Assign a price story to a player. First match wins.
+// trap:      be_delta >= 20 AND price >= 500000 (pricey player under projected pressure)
+// bargain:   value_score in top 15% of the qualifying pool
+// expensive: price >= 750000
+// value:     value_score in top 30% of the qualifying pool
+// Players matching none are excluded upstream.
+function assignPriceStory(
+  row: Omit<PriceRow, "story">,
+  p85: number,   // top 15% threshold of value_score
+  p70: number    // top 30% threshold of value_score
+): PriceStory | null {
+  if (row.be_delta >= 20 && row.price >= 500000) return "trap";
+  if (row.value_score >= p85) return "bargain";
+  if (row.price >= 750000) return "expensive";
+  if (row.value_score >= p70) return "value";
+  return null;
+}
 
 type HookGroup = { label: string; hooks: [string, string][] };
 
@@ -854,6 +908,342 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   );
 }
 
+function buildPriceBank(r: PriceRow): HookGroup[] {
+  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
+  const meta = PRICE_STORY_META[r.story];
+  const be = r.breakeven.toFixed(0);
+  const proj = r.projection.toFixed(0);
+  const delta = r.be_delta.toFixed(0);
+  const priceK = (r.price / 1000).toFixed(0);
+  const sub = (t: string) =>
+    t.replace(/\{SURNAME\}/g, surname)
+      .replace(/\{BE\}/g, be)
+      .replace(/\{PROJ\}/g, proj)
+      .replace(/\{DELTA\}/g, delta)
+      .replace(/\{PRICEK\}/g, priceK);
+  const split = (s: string): [string, string] => {
+    const idx = s.indexOf(". ");
+    if (idx !== -1) return [s.slice(0, idx + 1), s.slice(idx + 2)];
+    const words = s.split(" ");
+    if (words.length <= 2) return [s, ""];
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  };
+  const pair = (s: string): [string, string] => {
+    const [a, b] = split(s);
+    return [sub(a).toUpperCase(), sub(b).toUpperCase()];
+  };
+  const groups: HookGroup[] = [
+    { label: "The Number", hooks: [
+      pair(`BE ${be}. PROJECTION ${proj}.`),
+      pair(`NEEDS ${delta} MORE THAN PROJECTED.`),
+      pair(`BE ${be}. PROJECTED ${proj}.`),
+      pair(`PRICED AT ${priceK}K. BE ${be}.`),
+      pair(`THE GAP IS ${delta}. BE ${be}.`),
+      pair(`PROJECTED ${proj}. BE ${be}.`),
+      pair(`${meta.label}. BE ${be}.`),
+      pair(`BE ${be}. THAT'S THE NUMBER.`),
+      pair(`PROJECTION ${proj}. BREAKEVEN ${be}.`),
+      pair(`${priceK}K. BE ${be}. PROJ ${proj}.`),
+    ]},
+  ];
+  if (r.story === "trap") {
+    groups.push({ label: "Trap", hooks: [
+      pair(`PRICE TRAP. BE ${be}.`),
+      pair(`PRICED IN. PROJECTION ${proj}.`),
+      pair(`THE PRICE IS LYING.`),
+      pair(`DON'T PAY ${priceK}K FOR THIS.`),
+      pair(`OVERPRICED. UNDERPROJECTED.`),
+      pair(`THE BE IS ${be}. THE PROJ IS ${proj}.`),
+      pair(`HIS PRICE IS AHEAD OF HIS FORM.`),
+      pair(`YOU'D BE PAYING FOR THE NAME.`),
+      pair(`BE ${be} IS A RED FLAG AT ${priceK}K.`),
+      pair(`THE MARKET IS WRONG ON {SURNAME}.`),
+    ]});
+  } else if (r.story === "bargain") {
+    groups.push({ label: "Bargain", hooks: [
+      pair(`BARGAIN. BE ${be}. PROJ ${proj}.`),
+      pair(`UNDERPRICED. OVERPROJECTED.`),
+      pair(`${priceK}K FOR A ${proj} PROJECTION.`),
+      pair(`THE VALUE IS OBVIOUS.`),
+      pair(`CHEAP FOR WHAT HE'S PROJECTED.`),
+      pair(`THE PRICE HASN'T CAUGHT UP.`),
+      pair(`BE ${be}. HE'S PROJECTED ${proj}.`),
+      pair(`PAY LESS. GET MORE.`),
+      pair(`THE MARKET IS SLEEPING ON {SURNAME}.`),
+      pair(`BE ${be}. THE PRICE IS WRONG.`),
+    ]});
+  } else if (r.story === "expensive") {
+    groups.push({ label: "Expensive", hooks: [
+      pair(`${priceK}K. THAT'S THE CEILING.`),
+      pair(`THE PRICE IS REAL. SO IS THE BE.`),
+      pair(`PREMIUM PRICE. BE ${be}.`),
+      pair(`HE COSTS ${priceK}K. PROJ ${proj}.`),
+      pair(`TOP SHELF. BE ${be}.`),
+      pair(`YOU PAY FOR THE FLOOR.`),
+      pair(`${priceK}K. PROJECTED ${proj}.`),
+      pair(`THE PRICE IS THE STORY.`),
+      pair(`EXPENSIVE. BUT PROJECTED ${proj}.`),
+      pair(`{SURNAME} COSTS ${priceK}K.`),
+    ]});
+  } else {
+    groups.push({ label: "Value", hooks: [
+      pair(`VALUE PICK. BE ${be}. PROJ ${proj}.`),
+      pair(`THE VALUE SCORE IS HIGH.`),
+      pair(`UNDERPRICED FOR THE PROJECTION.`),
+      pair(`BE ${be}. PROJ ${proj}. GOOD PRICE.`),
+      pair(`THE NUMBERS SAY VALUE.`),
+      pair(`${priceK}K. PROJ ${proj}. THAT'S VALUE.`),
+      pair(`BE ${be}. THE PRICE IS FAIR.`),
+      pair(`SOLID VALUE. NOT A BARGAIN.`),
+      pair(`THE PROJECTION JUSTIFIES IT.`),
+      pair(`{SURNAME} IS PRICED RIGHT.`),
+    ]});
+  }
+  groups.push({ label: "Quiet Confidence", hooks: [
+    pair(`BE IS JUST A NUMBER.`),
+    pair(`THE PROJECTION IS THE STORY.`),
+    pair(`PRICE FOLLOWS FORM.`),
+    pair(`THE DATA IS THE DATA.`),
+    pair(`JUDGE THE BE YOURSELF.`),
+    pair(`WE SHOW THE NUMBERS.`),
+    pair(`NO SPIN. JUST BE AND PROJ.`),
+    pair(`THE PRICE IS WHAT IT IS.`),
+    pair(`FORM DRIVES PRICE. NOT THE OTHER WAY.`),
+    pair(`{SURNAME}. BE ${be}. PROJ ${proj}.`),
+  ]});
+  return groups;
+}
+
+function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; cta: string }) {
+  const meta = PRICE_STORY_META[row.story];
+  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
+  const beDelta = Math.round(row.be_delta);
+  const deltaColor = beDelta > 0 ? "#EF4444" : beDelta < 0 ? "#22C55E" : "#8A8F96";
+  const deltaLine =
+    beDelta > 0 ? `NEEDS ${beDelta} MORE THAN PROJECTED`
+      : beDelta < 0 ? `${Math.abs(beDelta)} BELOW BREAKEVEN`
+        : "EXACTLY AT BREAKEVEN";
+  return (
+    <div
+      id="neeko-price-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
+        <div style={{ color: meta.bg, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.player_name} · {row.team_name} · {row.position}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 470, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: meta.bg,
+            color: meta.text,
+            borderRadius: 14,
+            padding: "10px 28px",
+            fontSize: 32,
+            fontWeight: 800,
+            letterSpacing: "0.02em",
+          }}
+        >
+          {meta.label}
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 560,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>BE</div>
+        <div style={{ position: "absolute", left: 0, top: 94, width: 440, textAlign: "center", color: "#F5C442", fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {Math.round(row.breakeven)}
+        </div>
+        <div style={{ position: "absolute", left: 440, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>PROJECTION</div>
+        <div style={{ position: "absolute", left: 440, top: 94, width: 440, textAlign: "center", color: "#FFFFFF", fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {Math.round(row.projection)}
+        </div>
+        <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+          ${(row.price / 1000).toFixed(0)}K · SEASON {row.season_avg.toFixed(1)} · L5 {row.last_5_avg.toFixed(1)}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: deltaColor, fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
+        {deltaLine}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1080, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.matchup_label ? `vs ${row.matchup_label}` : "BYE THIS WEEK"}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1160, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: "#F5C442",
+            borderRadius: 44,
+            padding: "22px 56px",
+            color: "#080808",
+            fontSize: 36,
+            fontWeight: 800,
+          }}
+        >
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }) {
+  const groups = useMemo(() => buildPriceBank(row), [row]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-price-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `${row.player_name}_price_${row.story}.png`.replace(/\s+/g, "_");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <PriceCard row={row} hook={hook} cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function buildMultiHooks(n: number): [string, string][] {
   return [
     [`${n} PLAYERS.`, "ONE ROUND."],
@@ -1176,6 +1566,7 @@ export default function ContentSheet() {
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
+  const [priceCardRow, setPriceCardRow] = useState<PriceRow | null>(null);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
@@ -1232,6 +1623,13 @@ export default function ContentSheet() {
             price:       r.price !== null && r.price !== undefined ? Number(r.price) : null,
             breakeven:   r.breakeven !== null && r.breakeven !== undefined ? Number(r.breakeven) : null,
             projection:  r.projection !== null && r.projection !== undefined ? Number(r.projection) : null,
+            season_avg:  r.season_avg !== null && r.season_avg !== undefined ? Number(r.season_avg) : null,
+            last_5_avg:  r.last_5_avg !== null && r.last_5_avg !== undefined ? Number(r.last_5_avg) : null,
+            games_played: r.games_played !== null && r.games_played !== undefined ? Number(r.games_played) : null,
+            position:    (r.position as string | null) ?? null,
+            team_name:   (r.team_name as string | null) ?? null,
+            matchup_label: (r.matchup_label as string | null) ?? null,
+            status:      (r.status as string | null) ?? null,
           });
         }
         if (!cancelled) rankingsRef.current = map;
@@ -1412,6 +1810,90 @@ export default function ContentSheet() {
   const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView, rankingsRef.current);
   const visibleFormRows = sortRows(hideOutFilter(formRows), sortView, rankingsRef.current);
 
+  // Price rows: derive from rankingsRef on demand when Prices tab is active.
+  // No new RPC — uses the rankings already fetched on mount.
+  const priceRows = useMemo<PriceRow[]>(() => {
+    if (storyType !== "Prices") return [];
+    const map = rankingsRef.current;
+    if (!map) return [];
+
+    // Build the qualifying pool: active, >=8 games, with price + breakeven + projection.
+    const pool: Omit<PriceRow, "story">[] = [];
+    for (const [, r] of map) {
+      if (!r) continue;
+      if (r.price === null || r.breakeven === null || r.projection === null) continue;
+      if (r.value_score === null) continue;
+      if (r.games_played === null || r.games_played < 8) continue;
+      const status = (r.status ?? "").toLowerCase();
+      if (status !== "active") continue;
+      pool.push({
+        player_name: "",
+        team_name: r.team_name ?? "",
+        position: r.position ?? "",
+        price: r.price,
+        breakeven: r.breakeven,
+        projection: r.projection,
+        value_score: r.value_score,
+        season_avg: r.season_avg ?? 0,
+        last_5_avg: r.last_5_avg ?? 0,
+        be_delta: r.breakeven - r.projection,
+        matchup_label: r.matchup_label,
+        status: r.status ?? "active",
+      });
+    }
+    if (pool.length === 0) return [];
+
+    // Top 15% / top 30% value_score thresholds (percentile of the qualifying pool).
+    const sortedVals = pool.map((p) => p.value_score).sort((a, b) => a - b);
+    const pct = (q: number) => sortedVals[Math.min(sortedVals.length - 1, Math.floor(sortedVals.length * q))] ?? sortedVals[sortedVals.length - 1];
+    const p85 = pct(0.85);   // top 15%
+    const p70 = pct(0.70);   // top 30%
+
+    // Re-attach player_name (stored as key in map) and assign story.
+    const withStory: PriceRow[] = [];
+    for (const [name, r] of map) {
+      if (!r) continue;
+      if (r.price === null || r.breakeven === null || r.projection === null) continue;
+      if (r.value_score === null) continue;
+      if (r.games_played === null || r.games_played < 8) continue;
+      const status = (r.status ?? "").toLowerCase();
+      if (status !== "active") continue;
+      const base: Omit<PriceRow, "story"> = {
+        player_name: name,
+        team_name: r.team_name ?? "",
+        position: r.position ?? "",
+        price: r.price,
+        breakeven: r.breakeven,
+        projection: r.projection,
+        value_score: r.value_score,
+        season_avg: r.season_avg ?? 0,
+        last_5_avg: r.last_5_avg ?? 0,
+        be_delta: r.breakeven - r.projection,
+        matchup_label: r.matchup_label,
+        status: r.status ?? "active",
+      };
+      const story = assignPriceStory(base, p85, p70);
+      if (story) withStory.push({ ...base, story });
+    }
+
+    // Sort: default = be_delta DESC (highest pressure first).
+    if (sortView === "value")      withStory.sort((a, b) => b.value_score - a.value_score);
+    else if (sortView === "be")    withStory.sort((a, b) => b.be_delta - a.be_delta);
+    else if (sortView === "expensive") withStory.sort((a, b) => b.price - a.price);
+    else if (sortView === "overrated") withStory.sort((a, b) => b.be_delta - a.be_delta);
+    else                           withStory.sort((a, b) => b.be_delta - a.be_delta);
+
+    return withStory.slice(0, 50);
+  }, [storyType, sortView, rankingsRef.current]);
+
+  const groupedPriceRows = useMemo(() => {
+    const order: PriceStory[] = ["trap", "bargain", "expensive", "value"];
+    const map = new Map<PriceStory, PriceRow[]>();
+    for (const s of order) map.set(s, []);
+    for (const r of priceRows) map.get(r.story)!.push(r);
+    return map;
+  }, [priceRows]);
+
   function copyBrief(r: RankedRow) {
     navigator.clipboard.writeText(makeBrief(r)).then(() => {
       setCopyState(r.player_name + r.threshold);
@@ -1484,7 +1966,7 @@ export default function ContentSheet() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form"] as StoryType[]).map((s) => (
+          {(["All", "HitRates", "Form", "Prices"] as StoryType[]).map((s) => (
             <button
               key={s}
               onClick={() => setStoryType(s)}
@@ -1522,7 +2004,7 @@ export default function ContentSheet() {
           </div>
         </div>
 
-        {storyType !== "Form" && (
+        {storyType !== "Form" && storyType !== "Prices" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -1558,7 +2040,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && (
+        {storyType !== "Form" && storyType !== "Prices" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -1587,7 +2069,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && (
+        {storyType !== "Form" && storyType !== "Prices" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
@@ -1751,7 +2233,7 @@ export default function ContentSheet() {
         <div className="py-10 text-center text-xs text-zinc-500">
           No players with ≥10 games at key thresholds.
         </div>
-      ) : (
+      ) : storyType === "Prices" ? null : (
         <div className="space-y-6">
           {LENSES.filter((l) => lensFilter === "All" || lensFilter === l).map((lens) => {
             const rows = grouped.get(lens);
@@ -1826,6 +2308,64 @@ export default function ContentSheet() {
       )}
       {multiCardOpen && stack.length > 0 && (
         <MultiCardModal stack={stack} onClose={() => setMultiCardOpen(false)} />
+      )}
+
+      {storyType === "Prices" && (
+        <div className="space-y-6">
+          {priceRows.length === 0 && (
+            <div className="py-10 text-center text-xs text-zinc-500">
+              No price stories for the current rankings pool.
+            </div>
+          )}
+          {(["trap", "bargain", "expensive", "value"] as PriceStory[]).map((story) => {
+            const rows = groupedPriceRows.get(story);
+            if (!rows || rows.length === 0) return null;
+            const meta = PRICE_STORY_META[story];
+            return (
+              <div key={story} className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: meta.bg }}>
+                  {meta.label}
+                </div>
+                {rows.map((r, i) => (
+                  <div
+                    key={`${r.player_name}-${story}-${i}`}
+                    className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-zinc-200 font-medium truncate">
+                        {r.player_name}{" "}
+                        <span className="text-zinc-500 font-normal">· {r.team_name} · {r.position}</span>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5">
+                        ${(r.price / 1000).toFixed(0)}K · BE {Math.round(r.breakeven)} · Proj {Math.round(r.projection)}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">
+                        Δ {r.be_delta > 0 ? "+" : ""}{Math.round(r.be_delta)} · Sz {r.season_avg.toFixed(1)} · L5 {r.last_5_avg.toFixed(1)}
+                      </div>
+                    </div>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{ background: meta.bg, color: meta.text }}
+                    >
+                      {meta.badge}
+                    </span>
+                    <button
+                      onClick={() => setPriceCardRow(r)}
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                      title="Export PNG"
+                    >
+                      PNG
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {priceCardRow && (
+        <PriceCardModal row={priceCardRow} onClose={() => setPriceCardRow(null)} />
       )}
     </div>
   );
