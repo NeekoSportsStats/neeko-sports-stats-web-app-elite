@@ -155,6 +155,24 @@ const SORT_OPTIONS = [
   { value: "be",         label: "BE Pressure ⚠️" },
 ] as const;
 
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+// Scope SORT_OPTIONS by storyType so the dropdown only shows sorts whose
+// underlying metric is visible on the active card. Hit Rates shows
+// value/price/breakeven context (rankings join); Form shows recent-form
+// context (last_5_avg vs season_avg). "All" shows hit-rate rows.
+const HIT_RATE_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
+  o.value === "default" || o.value === "value" || o.value === "overrated" || o.value === "expensive" || o.value === "be"
+);
+const FORM_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
+  o.value === "default" || o.value === "hot" || o.value === "cold" || o.value === "l5" || o.value === "l3"
+);
+
+function sortOptionsFor(storyType: StoryType): SortOption[] {
+  if (storyType === "Form") return FORM_SORTS;
+  return HIT_RATE_SORTS;   // "HitRates" and "All"
+}
+
 type RankingsEntry = {
   value_score: number | null;
   price: number | null;
@@ -1147,6 +1165,14 @@ export default function ContentSheet() {
 
   useEffect(() => { setThresholdFilter(null); setMatchFilter(null); }, [lensFilter]);
   const [sortView, setSortView] = useState("default");
+  const visibleSortOptions = sortOptionsFor(storyType);
+  // Reset sortView when storyType changes if the current sort isn't valid
+  // for the new card — same reset pattern as threshold/match on lens change.
+  useEffect(() => {
+    if (!visibleSortOptions.some((o) => o.value === sortView)) {
+      setSortView("default");
+    }
+  }, [storyType]);
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
@@ -1479,7 +1505,7 @@ export default function ContentSheet() {
                 onChange={(e) => setSortView(e.target.value)}
                 className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
               >
-                {SORT_OPTIONS.map((o) => (
+                {visibleSortOptions.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
