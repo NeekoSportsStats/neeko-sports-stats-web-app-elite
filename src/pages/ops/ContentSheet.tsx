@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import * as ReactDOM from 'react-dom/client';
 import { toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -1288,6 +1289,25 @@ function buildMultiHooks(n: number): [string, string][] {
   ];
 }
 
+function CarouselSlide({ row, hook, cta, index, total }: {
+  row: RankedRow | FormRow; hook: [string,string]; cta: string;
+  index: number; total: number;
+}) {
+  const isHitRate = "threshold" in row && "rate" in row;
+  return (
+    <div style={{ position: "relative", width: 1080, height: 1920 }}>
+      {isHitRate
+        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} />
+        : <FormCard row={row as FormRow} hook={hook} cta={cta} />}
+      <div style={{ position: "absolute", top: 60, right: 80,
+        color: "#565A60", fontSize: 28, fontFamily: "system-ui",
+        fontWeight: 600, letterSpacing: "0.05em" }}>
+        {index} / {total}
+      </div>
+    </div>
+  );
+}
+
 function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, string]; cta: string }) {
   const n = stack.length;
   const panelTop = 480;
@@ -1358,6 +1378,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   const [hookIdx, setHookIdx] = useState(0);
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [carouselLoading, setCarouselLoading] = useState(false);
   const hook = hooks[hookIdx];
 
   useEffect(() => {
@@ -1393,6 +1414,47 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     } finally {
       document.body.style.overflow = '';
       setDownloading(false);
+    }
+  }
+
+  async function handleCarousel() {
+    setCarouselLoading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      for (let i = 0; i < stack.length; i++) {
+        const row = stack[i];
+        const container = document.createElement('div');
+        container.style.cssText =
+          'position:fixed;left:-9999px;top:0;width:1080px;height:1920px;';
+        document.body.appendChild(container);
+        const root = ReactDOM.createRoot(container);
+        root.render(
+          <CarouselSlide row={row} hook={hook} cta={cta}
+            index={i + 1} total={stack.length} />
+        );
+        await new Promise(r => setTimeout(r, 120));
+        const blob = await toBlob(container.firstChild as HTMLElement, {
+          width: 1080, height: 1920, pixelRatio: 1,
+          backgroundColor: "#050505", fontEmbedCSS: css,
+          style: { transform: "scale(1)", transformOrigin: "top left" },
+        });
+        root.unmount();
+        document.body.removeChild(container);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const surname = row.player_name.split(' ').pop() ?? row.player_name;
+          a.download = `neeko_slide_${i+1}_of_${stack.length}_${surname}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        await new Promise(r => setTimeout(r, 80));
+      }
+    } finally {
+      document.body.style.overflow = '';
+      setCarouselLoading(false);
     }
   }
 
@@ -1442,6 +1504,17 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
           className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
         >
           {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+        <button
+          onClick={handleCarousel}
+          disabled={carouselLoading}
+          className="w-full py-4 rounded-xl font-bold text-sm bg-zinc-800
+            text-zinc-100 border border-zinc-700 hover:bg-zinc-700
+            disabled:opacity-50 transition-colors"
+        >
+          {carouselLoading
+            ? `Exporting ${stack.length} slides...`
+            : `Export Carousel (${stack.length} slides)`}
         </button>
       </div>
     </div>
