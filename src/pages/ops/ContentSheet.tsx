@@ -124,21 +124,126 @@ function makeBrief(r: RankedRow): string {
   return `${r.player_name} | ${r.team_name} v ${opp} | ${r.threshold}+ ${r.lens} | ${r.hits}/${r.games} (${r.rate}%)${avg} | ${tag}`;
 }
 
-function buildHooks(r: RankedRow): [string, string][] {
-  const lensUpper = r.lens.toUpperCase();
-  const t = r.threshold;
+type HookGroup = { label: string; hooks: [string, string][] };
+
+function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts: number[] } {
+  const flat: [string, string][] = [];
+  const starts: number[] = [];
+  for (const g of groups) {
+    starts.push(flat.length);
+    flat.push(...g.hooks);
+  }
+  return { flat, starts };
+}
+
+function applyHitSub(t: string, r: RankedRow): string {
+  const misses = r.games - r.hits;
+  return t
+    .replace(/\{HITS\}/g, String(r.hits))
+    .replace(/\{GAMES\}/g, String(r.games))
+    .replace(/\{RATE\}/g, String(r.rate))
+    .replace(/\{MISSES\}/g, String(misses))
+    .replace(/\{THR\}/g, String(r.threshold))
+    .replace(/\{LENS\}/g, r.lens.toUpperCase());
+}
+
+function buildHitBank(r: RankedRow): HookGroup[] {
+  const pair = (a: string, b: string): [string, string] =>
+    [applyHitSub(a, r).toUpperCase(), applyHitSub(b, r).toUpperCase()];
   if (r.rate === 100) {
     return [
-      ["HE HASN'T MISSED.", "ONCE."],
-      [`${r.hits} FROM ${r.games}.`, `${t}+ ${lensUpper}.`],
-      ["PERFECT SEASON.", `${t}+ ${lensUpper}.`],
+      { label: "Perfect", hooks: [
+        pair("HE HASN'T MISSED.", "ONCE."),
+        pair("{HITS} FROM {GAMES}.", "{THR}+ {LENS}."),
+        pair("PERFECT SEASON.", "{THR}+ {LENS}."),
+        pair("100%.", "ALL {GAMES} GAMES."),
+        pair("NOT ONCE.", "ALL SEASON."),
+        pair("EVERY GAME.", "NO EXCEPTIONS."),
+        pair("HE DOESN'T", "MISS."),
+      ]},
+      { label: "Quieter", hooks: [
+        pair("ZERO MISSES.", "{GAMES} GAMES."),
+        pair("NEVER BELOW", "{THR}."),
+        pair("THE FLOOR", "NOBODY TALKS ABOUT."),
+        pair("{GAMES} GAMES.", "{GAMES} HITS."),
+        pair("THE MOST RELIABLE", "{LENS} IN THE GAME."),
+      ]},
     ];
   }
-  const misses = r.games - r.hits;
   return [
-    [`${r.hits} OF HIS LAST ${r.games}.`, `${t}+ ${lensUpper}.`],
-    [`${r.rate}%.`, `${t}+ ${lensUpper}.`],
-    [`ONLY ${misses} MISSES.`, "ALL SEASON."],
+    { label: "The number", hooks: [
+      pair("{HITS} OF HIS LAST {GAMES}.", "{THR}+ {LENS}."),
+      pair("{RATE}%.", "{THR}+ {LENS}."),
+      pair("ONLY {MISSES} MISSES.", "ALL SEASON."),
+      pair("{HITS} FROM {GAMES}.", "THAT'S {RATE}%."),
+      pair("{HITS}/{GAMES}.", "{THR}+ {LENS}."),
+      pair("{RATE}% OF THE TIME.", "{THR}+ {LENS}."),
+    ]},
+    { label: "Quieter", hooks: [
+      pair("HE DOES IT", "ALMOST EVERY WEEK."),
+      pair("{MISSES} MISSES.", "{GAMES} GAMES."),
+      pair("IT'S NOT", "A FLUKE."),
+      pair("NEARLY", "EVERY WEEK."),
+      pair("HE'S DONE IT", "{HITS} TIMES."),
+      pair("THE NUMBERS", "SAY IT."),
+    ]},
+  ];
+}
+
+function applyFormSub(t: string, r: FormRow, formWindow: FormWindow): string {
+  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
+  const l5 = formWindow === "L3" ? r.last_3_avg.toFixed(1) : r.last_5_avg.toFixed(1);
+  const delta = (r.delta >= 0 ? "+" : "") + r.delta.toFixed(1);
+  return t
+    .replace(/\{SURNAME\}/g, surname)
+    .replace(/\{SZN\}/g, r.season_avg.toFixed(1))
+    .replace(/\{L5\}/g, l5)
+    .replace(/\{DELTA\}/g, delta)
+    .replace(/\{N\}/g, String(r.games_played));
+}
+
+function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
+  const pair = (a: string, b: string): [string, string] =>
+    [applyFormSub(a, r, formWindow).toUpperCase(), applyFormSub(b, r, formWindow).toUpperCase()];
+  if (r.tag === "COLD") {
+    return [
+      { label: "The fall", hooks: [
+        pair("CHECK YOUR TEAM.", "HE'S COOKED."),
+        pair("THE BIGGEST FALL", "IN THE GAME."),
+        pair("{SURNAME} IS", "IN FREEFALL."),
+        pair("FROM {SZN}", "TO {L5}."),
+        pair("HIS WORST", "FIVE GAMES."),
+        pair("{DELTA}.", "IN FIVE GAMES."),
+        pair("HE'S NOT", "THE SAME PLAYER."),
+      ]},
+      { label: "Quieter", hooks: [
+        pair("THE FALL", "NOBODY SAW."),
+        pair("IT'S NOT", "A BLIP."),
+        pair("HE WAS {SZN}.", "NOW HE'S {L5}."),
+        pair("THE DROP", "IS REAL."),
+        pair("STILL IN", "MOST TEAMS."),
+        pair("{SURNAME} HAS", "FALLEN OFF."),
+      ]},
+    ];
+  }
+  return [
+    { label: "The rise", hooks: [
+      pair("NOBODY'S TALKING", "ABOUT THIS."),
+      pair("THE BIGGEST RISER", "IN THE GAME."),
+      pair("HE'S FOUND", "SOMETHING."),
+      pair("FROM {SZN}", "TO {L5}."),
+      pair("HIS BEST", "FIVE GAMES."),
+      pair("{DELTA}.", "IN FIVE GAMES."),
+      pair("{SURNAME} IS", "FLYING."),
+    ]},
+    { label: "Quieter", hooks: [
+      pair("THE FORM", "NOBODY'S SEEN."),
+      pair("HE WAS {SZN}.", "NOW HE'S {L5}."),
+      pair("SOMETHING", "CHANGED."),
+      pair("UNDER", "THE RADAR."),
+      pair("THE JUMP", "IS MASSIVE."),
+      pair("HE'S BACK.", "{DELTA} IN FIVE."),
+    ]},
   ];
 }
 
@@ -166,6 +271,9 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
       </div>
       <div style={{ position: "absolute", left: 0, top: 450, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · v {row.opponent_team_name}
+        {(row.player_status ?? "").toLowerCase() !== "active" && (
+          <span style={{ display: "inline-block", marginLeft: 16, background: "#3F1D1D", color: "#EF4444", fontSize: 24, fontWeight: 800, borderRadius: 10, padding: "6px 16px", verticalAlign: "middle" }}>OUT</span>
+        )}
       </div>
 
       <div
@@ -216,22 +324,6 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
   );
 }
 
-function buildFormHooks(r: FormRow): [string, string][] {
-  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
-  if (r.tag === "COLD") {
-    return [
-      ["CHECK YOUR TEAM.", "HE'S COOKED."],
-      ["THE BIGGEST FALL", "IN THE GAME."],
-      [`${surname} IS`, "IN FREEFALL."],
-    ];
-  }
-  return [
-    ["NOBODY'S TALKING", "ABOUT THIS."],
-    ["THE BIGGEST RISER", "IN THE GAME."],
-    ["HE'S FOUND", "SOMETHING."],
-  ];
-}
-
 function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWindow; hook: [string, string] }) {
   const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
@@ -258,6 +350,9 @@ function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWin
       </div>
       <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · {row.position}
+        {(row.player_status ?? "").toLowerCase() !== "active" && (
+          <span style={{ display: "inline-block", marginLeft: 16, background: "#3F1D1D", color: "#EF4444", fontSize: 24, fontWeight: 800, borderRadius: 10, padding: "6px 16px", verticalAlign: "middle" }}>OUT</span>
+        )}
       </div>
 
       <div
@@ -310,10 +405,20 @@ function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWin
 }
 
 function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow: FormWindow; onClose: () => void }) {
-  const hooks = useMemo(() => buildFormHooks(row), [row]);
+  const groups = useMemo(() => buildFormBank(row, formWindow), [row, formWindow]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
   const [downloading, setDownloading] = useState(false);
-  const hook = hooks[hookIdx];
+  const isOut = (row.player_status ?? "").toLowerCase() !== "active";
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = isOut
+    ? ["HE'S NOT PLAYING.", "THAT'S WHY."]
+    : hasCustom
+      ? [customA.toUpperCase(), customB.toUpperCase()]
+      : (flat[idx] ?? ["", ""]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -353,21 +458,51 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
       <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <select
-            value={hookIdx}
-            onChange={(e) => setHookIdx(Number(e.target.value))}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {hooks.map((h, i) => (
-              <option key={i} value={i}>
-                {h[0]} {h[1]}
-              </option>
-            ))}
-          </select>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
             ✕
           </button>
         </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            disabled={isOut}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            disabled={isOut}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          disabled={isOut}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        {isOut && (
+          <p className="text-xs text-zinc-500 italic">OUT players get a fixed hook — form isn't the story, availability is.</p>
+        )}
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
@@ -540,10 +675,17 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 }
 
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
-  const hooks = useMemo(() => buildHooks(row), [row]);
+  const groups = useMemo(() => buildHitBank(row), [row]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
   const [downloading, setDownloading] = useState(false);
-  const hook = hooks[hookIdx];
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -583,21 +725,44 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
       <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <select
-            value={hookIdx}
-            onChange={(e) => setHookIdx(Number(e.target.value))}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {hooks.map((h, i) => (
-              <option key={i} value={i}>
-                {h[0]} {h[1]}
-              </option>
-            ))}
-          </select>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
             ✕
           </button>
         </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
