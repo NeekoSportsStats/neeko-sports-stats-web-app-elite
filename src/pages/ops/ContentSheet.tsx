@@ -58,7 +58,30 @@ interface StatBoardPlayer {
 }
 
 type FormWindow = "L5" | "L3";
-type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen" | "Results" | "Career";
+type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen" | "Results" | "Career" | "Board";
+
+type BoardSummary = {
+  round_number: number;
+  featured: number;
+  hits: number;
+  misses: number;
+  ungraded: number;
+};
+
+type BoardRow = {
+  id: string;
+  round_number: number;
+  player_name: string;
+  team_name: string | null;
+  stat_label: string;
+  lens: string;
+  threshold: number;
+  actual_hit: boolean | null;
+  actual_value: number | null;
+  notes: string | null;
+  created_at: string;
+  graded_at: string | null;
+};
 
 interface FormRow {
   player_name: string;
@@ -1686,6 +1709,222 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   );
 }
 
+function BoardSummaryCard({ summary, hook, cta }: { summary: BoardSummary; hook: [string, string]; cta: string }) {
+  return (
+    <div
+      id="neeko-board-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
+      )}
+
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        HONEST BOARD · R{summary.round_number}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 480,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 50, width: 293, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>FEATURED</div>
+        <div style={{ position: "absolute", left: 0, top: 120, width: 293, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {summary.featured}
+        </div>
+        <div style={{ position: "absolute", left: 293, top: 50, width: 294, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>HIT</div>
+        <div style={{ position: "absolute", left: 293, top: 120, width: 294, textAlign: "center", color: "#22C55E", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {summary.hits}
+        </div>
+        <div style={{ position: "absolute", left: 587, top: 50, width: 293, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>MISSED</div>
+        <div style={{ position: "absolute", left: 587, top: 120, width: 293, textAlign: "center", color: "#EF4444", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {summary.misses}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 900, width: 1080, textAlign: "center", color: "#A1A1AA", fontSize: 34, fontWeight: 700, lineHeight: 1.3 }}>
+        {summary.hits} of {summary.featured} hit last round.
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 960, width: 1080, textAlign: "center", color: "#A1A1AA", fontSize: 34, fontWeight: 700, lineHeight: 1.3 }}>
+        We post the misses too.
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1160, width: 1080, textAlign: "center", color: "#A1A1AA", fontSize: 34, fontWeight: 700 }}>
+        R{summary.round_number}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1240, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: () => void }) {
+  const syntheticRow = useMemo<PriceRow>(() => ({
+    player_name: "Neeko",
+    team_name: "",
+    position: "",
+    price: 0,
+    breakeven: 0,
+    projection: 0,
+    value_score: 0,
+    season_avg: 0,
+    last_5_avg: 0,
+    be_delta: 0,
+    matchup_label: null,
+    status: "active",
+    story: "value",
+  }), []);
+  const groups = useMemo(() => buildPriceBank(syntheticRow), [syntheticRow]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-board-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then((r) => r.text());
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        fontEmbedCSS: css,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `neeko_board_R${summary.round_number}.png`;
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <BoardSummaryCard summary={summary} hook={hook} cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ResultsSummaryCard({ summary, hook, cta }: { summary: AccuracySummary; hook: [string, string]; cta: string }) {
   return (
     <div
@@ -2621,6 +2860,14 @@ export default function ContentSheet() {
     examples: AccuracyExample[];
   }>({ summary: null, examples: [] });
   const [resultsCardOpen, setResultsCardOpen] = useState(false);
+  const [boardRound, setBoardRound] = useState<number | null>(null);
+  const [boardData, setBoardData] = useState<{
+    summary: BoardSummary | null;
+    rows: BoardRow[];
+  }>({ summary: null, rows: [] });
+  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardCardOpen, setBoardCardOpen] = useState(false);
+  const [featureToast, setFeatureToast] = useState<string | null>(null);
   const [careerSearch, setCareerSearch] = useState("");
   const [careerPlayerId, setCareerPlayerId] = useState<number | null>(null);
   const [careerPlayerName, setCareerPlayerName] = useState<string>("");
@@ -2751,6 +2998,49 @@ export default function ContentSheet() {
     })();
     return () => { cancelled = true; };
   }, [storyType, round]);
+
+  // Board: fetch review summary + rows when Board tab active.
+  async function loadBoardData(roundNum: number) {
+    setBoardLoading(true);
+    const [summaryRes, rowsRes] = await Promise.all([
+      supabase!.rpc("get_board_review_summary", { p_season: 2026, p_round_number: roundNum }),
+      supabase!.rpc("get_board_review_rows", { p_season: 2026, p_round_number: roundNum }),
+    ]);
+    setBoardData({
+      summary: (summaryRes.data?.[0] as BoardSummary) ?? null,
+      rows: (rowsRes.data as BoardRow[]) ?? [],
+    });
+    setBoardLoading(false);
+  }
+  useEffect(() => {
+    if (storyType !== "Board") return;
+    const r = boardRound ?? (round ?? 19);
+    setBoardRound(r);
+    loadBoardData(r);
+  }, [storyType, boardRound]);
+
+  async function featureRow(r: RankedRow) {
+    await supabase!.rpc("add_board_review", {
+      p_round_number: round ?? 19,
+      p_season: 2026,
+      p_player_name: r.player_name,
+      p_team_name: r.team_name,
+      p_stat_label: `${r.threshold}+ ${r.lens}`,
+      p_lens: r.lens,
+      p_threshold: r.threshold,
+    });
+    setFeatureToast(`Added to R${round ?? 19} board`);
+    setTimeout(() => setFeatureToast(null), 2000);
+  }
+
+  async function gradeRow(id: string, hit: boolean, value?: number) {
+    await supabase!.rpc("grade_board_review", {
+      p_id: id,
+      p_actual_hit: hit,
+      p_actual_value: value ?? null,
+    });
+    loadBoardData(boardRound ?? round ?? 19);
+  }
 
   // Step 2: fire 54 calls (9 matches × 6 lenses), render progressively
   useEffect(() => {
@@ -3192,7 +3482,7 @@ export default function ContentSheet() {
   if (error && storyType !== "Results" && storyType !== "Career") {
     return <div className="py-10 text-center text-xs text-red-400">{error}</div>;
   }
-  if (fixtures.length === 0 && storyType !== "Results" && storyType !== "Career") {
+  if (fixtures.length === 0 && storyType !== "Results" && storyType !== "Career" && storyType !== "Board") {
     return <div className="py-10 text-center text-xs text-zinc-500">No fixtures found for round {round}.</div>;
   }
 
@@ -3220,7 +3510,7 @@ export default function ContentSheet() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results", "Career"] as StoryType[]).map((s) => (
+          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results", "Career", "Board"] as StoryType[]).map((s) => (
             <button
               key={s}
               onClick={() => setStoryType(s)}
@@ -3248,7 +3538,7 @@ export default function ContentSheet() {
               ))}
             </select>
           </div>
-          {storyType !== "Career" && (
+          {storyType !== "Career" && storyType !== "Board" && (
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sort</label>
@@ -3275,7 +3565,7 @@ export default function ContentSheet() {
           )}
         </div>
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -3311,7 +3601,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -3340,7 +3630,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
+        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
@@ -3564,6 +3854,13 @@ export default function ContentSheet() {
                         title="Export PNG"
                       >
                         PNG
+                      </button>
+                      <button
+                        onClick={() => featureRow(r)}
+                        className="text-xs text-amber-500 hover:text-amber-300 transition-colors flex-shrink-0"
+                        title="Feature on Board"
+                      >
+                        ★
                       </button>
                     </div>
                   );
@@ -3922,6 +4219,130 @@ export default function ContentSheet() {
 
       {resultsCardOpen && resultsData.summary && (
         <ResultsCardModal summary={resultsData.summary} onClose={() => setResultsCardOpen(false)} />
+      )}
+
+      {storyType === "Board" && (
+        <div className="space-y-4">
+          {featureToast && (
+            <div className="text-xs text-amber-400 bg-amber-950/40 border border-amber-800 rounded-lg px-3 py-2">{featureToast}</div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Round</span>
+            {availableRounds.slice(0, 12).map((r) => (
+              <button
+                key={r}
+                onClick={() => setBoardRound(r)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  boardRound === r
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                R{r}
+              </button>
+            ))}
+          </div>
+
+          {boardLoading ? (
+            <div className="py-10 flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+            </div>
+          ) : boardData.summary === null ? (
+            <div className="py-10 text-center text-xs text-zinc-500">No board data for R{boardRound}.</div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-zinc-200 font-semibold">{boardData.summary.featured} FEATURED</span>
+                <span className="text-zinc-500">·</span>
+                <span className="text-green-400 font-semibold">{boardData.summary.hits} HIT</span>
+                <span className="text-zinc-500">·</span>
+                <span className="text-red-400 font-semibold">{boardData.summary.misses} MISSED</span>
+                <span className="text-zinc-500">·</span>
+                <span className="text-zinc-400 font-semibold">{boardData.summary.ungraded} UNGRADED</span>
+                <button
+                  onClick={() => setBoardCardOpen(true)}
+                  className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-black transition-colors"
+                >
+                  Download Board Card
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div className="col-span-4">Player</div>
+                  <div className="col-span-3">Stat</div>
+                  <div className="col-span-2">Result</div>
+                  <div className="col-span-1 text-right">Actual</div>
+                  <div className="col-span-2 text-right">Actions</div>
+                </div>
+                {boardData.rows.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-zinc-500">No featured players for R{boardRound}.</div>
+                ) : (
+                  boardData.rows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="grid grid-cols-12 gap-2 px-3 py-2 text-xs text-zinc-200 bg-zinc-900/60 border border-zinc-800 rounded-lg items-center"
+                    >
+                      <div className="col-span-4 truncate">
+                        {row.player_name}
+                        {row.team_name && <span className="text-zinc-500"> · {row.team_name}</span>}
+                      </div>
+                      <div className="col-span-3 truncate text-zinc-400">{row.stat_label}</div>
+                      <div className="col-span-2">
+                        {row.actual_hit === true ? (
+                          <span className="text-green-400 font-semibold">HIT ✓</span>
+                        ) : row.actual_hit === false ? (
+                          <span className="text-red-400 font-semibold">MISS ✗</span>
+                        ) : (
+                          <span className="text-zinc-500">—</span>
+                        )}
+                      </div>
+                      <div className="col-span-1 text-right text-zinc-300">{row.actual_value ?? "—"}</div>
+                      <div className="col-span-2 flex items-center gap-1 justify-end">
+                        {row.actual_hit === null ? (
+                          <>
+                            <input
+                              type="number"
+                              placeholder="val"
+                              className="w-12 bg-zinc-800 text-zinc-100 text-xs rounded px-1 py-0.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const v = Number((e.target as HTMLInputElement).value);
+                                  gradeRow(row.id, v >= row.threshold, isNaN(v) ? undefined : v);
+                                  (e.target as HTMLInputElement).value = "";
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => gradeRow(row.id, true)}
+                              className="px-1.5 py-0.5 text-xs rounded bg-green-900/60 text-green-300 hover:bg-green-800/60 transition-colors"
+                              title="Mark hit"
+                            >✓</button>
+                            <button
+                              onClick={() => gradeRow(row.id, false)}
+                              className="px-1.5 py-0.5 text-xs rounded bg-red-900/60 text-red-300 hover:bg-red-800/60 transition-colors"
+                              title="Mark miss"
+                            >✗</button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => gradeRow(row.id, true, row.actual_value ?? undefined)}
+                            className="px-2 py-0.5 text-xs rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors"
+                            title="Undo grade"
+                          >Undo</button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {boardCardOpen && boardData.summary && (
+        <BoardCardModal summary={boardData.summary} onClose={() => setBoardCardOpen(false)} />
       )}
     </div>
   );
