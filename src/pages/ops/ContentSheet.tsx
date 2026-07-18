@@ -450,12 +450,7 @@ function buildHitBank(r: RankedRow): HookGroup[] {
       pair("NOT A GUARANTEE. A RATE."),
       pair("THE MISSES ARE IN THERE."),
       pair("MAKE YOUR OWN CALL."),
-      pair("THE DATA IS THE DATA
-      )
-    ]
-    }
-  ]
-}."),
+      pair("THE DATA IS THE DATA."),
       pair("WE POST THE MISSES TOO."),
       pair("{RATE}%. NOT 100%. NEVER 100%."),
       pair("DRAW YOUR OWN CONCLUSIONS."),
@@ -840,11 +835,13 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
         pixelRatio: 1,
         backgroundColor: "#050505",
+        fontEmbedCSS: css,
         style: { transform: "scale(1)", transformOrigin: "top left" },
       });
       if (!blob) return;
@@ -1183,11 +1180,13 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
         pixelRatio: 1,
         backgroundColor: "#050505",
+        fontEmbedCSS: css,
         style: { transform: "scale(1)", transformOrigin: "top left" },
       });
       if (!blob) return;
@@ -1297,7 +1296,6 @@ function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, str
   const panelBottom = panelTop + panelHeight;
   const ctaTop = panelBottom + 90;
   const footerTop = panelBottom + 200;
-  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
       id="neeko-multi-card"
@@ -1312,10 +1310,11 @@ function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, str
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
-        <div style={{ color: "#F5C442", fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
-      </div>
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 96), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
+      )}
 
       <div style={{ position: "absolute", left: 80, top: panelTop, width: 920, height: panelHeight, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226" }}>
         {stack.map((r, i) => {
@@ -1375,11 +1374,13 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
         pixelRatio: 1,
         backgroundColor: "#050505",
+        fontEmbedCSS: css,
         style: { transform: "scale(1)", transformOrigin: "top left" },
       });
       if (!blob) return;
@@ -1475,11 +1476,13 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
         pixelRatio: 1,
         backgroundColor: "#050505",
+        fontEmbedCSS: css,
         style: { transform: "scale(1)", transformOrigin: "top left" },
       });
       if (!blob) return;
