@@ -30,6 +30,7 @@ interface StatBoardPlayer {
   projection: number | null;
   threshold: number | null;
   hit_rate_last_10: number | null;
+  last_10_values: number[] | null;
   season_threshold_hit_rates: Record<string, ThresholdHit> | null;
   season_avg: string | null;
   last_5_avg: string | null;
@@ -68,6 +69,7 @@ interface RankedRow {
   season_avg: number | null;
   gap: number | null;
   player_status: string;
+  last_10_values: number[];
 }
 
 type StackRow = RankedRow | FormRow;
@@ -123,6 +125,18 @@ function makeBrief(r: RankedRow): string {
   const avg = r.season_avg !== null ? ` | season avg ${r.season_avg.toFixed(1)} ${fmtGap(r.gap)}` : "";
   return `${r.player_name} | ${r.team_name} v ${opp} | ${r.threshold}+ ${r.lens} | ${r.hits}/${r.games} (${r.rate}%)${avg} | ${tag}`;
 }
+
+const CTA_OPTIONS = [
+  "FREE ON THE APP STORE",
+  "BUILD ANY LINE · FREE",
+  "SEE ALL 487 FREE",
+  "LIVE BREAKEVENS · FREE",
+  "2 FREE BOARDS EVERY WEEK",
+  "HEAD-TO-HEAD · FREE",
+  "SEARCH ANY PLAYER · FREE",
+  "FREE TO DOWNLOAD",
+  "TRY IT FREE",
+] as const;
 
 type HookGroup = { label: string; hooks: [string, string][] };
 
@@ -247,9 +261,44 @@ function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
   ];
 }
 
-function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
+function MiniBar({ values, threshold, avg }: { values: number[]; threshold: number; avg: number }) {
+  const vals = values.slice(-10);
+  if (vals.length === 0) return null;
+  const barW = 64;
+  const gap = 12;
+  const groupW = vals.length * barW + (vals.length - 1) * gap;
+  const startX = (880 - groupW) / 2;
+  const maxVal = Math.max(...vals, threshold, 1);
+  const thresholdY = 160 - Math.round((threshold / maxVal) * 140);
+  return (
+    <svg width={880} height={180} style={{ display: "block" }}>
+      <line x1={0} y1={thresholdY} x2={880} y2={thresholdY} stroke="#F5C442" strokeWidth={2} strokeDasharray="6 4" />
+      <text x={876} y={thresholdY - 6} textAnchor="end" fontSize={22} fill="#F5C442" fontWeight={700} fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'>
+        avg {avg.toFixed(1)}
+      </text>
+      {vals.map((val, i) => {
+        const barH = Math.max(20, Math.round((val / maxVal) * 140));
+        const x = startX + i * (barW + gap);
+        const y = 160 - barH;
+        const fill = val >= threshold ? "#22C55E" : "#EF4444";
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={barW} height={barH} rx={6} fill={fill} />
+            {barH >= 30 && (
+              <text x={x + barW / 2} y={y - 8} textAnchor="middle" fontSize={20} fill="#FFFFFF" fontWeight={700} fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'>
+                {val}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string]; cta: string }) {
   const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
-  const avg = row.season_avg !== null ? row.season_avg.toFixed(1) : "—";
+  const avg = row.season_avg !== null ? row.season_avg : 0;
   const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
@@ -297,11 +346,15 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
         </div>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 960, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
-        Season average {avg}
+      <div style={{ position: "absolute", left: 100, top: 920, width: 880, display: "flex", justifyContent: "center" }}>
+        <MiniBar values={row.last_10_values} threshold={row.threshold} avg={avg} />
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1070, width: 1080, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, top: 1070, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
+        Season average {row.season_avg !== null ? avg.toFixed(1) : "—"}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1140, width: 1080, textAlign: "center" }}>
         <span
           style={{
             display: "inline-block",
@@ -313,18 +366,18 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
             fontWeight: 800,
           }}
         >
-          FREE ON THE APP STORE
+          {cta}
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1180, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
         NEEKO STATS
       </div>
     </div>
   );
 }
 
-function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWindow; hook: [string, string] }) {
+function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: FormWindow; hook: [string, string]; cta: string }) {
   const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
   const lastLabel = formWindow === "L3" ? "LAST 3" : "LAST 5";
@@ -393,7 +446,7 @@ function FormCard({ row, formWindow, hook }: { row: FormRow; formWindow: FormWin
             fontWeight: 800,
           }}
         >
-          SEE ALL 477 FREE
+          {cta}
         </span>
       </div>
 
@@ -410,6 +463,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
   const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const isOut = (row.player_status ?? "").toLowerCase() !== "active";
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
@@ -506,8 +560,21 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <FormCard row={row} formWindow={formWindow} hook={hook} />
+            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} />
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <button
@@ -532,10 +599,10 @@ function buildMultiHooks(n: number): [string, string][] {
   ];
 }
 
-function MultiCard({ stack, hook }: { stack: StackRow[]; hook: [string, string] }) {
+function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, string]; cta: string }) {
   const n = stack.length;
   const panelTop = 480;
-  const rowH = 150;
+  const rowH = 140;
   const panelHeight = 40 + n * rowH + 40;
   const panelBottom = panelTop + panelHeight;
   const ctaTop = panelBottom + 90;
@@ -590,7 +657,7 @@ function MultiCard({ stack, hook }: { stack: StackRow[]; hook: [string, string] 
       </div>
 
       <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
-        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>SEE ALL 477 FREE</span>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
       </div>
       <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>NEEKO STATS</div>
     </div>
@@ -600,6 +667,7 @@ function MultiCard({ stack, hook }: { stack: StackRow[]; hook: [string, string] 
 function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
   const hooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
   const [hookIdx, setHookIdx] = useState(0);
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const hook = hooks[hookIdx];
 
@@ -658,8 +726,21 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <MultiCard stack={stack} hook={hook} />
+            <MultiCard stack={stack} hook={hook} cta={cta} />
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <button
@@ -680,6 +761,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
   const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
@@ -766,8 +848,21 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} />
+            <NeekoCard row={row} hook={hook} cta={cta} />
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <button
@@ -913,6 +1008,7 @@ export default function ContentSheet() {
           season_avg: seasonAvg,
           gap,
           player_status: p.player_status,
+          last_10_values: Array.isArray(p.last_10_values) ? p.last_10_values.map((v) => Number(v)) : [],
         });
       }
       // Rank: threshold DESC, rate DESC, games DESC; OUT demoted below PLAYING
@@ -993,12 +1089,12 @@ export default function ContentSheet() {
     const k = stackKey(row);
     setStack((prev) => {
       if (prev.some((r) => stackKey(r) === k)) return prev.filter((r) => stackKey(r) !== k);
-      if (prev.length >= 5) return prev;
+      if (prev.length >= 6) return prev;
       return [...prev, row];
     });
   }
 
-  const stackFull = stack.length >= 5;
+  const stackFull = stack.length >= 6;
 
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
@@ -1129,7 +1225,7 @@ export default function ContentSheet() {
       {/* Stack bar */}
       {stack.length > 0 && (
         <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
-          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/5</span>
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/6</span>
           {stack.map((r) => {
             const k = stackKey(r);
             const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
