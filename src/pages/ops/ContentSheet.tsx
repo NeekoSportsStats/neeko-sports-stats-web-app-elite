@@ -1296,7 +1296,7 @@ export default function ContentSheet() {
         const sthr = p.season_threshold_hit_rates;
         if (!sthr) continue;
         const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
-        // Find the HIGHEST key threshold with rate >= 75% and games >= 10
+        // Find the HIGHEST key threshold with rate >= 60% and games >= 8
         let best: { threshold: number; hit: ThresholdHit } | null = null;
         for (const threshold of KEY_THRESHOLDS[lens]) {
           const hit = sthr[String(threshold)];
