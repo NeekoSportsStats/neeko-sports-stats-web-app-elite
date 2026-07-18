@@ -1142,13 +1142,6 @@ export default function ContentSheet() {
   const [hideOut, setHideOut] = useState(false);
   const [thresholdFilter, setThresholdFilter] = useState<number | null>(null);
 
-  const availableThresholds = useMemo(() => {
-    const lensRows = rankedRows.filter(
-      (r) => lensFilter === "All" || r.lens === lensFilter
-    );
-    return Array.from(new Set(lensRows.map((r) => r.threshold))).sort((a, b) => b - a);
-  }, [rankedRows, lensFilter]);
-
   useEffect(() => { setThresholdFilter(null); }, [lensFilter]);
   const [sortView, setSortView] = useState("default");
   const [copyState, setCopyState] = useState<string | null>(null);
@@ -1315,6 +1308,13 @@ export default function ContentSheet() {
     }
     return stories;
   }, [players]);
+
+  const availableThresholds = useMemo(() => {
+    const lensRows = rankedRows.filter(
+      (r) => lensFilter === "All" || r.lens === lensFilter
+    );
+    return Array.from(new Set(lensRows.map((r) => r.threshold))).sort((a, b) => b - a);
+  }, [rankedRows, lensFilter]);
 
   const formRows = useMemo<FormRow[]>(() => {
     const byPlayer = new Map<string, StatBoardPlayer>();
