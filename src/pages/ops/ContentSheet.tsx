@@ -1617,6 +1617,8 @@ export default function ContentSheet() {
     if (round === null) return;
     let cancelled = false;
     setLoadingFixtures(true);
+    setCompletedCalls(0);
+    setTotalCalls(54);
     (async () => {
       try {
         const { data: matchData, error: matchErr } = await supabase!.rpc(
