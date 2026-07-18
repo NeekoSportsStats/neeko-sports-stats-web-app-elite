@@ -70,6 +70,15 @@ interface RankedRow {
   player_status: string;
 }
 
+type StackRow = RankedRow | FormRow;
+
+function stackKey(row: StackRow): string {
+  if ("lens" in row && "threshold" in row) {
+    return `hr|${row.player_name}|${row.lens}|${row.threshold}`;
+  }
+  return `form|${row.player_name}`;
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const LENSES = ["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as const;
@@ -378,6 +387,158 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   );
 }
 
+function buildMultiHooks(n: number): [string, string][] {
+  return [
+    [`${n} PLAYERS.`, "ONE ROUND."],
+    ["THE STATS NOBODY", "CHECKS."],
+    [`${n} NAMES.`, "ZERO GUESSWORK."],
+    ["EVERYONE LOOKS", "AT DISPOSALS."],
+    ["THIS IS THE LIST.", "FREE."],
+  ];
+}
+
+function MultiCard({ stack, hook }: { stack: StackRow[]; hook: [string, string] }) {
+  const n = stack.length;
+  const panelTop = 480;
+  const rowH = 150;
+  const panelHeight = 40 + n * rowH + 40;
+  const panelBottom = panelTop + panelHeight;
+  const ctaTop = panelBottom + 90;
+  const footerTop = panelBottom + 200;
+  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
+  return (
+    <div
+      id="neeko-multi-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
+        <div style={{ color: "#F5C442", fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
+      </div>
+
+      <div style={{ position: "absolute", left: 80, top: panelTop, width: 920, height: panelHeight, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226" }}>
+        {stack.map((r, i) => {
+          const isHR = "lens" in r && "threshold" in r;
+          const hr = r as RankedRow;
+          const fr = r as FormRow;
+          const isOut = statusTag(r.player_status).label === "OUT";
+          const context = isHR ? `${hr.threshold}+ ${hr.lens}` : `season ${fr.season_avg.toFixed(1)} → L5 ${fr.last_5_avg.toFixed(1)}`;
+          const bigStat = isHR ? `${hr.rate}%` : `${fr.delta >= 0 ? "+" : ""}${fr.delta.toFixed(1)}`;
+          const subStat = isHR ? `${hr.hits} from ${hr.games}` : `${fr.games_played} games`;
+          const accent = isHR ? (hr.rate >= 90 ? "#22C55E" : "#F5C442") : (fr.delta < 0 ? "#EF4444" : "#22C55E");
+          const isLast = i === n - 1;
+          const y = 40 + i * rowH;
+          return (
+            <div key={i} style={{ position: "absolute", left: 0, top: y, width: 920, height: 130 }}>
+              <div style={{ position: "absolute", left: 40, top: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ color: "#FFFFFF", fontSize: 40, fontWeight: 800, lineHeight: 1 }}>{r.player_name.toUpperCase()}</span>
+                {isOut && (
+                  <span style={{ display: "inline-block", background: "#3F1D1D", color: "#EF4444", fontSize: 20, borderRadius: 10, padding: "4px 12px", fontWeight: 700 }}>OUT</span>
+                )}
+              </div>
+              <div style={{ position: "absolute", left: 40, top: 66, color: "#8A8F96", fontSize: 26 }}>{r.team_name} · {context}</div>
+              <div style={{ position: "absolute", right: 40, top: 20, color: accent, fontSize: 62, fontWeight: 800, lineHeight: 1 }}>{bigStat}</div>
+              <div style={{ position: "absolute", right: 40, top: 90, color: "#8A8F96", fontSize: 24 }}>{subStat}</div>
+              {!isLast && <div style={{ position: "absolute", left: 40, right: 40, bottom: 0, height: 1, background: "#202226" }} />}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>SEE ALL 477 FREE</span>
+      </div>
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>NEEKO STATS</div>
+    </div>
+  );
+}
+
+function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
+  const hooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const hook = hooks[hookIdx];
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-multi-card");
+    if (!node) return;
+    setDownloading(true);
+    try {
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `neeko_stack_${stack.length}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <select
+            value={hookIdx}
+            onChange={(e) => setHookIdx(Number(e.target.value))}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {hooks.map((h, i) => (
+              <option key={i} value={i}>
+                {h[0]} {h[1]}
+              </option>
+            ))}
+          </select>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <MultiCard stack={stack} hook={hook} />
+          </div>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   const hooks = useMemo(() => buildHooks(row), [row]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -473,6 +634,8 @@ export default function ContentSheet() {
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
+  const [stack, setStack] = useState<StackRow[]>([]);
+  const [multiCardOpen, setMultiCardOpen] = useState(false);
 
   // Step 1: resolve current round + fixtures
   useEffect(() => {
@@ -661,6 +824,17 @@ export default function ContentSheet() {
     });
   }
 
+  function toggleStack(row: StackRow) {
+    const k = stackKey(row);
+    setStack((prev) => {
+      if (prev.some((r) => stackKey(r) === k)) return prev.filter((r) => stackKey(r) !== k);
+      if (prev.length >= 5) return prev;
+      return [...prev, row];
+    });
+  }
+
+  const stackFull = stack.length >= 5;
+
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
     const map = new Map<Lens, RankedRow[]>();
@@ -787,6 +961,40 @@ export default function ContentSheet() {
         )}
       </div>
 
+      {/* Stack bar */}
+      {stack.length > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/5</span>
+          {stack.map((r) => {
+            const k = stackKey(r);
+            const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
+            return (
+              <button
+                key={k}
+                onClick={() => setStack((prev) => prev.filter((s) => stackKey(s) !== k))}
+                className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+              >
+                {surname} ×
+              </button>
+            );
+          })}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setStack([])}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setMultiCardOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-black transition-colors"
+            >
+              Build Card →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Rows */}
       {storyType === "Form" ? (
         visibleFormRows.length === 0 ? (
@@ -801,6 +1009,7 @@ export default function ContentSheet() {
             {visibleFormRows.map((r, i) => {
               const status = statusTag(r.player_status);
               const copied = copyState === r.player_name + "form" + i;
+              const inStack = stack.some((s) => stackKey(s) === stackKey(r));
               const lastVal = formWindow === "L3" ? r.last_3_avg.toFixed(1) : r.last_5_avg.toFixed(1);
               const lastLbl = formWindow === "L3" ? "L3" : "L5";
               const deltaStr = (r.delta >= 0 ? "+" : "") + r.delta.toFixed(1);
@@ -843,6 +1052,14 @@ export default function ContentSheet() {
                     {copied ? "Copied!" : "⧉"}
                   </button>
                   <button
+                    onClick={() => toggleStack(r)}
+                    disabled={!inStack && stackFull}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors flex-shrink-0"
+                    title={inStack ? "Remove from stack" : "Add to stack"}
+                  >
+                    {inStack ? "−" : "+"}
+                  </button>
+                  <button
                     onClick={() => setFormCardRow(r)}
                     className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
                     title="Export PNG"
@@ -871,6 +1088,7 @@ export default function ContentSheet() {
                 {rows.map((r, i) => {
                   const tag = statusTag(r.player_status);
                   const copied = copyState === r.player_name + r.threshold;
+                  const inStack = stack.some((s) => stackKey(s) === stackKey(r));
                   return (
                     <div
                       key={`${lens}-${r.player_name}-${r.threshold}-${i}`}
@@ -904,6 +1122,14 @@ export default function ContentSheet() {
                         {copied ? "Copied!" : "⧉"}
                       </button>
                       <button
+                        onClick={() => toggleStack(r)}
+                        disabled={!inStack && stackFull}
+                        className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors flex-shrink-0"
+                        title={inStack ? "Remove from stack" : "Add to stack"}
+                      >
+                        {inStack ? "−" : "+"}
+                      </button>
+                      <button
                         onClick={() => setCardRow(r)}
                         className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
                         title="Export PNG"
@@ -921,6 +1147,9 @@ export default function ContentSheet() {
       {cardRow && <CardModal row={cardRow} onClose={() => setCardRow(null)} />}
       {formCardRow && (
         <FormCardModal row={formCardRow} formWindow={formWindow} onClose={() => setFormCardRow(null)} />
+      )}
+      {multiCardOpen && stack.length > 0 && (
+        <MultiCardModal stack={stack} onClose={() => setMultiCardOpen(false)} />
       )}
     </div>
   );
