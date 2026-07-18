@@ -3033,7 +3033,7 @@ export default function ContentSheet() {
     setTimeout(() => setFeatureToast(null), 2000);
   }
 
-  async function gradeRow(id: string, hit: boolean, value?: number) {
+  async function gradeRow(id: string, hit: boolean | null, value?: number) {
     await supabase!.rpc("grade_board_review", {
       p_id: id,
       p_actual_hit: hit,
@@ -4326,7 +4326,7 @@ export default function ContentSheet() {
                           </>
                         ) : (
                           <button
-                            onClick={() => gradeRow(row.id, true, row.actual_value ?? undefined)}
+                            onClick={() => gradeRow(row.id, null as any, undefined)}
                             className="px-2 py-0.5 text-xs rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors"
                             title="Undo grade"
                           >Undo</button>
