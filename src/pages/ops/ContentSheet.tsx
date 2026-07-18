@@ -828,7 +828,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
 
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
@@ -878,7 +878,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
         )}
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
             <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} />
           </div>
         </div>
@@ -1463,7 +1463,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
@@ -1506,7 +1506,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
         </select>
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
             <NeekoCard row={row} hook={hook} cta={cta} />
           </div>
         </div>
