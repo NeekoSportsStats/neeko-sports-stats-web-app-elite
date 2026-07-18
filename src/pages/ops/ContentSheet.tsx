@@ -32,8 +32,8 @@ interface StatBoardPlayer {
   hit_rate_last_10: number | null;
   season_threshold_hit_rates: Record<string, ThresholdHit> | null;
   season_avg: string | null;
-  last_5_avg: number | null;
-  last_3_avg: number | null;
+  last_5_avg: string | null;
+  last_3_avg: string | null;
   position_group: string | null;
   player_status: string;
   is_locked: boolean;
@@ -209,28 +209,24 @@ function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
 }
 
 function buildFormHooks(r: FormRow): [string, string][] {
-  const sa = r.season_avg.toFixed(1);
-  const l5 = r.last_5_avg.toFixed(1);
-  const delta = (r.delta >= 0 ? "+" : "") + r.delta.toFixed(1);
-  const surname = r.player_name.split(" ").pop() ?? r.player_name;
+  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
   if (r.tag === "COLD") {
     return [
-      [`${sa} → ${l5}.`, `THAT'S ${delta}.`],
-      [`${delta}.`, "BIGGEST FALL IN THE GAME."],
-      ["CHECK YOUR TEAM.", `${surname.toUpperCase()} IS DROPPING.`],
+      ["CHECK YOUR TEAM.", "HE'S COOKED."],
+      ["THE BIGGEST FALL", "IN THE GAME."],
+      [`${surname} IS`, "IN FREEFALL."],
     ];
   }
   return [
-    [`${sa} → ${l5}.`, `THAT'S ${delta}.`],
-    [`${delta}.`, "NOBODY'S TALKING ABOUT IT."],
-    ["HE'S FOUND SOMETHING.", `${delta} IN FIVE GAMES.`],
+    ["NOBODY'S TALKING", "ABOUT THIS."],
+    ["THE BIGGEST RISER", "IN THE GAME."],
+    ["HE'S FOUND", "SOMETHING."],
   ];
 }
 
 function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hook: [string, string] }) {
   const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
-  const subline = row.tag === "COLD" ? "Last 5 against his season average." : "Biggest riser in the game right now.";
   const lastLabel = window === "L3" ? "LAST 3" : "LAST 5";
   const lastVal = window === "L3" ? row.last_3_avg.toFixed(1) : row.last_5_avg.toFixed(1);
   return (
@@ -247,43 +243,43 @@ function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hoo
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 190, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
-        {row.player_name.toUpperCase()}
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+        {hook[0]}
       </div>
-      <div style={{ position: "absolute", left: 0, top: 272, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
-        {row.team_name.toUpperCase()} · {row.position}
+      <div style={{ position: "absolute", left: 0, top: 268, width: 1080, textAlign: "center", color: accent, fontSize: 84, fontWeight: 800, lineHeight: 1 }}>
+        {hook[1]}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.player_name} · {row.team_name} · {row.position}
       </div>
 
       <div
         style={{
           position: "absolute",
           left: 100,
-          top: 380,
+          top: 480,
           width: 880,
-          height: 480,
+          height: 440,
           borderRadius: 30,
           background: "#0D0E11",
           border: "1px solid #202226",
         }}
       >
-        <div style={{ position: "absolute", left: 0, top: 44, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>SEASON</div>
-        <div style={{ position: "absolute", left: 0, top: 86, width: 880, textAlign: "center", color: "#FFFFFF", fontSize: 124, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 40, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>SEASON</div>
+        <div style={{ position: "absolute", left: 0, top: 80, width: 880, textAlign: "center", color: "#FFFFFF", fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
           {row.season_avg.toFixed(1)}
         </div>
-        <div style={{ position: "absolute", left: 0, top: 246, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>{lastLabel}</div>
-        <div style={{ position: "absolute", left: 0, top: 288, width: 880, textAlign: "center", color: accent, fontSize: 124, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 230, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>{lastLabel}</div>
+        <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: accent, fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
           {lastVal}
         </div>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 900, width: 1080, textAlign: "center", color: accent, fontSize: 104, fontWeight: 800, lineHeight: 1 }}>
+      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: accent, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
         {deltaStr}
       </div>
-      <div style={{ position: "absolute", left: 0, top: 1030, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 34 }}>
-        {subline}
-      </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1140, width: 1080, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, top: 1120, width: 1080, textAlign: "center" }}>
         <span
           style={{
             display: "inline-block",
@@ -299,7 +295,7 @@ function FormCard({ row, window, hook }: { row: FormRow; window: FormWindow; hoo
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+      <div style={{ position: "absolute", left: 0, top: 1230, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
         NEEKO STATS
       </div>
     </div>
@@ -615,10 +611,12 @@ export default function ContentSheet() {
     const out: FormRow[] = [];
     for (const p of byPlayer.values()) {
       if (p.games_played < 10) continue;
-      const sa = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : NaN;
-      if (!isFinite(sa) || p.last_5_avg === null || p.last_3_avg === null) continue;
-      const deltaL5 = p.last_5_avg - sa;
-      const deltaL3 = p.last_3_avg - sa;
+      const sa = Number(p.season_avg);
+      const l5 = Number(p.last_5_avg);
+      const l3 = Number(p.last_3_avg);
+      if (!isFinite(sa) || !isFinite(l5) || !isFinite(l3)) continue;
+      const deltaL5 = l5 - sa;
+      const deltaL3 = l3 - sa;
       const delta = formWindow === "L3" ? deltaL3 : deltaL5;
       if (Math.abs(delta) < 12) continue;
       out.push({
@@ -627,8 +625,8 @@ export default function ContentSheet() {
         opponent_team_name: p.opponent_team_name,
         position: (p.position_group ?? "").toUpperCase(),
         season_avg: sa,
-        last_5_avg: p.last_5_avg,
-        last_3_avg: p.last_3_avg,
+        last_5_avg: l5,
+        last_3_avg: l3,
         games_played: p.games_played,
         player_status: p.player_status,
         delta,
