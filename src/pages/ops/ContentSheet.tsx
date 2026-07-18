@@ -646,7 +646,6 @@ function MiniBar({ values, threshold, avg }: { values: number[]; threshold: numb
 function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string]; cta: string }) {
   const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
   const avg = row.season_avg !== null ? row.season_avg : 0;
-  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   return (
     <div
       id="neeko-card"
@@ -661,10 +660,11 @@ function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string];
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
-        <div style={{ color: accent, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
-      </div>
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 96), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: row.rate >= 75 ? "#22C55E" : "#EF4444" }}>{hook[1]}</div>
+      )}
       <div style={{ position: "absolute", left: 0, top: 450, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · v {row.opponent_team_name}
         {(row.player_status ?? "").toLowerCase() !== "active" && (
@@ -685,7 +685,7 @@ function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string];
         }}
       >
         <div style={{ position: "absolute", left: 0, top: 50, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>HIT RATE</div>
-        <div style={{ position: "absolute", left: 0, top: 94, width: 880, textAlign: "center", color: accent, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 94, width: 880, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
           {row.rate}%
         </div>
         <div style={{ position: "absolute", left: 0, top: 260, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
