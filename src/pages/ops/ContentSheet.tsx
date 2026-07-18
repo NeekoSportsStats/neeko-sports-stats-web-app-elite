@@ -111,6 +111,9 @@ const FORM_DELTA_MIN: Record<string, number> = {
   goals:      0.5,
 };
 
+const FORM_LENS_CAP = 8;
+const FORM_LENS_ORDER: string[] = ["fantasy", "disposals", "kicks", "marks", "tackles", "goals"];
+
 const LENS_LABELS: Record<Lens, string> = {
   disposals: "Disposals",
   goals: "Goals",
@@ -1792,8 +1795,21 @@ export default function ContentSheet() {
         match_label: p.match_label,
       });
     }
-    out.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-    return out.slice(0, 15);
+    // Per-lens cap: group by lens, sort each group by abs(delta) DESC,
+    // take top FORM_LENS_CAP per lens, concatenate in FORM_LENS_ORDER.
+    const byLens = new Map<string, FormRow[]>();
+    for (const row of out) {
+      if (!byLens.has(row.lens)) byLens.set(row.lens, []);
+      byLens.get(row.lens)!.push(row);
+    }
+    const capped: FormRow[] = [];
+    for (const lens of FORM_LENS_ORDER) {
+      const group = byLens.get(lens);
+      if (!group) continue;
+      group.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+      capped.push(...group.slice(0, FORM_LENS_CAP));
+    }
+    return capped;
   }, [players, formWindow]);
 
   const thresholdFilteredRows = useMemo(
