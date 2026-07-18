@@ -1047,7 +1047,6 @@ function buildPriceBank(r: PriceRow): HookGroup[] {
 
 function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; cta: string }) {
   const meta = PRICE_STORY_META[row.story];
-  const fit = (s: string) => (s.length <= 14 ? 112 : s.length <= 20 ? 88 : 68);
   const beDelta = Math.round(row.be_delta);
   const deltaColor = beDelta > 0 ? "#EF4444" : beDelta < 0 ? "#22C55E" : "#8A8F96";
   const deltaLine =
@@ -1068,10 +1067,11 @@ function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; 
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#FFFFFF", fontSize: fit(hook[0]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[0]}</div>
-        <div style={{ color: meta.bg, fontSize: fit(hook[1]), fontWeight: 800, lineHeight: 1, textAlign: "center" }}>{hook[1]}</div>
-      </div>
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: meta.bg }}>{hook[1]}</div>
+      )}
 
       <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · {row.position}
@@ -1107,11 +1107,11 @@ function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; 
         }}
       >
         <div style={{ position: "absolute", left: 0, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>BE</div>
-        <div style={{ position: "absolute", left: 0, top: 94, width: 440, textAlign: "center", color: "#F5C442", fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 94, width: 440, textAlign: "center", color: "#F5C442", fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
           {Math.round(row.breakeven)}
         </div>
         <div style={{ position: "absolute", left: 440, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>PROJECTION</div>
-        <div style={{ position: "absolute", left: 440, top: 94, width: 440, textAlign: "center", color: "#FFFFFF", fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 440, top: 94, width: 440, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
           {Math.round(row.projection)}
         </div>
         <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
@@ -1119,7 +1119,7 @@ function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; 
         </div>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: deltaColor, fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
+      <div style={{ position: "absolute", left: 0, top: 970, width: 1080, textAlign: "center", color: deltaColor, fontFamily: ANTON_FONT, fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
         {deltaLine}
       </div>
 
