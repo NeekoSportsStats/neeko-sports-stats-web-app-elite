@@ -214,7 +214,9 @@ type PriceStory = PriceRow["story"];
 
 const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: string; text: string }> = {
   trap:      { label: "PRICE TRAP",  badge: "TRAP",      bg: "#EF4444", text: "#FFFFFF" },
-  bargain:   { label: "BARGAIN",      badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
+  bargain:   { label: "BARGAIN",      
+  }
+}badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
   expensive: { label: "EXPENSIVE",    badge: "EXPENSIVE", bg: "#F5C442", text: "#080808" },
   value:     { label: "VALUE PICK",   badge: "VALUE",    bg: "#3B82F6", text: "#FFFFFF" },
 };
