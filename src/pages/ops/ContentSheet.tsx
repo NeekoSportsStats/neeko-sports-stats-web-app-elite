@@ -62,6 +62,8 @@ interface RankedRow {
   player_name: string;
   team_name: string;
   opponent_team_name: string;
+  match_id: number;
+  match_label: string;
   lens: string;
   threshold: number;
   hits: number;
@@ -1141,8 +1143,9 @@ export default function ContentSheet() {
   const [formWindow, setFormWindow] = useState<FormWindow>("L5");
   const [hideOut, setHideOut] = useState(false);
   const [thresholdFilter, setThresholdFilter] = useState<number | null>(null);
+  const [matchFilter, setMatchFilter] = useState<number | null>(null);
 
-  useEffect(() => { setThresholdFilter(null); }, [lensFilter]);
+  useEffect(() => { setThresholdFilter(null); setMatchFilter(null); }, [lensFilter]);
   const [sortView, setSortView] = useState("default");
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
@@ -1284,6 +1287,8 @@ export default function ContentSheet() {
           player_name: p.player_name,
           team_name: p.team_name,
           opponent_team_name: p.opponent_team_name,
+          match_id: p.match_id,
+          match_label: p.match_label,
           lens,
           threshold: best.threshold,
           hits: best.hit.hits,
@@ -1353,12 +1358,26 @@ export default function ContentSheet() {
     return out.slice(0, 15);
   }, [players, formWindow]);
 
-  const visibleRows = useMemo(
+  const thresholdFilteredRows = useMemo(
     () =>
       rankedRows
         .filter((r) => lensFilter === "All" || r.lens === lensFilter)
         .filter((r) => thresholdFilter === null || r.threshold === thresholdFilter),
     [rankedRows, lensFilter, thresholdFilter]
+  );
+
+  const availableMatches = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const r of thresholdFilteredRows) {
+      if (!seen.has(r.match_id)) seen.set(r.match_id, r.match_label);
+    }
+    return Array.from(seen, ([match_id, match_label]) => ({ match_id, match_label }));
+  }, [thresholdFilteredRows]);
+
+  const visibleRows = useMemo(
+    () =>
+      thresholdFilteredRows.filter((r) => matchFilter === null || r.match_id === matchFilter),
+    [thresholdFilteredRows, matchFilter]
   );
 
   const hideOutFilter = <T extends { player_status: string }>(rows: T[]): T[] =>
@@ -1537,6 +1556,36 @@ export default function ContentSheet() {
                 }`}
               >
                 {t}+
+              </button>
+            ))}
+          </div>
+        )}
+
+        {storyType !== "Form" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
+            <button
+              onClick={() => setMatchFilter(null)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                matchFilter === null
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              All
+            </button>
+            {availableMatches.map((m) => (
+              <button
+                key={m.match_id}
+                onClick={() => setMatchFilter(m.match_id)}
+                title={m.match_label}
+                className={`max-w-[180px] truncate px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  matchFilter === m.match_id
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {m.match_label}
               </button>
             ))}
           </div>
