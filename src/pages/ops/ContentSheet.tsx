@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -94,6 +95,177 @@ function makeBrief(r: RankedRow): string {
   return `${r.player_name} | ${r.team_name} v ${opp} | ${r.threshold}+ ${r.lens} | ${r.hits}/${r.games} (${r.rate}%)${avg} | ${tag}`;
 }
 
+function buildHooks(r: RankedRow): [string, string][] {
+  const lensUpper = r.lens.toUpperCase();
+  const t = r.threshold;
+  if (r.rate === 100) {
+    return [
+      ["HE HASN'T MISSED.", "ONCE."],
+      [`${r.hits} FROM ${r.games}.`, `${t}+ ${lensUpper}.`],
+      ["PERFECT SEASON.", `${t}+ ${lensUpper}.`],
+    ];
+  }
+  const misses = r.games - r.hits;
+  return [
+    [`${r.hits} OF HIS LAST ${r.games}.`, `${t}+ ${lensUpper}.`],
+    [`${r.rate}%.`, `${t}+ ${lensUpper}.`],
+    [`ONLY ${misses} MISSES.`, "ALL SEASON."],
+  ];
+}
+
+function NeekoCard({ row, hook }: { row: RankedRow; hook: [string, string] }) {
+  const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
+  const avg = row.season_avg !== null ? row.season_avg.toFixed(1) : "—";
+  return (
+    <div
+      id="neeko-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", left: 0, top: 170, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 118, fontWeight: 800, lineHeight: 1 }}>
+        {hook[0]}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 318, width: 1080, textAlign: "center", color: accent, fontSize: 92, fontWeight: 800, lineHeight: 1 }}>
+        {hook[1]}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 450, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.player_name} · {row.team_name} · v {row.opponent_team_name}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 540,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 50, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>HIT RATE</div>
+        <div style={{ position: "absolute", left: 0, top: 94, width: 880, textAlign: "center", color: accent, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {row.rate}%
+        </div>
+        <div style={{ position: "absolute", left: 0, top: 260, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+          {row.hits} games from {row.games} this season
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 960, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
+        Season average {avg}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1070, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: "#F5C442",
+            borderRadius: 44,
+            padding: "22px 56px",
+            color: "#080808",
+            fontSize: 36,
+            fontWeight: 800,
+          }}
+        >
+          FREE ON THE APP STORE
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1180, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
+  const hooks = useMemo(() => buildHooks(row), [row]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const hook = hooks[hookIdx];
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-card");
+    if (!node) return;
+    setDownloading(true);
+    try {
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `${row.player_name}_${row.lens}_${row.threshold}.png`.replace(/\s+/g, "_");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <select
+            value={hookIdx}
+            onChange={(e) => setHookIdx(Number(e.target.value))}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {hooks.map((h, i) => (
+              <option key={i} value={i}>
+                {h[0]} {h[1]}
+              </option>
+            ))}
+          </select>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <NeekoCard row={row} hook={hook} />
+          </div>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
 export default function ContentSheet() {
@@ -106,6 +278,7 @@ export default function ContentSheet() {
   const [error, setError] = useState<string | null>(null);
   const [lensFilter, setLensFilter] = useState<Lens | "All">("All");
   const [copyState, setCopyState] = useState<string | null>(null);
+  const [cardRow, setCardRow] = useState<RankedRow | null>(null);
 
   // Step 1: resolve current round + fixtures
   useEffect(() => {
@@ -378,6 +551,13 @@ export default function ContentSheet() {
                       >
                         {copied ? "Copied!" : "⧉"}
                       </button>
+                      <button
+                        onClick={() => setCardRow(r)}
+                        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                        title="Export PNG"
+                      >
+                        PNG
+                      </button>
                     </div>
                   );
                 })}
@@ -386,6 +566,7 @@ export default function ContentSheet() {
           })}
         </div>
       )}
+      {cardRow && <CardModal row={cardRow} onClose={() => setCardRow(null)} />}
     </div>
   );
 }
