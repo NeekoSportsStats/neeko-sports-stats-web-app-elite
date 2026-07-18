@@ -102,6 +102,15 @@ const KEY_THRESHOLDS: Record<Lens, number[]> = {
   fantasy: [80, 100, 120],
 };
 
+const FORM_DELTA_MIN: Record<string, number> = {
+  fantasy:   10,
+  disposals: 4,
+  kicks:      3,
+  marks:      2,
+  tackles:    2,
+  goals:      0.5,
+};
+
 const LENS_LABELS: Record<Lens, string> = {
   disposals: "Disposals",
   goals: "Goals",
@@ -214,9 +223,7 @@ type PriceStory = PriceRow["story"];
 
 const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: string; text: string }> = {
   trap:      { label: "PRICE TRAP",  badge: "TRAP",      bg: "#EF4444", text: "#FFFFFF" },
-  bargain:   { label: "BARGAIN",      
-  }
-}badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
+  bargain:   { label: "BARGAIN",     badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
   expensive: { label: "EXPENSIVE",    badge: "EXPENSIVE", bg: "#F5C442", text: "#080808" },
   value:     { label: "VALUE PICK",   badge: "VALUE",    bg: "#3B82F6", text: "#FFFFFF" },
 };
@@ -1752,7 +1759,6 @@ export default function ContentSheet() {
   const formRows = useMemo<FormRow[]>(() => {
     const byPlayer = new Map<string, StatBoardPlayer>();
     for (const p of players) {
-      if (p.lens !== "fantasy") continue;
       const key = `${p.player_name}__${p.lens}__${p.match_id}`;
       if (byPlayer.has(key)) continue;
       byPlayer.set(key, p);
@@ -1767,7 +1773,8 @@ export default function ContentSheet() {
       const deltaL5 = l5 - sa;
       const deltaL3 = l3 - sa;
       const delta = formWindow === "L3" ? deltaL3 : deltaL5;
-      if (Math.abs(delta) < 10) continue;
+      const deltaMin = FORM_DELTA_MIN[p.lens] ?? 10;
+      if (Math.abs(delta) < deltaMin) continue;
       out.push({
         player_name: p.player_name,
         team_name: p.team_name,
