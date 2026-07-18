@@ -1554,6 +1554,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
 export default function ContentSheet() {
   const [round, setRound] = useState<number | null>(null);
+  const [currentRound, setCurrentRound] = useState<number | null>(null);
   const [fixtures, setFixtures] = useState<StatBoardMatch[]>([]);
   const [completedCalls, setCompletedCalls] = useState(0);
   const [totalCalls, setTotalCalls] = useState(0);
@@ -1585,7 +1586,8 @@ export default function ContentSheet() {
   const [multiCardOpen, setMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
 
-  // Step 1: resolve current round + fixtures
+  // Step 1a: resolve current round once on mount. Available rounds are
+  // 1..currentRound (completed + in-progress); future rounds have no stats.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1595,27 +1597,47 @@ export default function ContentSheet() {
           { p_season: 2026 }
         );
         if (roundErr) { setError(roundErr.message); return; }
-        const currentRound = roundData?.[0]?.current_round as number | undefined;
-        if (!currentRound) { setError("Could not resolve current round"); return; }
+        const r = roundData?.[0]?.current_round as number | undefined;
+        if (!r) { setError("Could not resolve current round"); return; }
         if (cancelled) return;
-        setRound(currentRound);
+        setCurrentRound(r);
+        setRound(r);
+      } finally {
+        if (!cancelled) {
+          // fixtures effect will clear loadingFixtures once data lands
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
+  // Step 1b: fetch fixtures whenever the selected round changes.
+  // p_round must be explicit — passing null returns only the current round.
+  useEffect(() => {
+    if (round === null) return;
+    let cancelled = false;
+    setLoadingFixtures(true);
+    (async () => {
+      try {
         const { data: matchData, error: matchErr } = await supabase!.rpc(
           "get_stat_board_matches",
-          { p_season: 2026, p_round: null }
+          { p_season: 2026, p_round: round }
         );
         if (matchErr) { setError(matchErr.message); return; }
         if (cancelled) return;
-        const matches = (matchData ?? []) as StatBoardMatch[];
-        const roundMatches = matches.filter((m) => m.week === currentRound);
-        setFixtures(roundMatches);
-        setLoadingFixtures(false);
+        setFixtures((matchData ?? []) as StatBoardMatch[]);
       } finally {
         if (!cancelled) setLoadingFixtures(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [round]);
+
+  // Available rounds: 1..currentRound. Built once currentRound is known.
+  const availableRounds = useMemo(
+    () => (currentRound ? Array.from({ length: currentRound }, (_, i) => currentRound - i) : []),
+    [currentRound]
+  );
 
   // Rankings enrichment: fetch once on mount, store in ref (no re-renders)
   useEffect(() => {
@@ -2019,6 +2041,21 @@ export default function ContentSheet() {
               {s === "HitRates" ? "Hit Rates" : s}
             </button>
           ))}
+          <div className="flex items-center gap-2 ml-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Round</label>
+            <select
+              value={round ?? currentRound ?? 19}
+              onChange={(e) => setRound(Number(e.target.value))}
+              disabled={availableRounds.length === 0 || loadingFixtures}
+              className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-40"
+            >
+              {availableRounds.map((r) => (
+                <option key={r} value={r}>
+                  {r === currentRound ? `R${r} (current)` : `R${r}`}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sort</label>
