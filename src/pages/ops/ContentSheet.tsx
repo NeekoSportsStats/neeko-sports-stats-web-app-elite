@@ -1141,6 +1141,15 @@ export default function ContentSheet() {
   const [formWindow, setFormWindow] = useState<FormWindow>("L5");
   const [hideOut, setHideOut] = useState(false);
   const [thresholdFilter, setThresholdFilter] = useState<number | null>(null);
+
+  const availableThresholds = useMemo(() => {
+    const lensRows = rankedRows.filter(
+      (r) => lensFilter === "All" || r.lens === lensFilter
+    );
+    return Array.from(new Set(lensRows.map((r) => r.threshold))).sort((a, b) => b - a);
+  }, [rankedRows, lensFilter]);
+
+  useEffect(() => { setThresholdFilter(null); }, [lensFilter]);
   const [sortView, setSortView] = useState("default");
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
@@ -1517,7 +1526,7 @@ export default function ContentSheet() {
             >
               All
             </button>
-            {[20, 25, 30].map((t) => (
+            {availableThresholds.map((t) => (
               <button
                 key={t}
                 onClick={() => setThresholdFilter(t)}
