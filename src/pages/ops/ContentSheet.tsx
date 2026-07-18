@@ -48,6 +48,7 @@ interface FormRow {
   team_name: string;
   opponent_team_name: string;
   position: string;
+  lens: string;
   season_avg: number;
   last_5_avg: number;
   last_3_avg: number;
@@ -152,54 +153,141 @@ function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts:
 
 function applyHitSub(t: string, r: RankedRow): string {
   const misses = r.games - r.hits;
+  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
   return t
     .replace(/\{HITS\}/g, String(r.hits))
     .replace(/\{GAMES\}/g, String(r.games))
     .replace(/\{RATE\}/g, String(r.rate))
     .replace(/\{MISSES\}/g, String(misses))
     .replace(/\{THR\}/g, String(r.threshold))
-    .replace(/\{LENS\}/g, r.lens.toUpperCase());
+    .replace(/\{LENS\}/g, r.lens.toUpperCase())
+    .replace(/\{SURNAME\}/g, surname)
+    .replace(/\{SZN\}/g, r.season_avg !== null ? r.season_avg.toFixed(1) : "—");
 }
 
 function buildHitBank(r: RankedRow): HookGroup[] {
-  const pair = (a: string, b: string): [string, string] =>
-    [applyHitSub(a, r).toUpperCase(), applyHitSub(b, r).toUpperCase()];
-  if (r.rate === 100) {
-    return [
-      { label: "Perfect", hooks: [
-        pair("HE HASN'T MISSED.", "ONCE."),
-        pair("{HITS} FROM {GAMES}.", "{THR}+ {LENS}."),
-        pair("PERFECT SEASON.", "{THR}+ {LENS}."),
-        pair("100%.", "ALL {GAMES} GAMES."),
-        pair("NOT ONCE.", "ALL SEASON."),
-        pair("EVERY GAME.", "NO EXCEPTIONS."),
-        pair("HE DOESN'T", "MISS."),
-      ]},
-      { label: "Quieter", hooks: [
-        pair("ZERO MISSES.", "{GAMES} GAMES."),
-        pair("NEVER BELOW", "{THR}."),
-        pair("THE FLOOR", "NOBODY TALKS ABOUT."),
-        pair("{GAMES} GAMES.", "{GAMES} HITS."),
-        pair("THE MOST RELIABLE", "{LENS} IN THE GAME."),
-      ]},
-    ];
-  }
+  const split = (s: string): [string, string] => {
+    const idx = s.indexOf(". ");
+    if (idx !== -1) return [s.slice(0, idx + 1), s.slice(idx + 2)];
+    const words = s.split(" ");
+    if (words.length <= 2) return [s, ""];
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  };
+  const pair = (s: string): [string, string] => {
+    const [a, b] = split(s);
+    return [applyHitSub(a, r).toUpperCase(), applyHitSub(b, r).toUpperCase()];
+  };
   return [
-    { label: "The number", hooks: [
-      pair("{HITS} OF HIS LAST {GAMES}.", "{THR}+ {LENS}."),
-      pair("{RATE}%.", "{THR}+ {LENS}."),
-      pair("ONLY {MISSES} MISSES.", "ALL SEASON."),
-      pair("{HITS} FROM {GAMES}.", "THAT'S {RATE}%."),
-      pair("{HITS}/{GAMES}.", "{THR}+ {LENS}."),
-      pair("{RATE}% OF THE TIME.", "{THR}+ {LENS}."),
+    { label: "The Number", hooks: [
+      pair("{HITS} OF HIS LAST {GAMES}. {THR}+ {LENS}."),
+      pair("{RATE}%. {THR}+ {LENS}."),
+      pair("ONLY {MISSES} MISSES. ALL SEASON."),
+      pair("{HITS} FROM {GAMES}. THAT'S {RATE}%."),
+      pair("{HITS}/{GAMES}. {THR}+ {LENS}."),
+      pair("{RATE}% OF THE TIME. {THR}+ {LENS}."),
+      pair("{MISSES} MISSES IN {GAMES} GAMES."),
+      pair("HIT {HITS} TIMES. MISSED {MISSES}."),
+      pair("{GAMES} GAMES. {HITS} HITS. {RATE}%."),
+      pair("DONE IT {HITS} TIMES THIS SEASON."),
+      pair("{RATE}%. DON'T ARGUE WITH THE DATA."),
+      pair("{HITS} OUT OF {GAMES}. SEASON AVG {SZN}."),
+      pair("THE NUMBER IS {RATE}%."),
+      pair("{MISSES} TIMES HE DIDN'T. {HITS} TIMES HE DID."),
+      pair("{GAMES} GAMES. {HITS} OVER {THR}. {MISSES} UNDER."),
+      pair("{RATE}%. SEASON AVERAGE {SZN}."),
+      pair("SEASON AVG {SZN}. HIT RATE {RATE}%."),
+      pair("{HITS} HITS. {MISSES} MISSES. {RATE}%."),
+      pair("IN {GAMES} GAMES HE'S HIT {HITS}."),
+      pair("{THR}+ {LENS}. {RATE}% THIS SEASON."),
     ]},
-    { label: "Quieter", hooks: [
-      pair("HE DOES IT", "ALMOST EVERY WEEK."),
-      pair("{MISSES} MISSES.", "{GAMES} GAMES."),
-      pair("IT'S NOT", "A FLUKE."),
-      pair("NEARLY", "EVERY WEEK."),
-      pair("HE'S DONE IT", "{HITS} TIMES."),
-      pair("THE NUMBERS", "SAY IT."),
+    { label: "Quiet Confidence", hooks: [
+      pair("HE DOES IT ALMOST EVERY WEEK."),
+      pair("IT'S NOT A FLUKE."),
+      pair("THE FORM IS THERE."),
+      pair("{SURNAME} SHOWS UP."),
+      pair("NEARLY EVERY WEEK."),
+      pair("HE'S BEEN HERE BEFORE."),
+      pair("THE NUMBERS DON'T LIE."),
+      pair("CONSISTENT. ALL SEASON."),
+      pair("WEEK IN. WEEK OUT."),
+      pair("HE HASN'T GONE AWAY."),
+      pair("THE DATA BACKS IT."),
+      pair("THIS ISN'T NEW."),
+      pair("IT KEEPS HAPPENING."),
+      pair("SAME STORY. EVERY WEEK."),
+      pair("HE'S BUILT DIFFERENT."),
+      pair("THE EVIDENCE IS CLEAR."),
+      pair("THIS IS WHAT HE DOES."),
+      pair("NO SURPRISE HERE."),
+      pair("THE TRACK RECORD IS REAL."),
+      pair("{HITS} TIMES. SAME PLAYER. SAME RESULT."),
+    ]},
+    { label: "Hype", hooks: [
+      pair("BACK IT."),
+      pair("THIS WEEK? BACK IT."),
+      pair("DON'T OVERTHINK IT."),
+      pair("IT'S SIMPLE. {RATE}%."),
+      pair("STOP LOOKING. START BACKING."),
+      pair("THE CASE IS CLOSED."),
+      pair("LOCK. IT. IN."),
+      pair("YOUR CALL. HIS TRACK RECORD."),
+      pair("RUNNING HOT. DON'T FADE HIM."),
+      pair("HE'S COOKING."),
+      pair("FORM OF HIS LIFE."),
+      pair("LIGHTS OUT."),
+      pair("UNSTOPPABLE RIGHT NOW."),
+      pair("ON FIRE. ALL SEASON."),
+      pair("THE NUMBERS ARE SCREAMING."),
+      pair("DON'T LEAVE HIM OUT."),
+      pair("HE'S THAT GUY RIGHT NOW."),
+      pair("THE HOTTEST PLAYER IN THE COMP."),
+      pair("ELITE. NO OTHER WORD FOR IT."),
+      pair("{RATE}%. AND HE'S NOT SLOWING DOWN."),
+    ]},
+    { label: "Contrarian", hooks: [
+      pair("EVERYONE KNOWS. FEW ACT."),
+      pair("THE OBVIOUS PLAY ISN'T OBVIOUS TO EVERYONE."),
+      pair("WHILE OTHERS OVERTHINK IT."),
+      pair("{RATE}% AND PEOPLE ARE STILL SLEEPING."),
+      pair("MOST PEOPLE WON'T ACT ON THIS."),
+      pair("THE DATA SAYS YES. DOES YOUR TEAM?"),
+      pair("SLEEPING ON {SURNAME} IS A MISTAKE."),
+      pair("NOT FLASHY. JUST CONSISTENT."),
+      pair("QUIET ACHIEVER. LOUD NUMBERS."),
+      pair("NO ONE TALKS ABOUT THIS ENOUGH."),
+      pair("HE'S BEEN DOING THIS FOR MONTHS."),
+      pair("THE STAT EVERYONE IGNORES."),
+      pair("UNDER THE RADAR. ON THE STATS."),
+      pair("{RATE}%. CHECK YOUR TEAM."),
+      pair("THE CASE EVERYONE'S MISSING."),
+      pair("IT'S IN THE DATA. IS IT IN YOUR TEAM?"),
+      pair("NOT A TREND. A TRACK RECORD."),
+      pair("THE DATA FAVOURS {SURNAME}."),
+      pair("THIS IS THE EDGE."),
+      pair("{HITS} HITS. STILL BEING OVERLOOKED."),
+    ]},
+    { label: "Honest", hooks: [
+      pair("JUDGE IT YOURSELF."),
+      pair("WE SHOW THE DATA. YOU MAKE THE CALL."),
+      pair("{MISSES} MISSES. WE COUNT THOSE TOO."),
+      pair("NOT A GUARANTEE. A RATE."),
+      pair("THE MISSES ARE IN THERE."),
+      pair("MAKE YOUR OWN CALL."),
+      pair("THE DATA IS THE DATA."),
+      pair("WE POST THE MISSES TOO."),
+      pair("{RATE}%. NOT 100%. NEVER 100%."),
+      pair("DRAW YOUR OWN CONCLUSIONS."),
+      pair("THE HONEST PICTURE."),
+      pair("THIS IS WHAT THE DATA SHOWS."),
+      pair("{HITS} HITS. {MISSES} MISSES. BOTH MATTER."),
+      pair("NO SPIN. JUST NUMBERS."),
+      pair("SEE THE FULL PICTURE."),
+      pair("WE DON'T HIDE THE MISSES."),
+      pair("REAL DATA. YOUR DECISION."),
+      pair("THE NUMBERS. NOTHING ELSE."),
+      pair("{RATE}%. WHAT YOU DO WITH IT IS UP TO YOU."),
+      pair("TRANSPARENCY. THAT'S THE EDGE."),
     ]},
   ];
 }
@@ -213,50 +301,133 @@ function applyFormSub(t: string, r: FormRow, formWindow: FormWindow): string {
     .replace(/\{SZN\}/g, r.season_avg.toFixed(1))
     .replace(/\{L5\}/g, l5)
     .replace(/\{DELTA\}/g, delta)
+    .replace(/\{LENS\}/g, r.lens.toUpperCase())
     .replace(/\{N\}/g, String(r.games_played));
 }
 
 function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
-  const pair = (a: string, b: string): [string, string] =>
-    [applyFormSub(a, r, formWindow).toUpperCase(), applyFormSub(b, r, formWindow).toUpperCase()];
-  if (r.tag === "COLD") {
-    return [
-      { label: "The fall", hooks: [
-        pair("CHECK YOUR TEAM.", "HE'S COOKED."),
-        pair("THE BIGGEST FALL", "IN THE GAME."),
-        pair("{SURNAME} IS", "IN FREEFALL."),
-        pair("FROM {SZN}", "TO {L5}."),
-        pair("HIS WORST", "FIVE GAMES."),
-        pair("{DELTA}.", "IN FIVE GAMES."),
-        pair("HE'S NOT", "THE SAME PLAYER."),
-      ]},
-      { label: "Quieter", hooks: [
-        pair("THE FALL", "NOBODY SAW."),
-        pair("IT'S NOT", "A BLIP."),
-        pair("HE WAS {SZN}.", "NOW HE'S {L5}."),
-        pair("THE DROP", "IS REAL."),
-        pair("STILL IN", "MOST TEAMS."),
-        pair("{SURNAME} HAS", "FALLEN OFF."),
-      ]},
-    ];
-  }
+  const split = (s: string): [string, string] => {
+    const idx = s.indexOf(". ");
+    if (idx !== -1) return [s.slice(0, idx + 1), s.slice(idx + 2)];
+    const words = s.split(" ");
+    if (words.length <= 2) return [s, ""];
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  };
+  const pair = (s: string): [string, string] => {
+    const [a, b] = split(s);
+    return [applyFormSub(a, r, formWindow).toUpperCase(), applyFormSub(b, r, formWindow).toUpperCase()];
+  };
   return [
-    { label: "The rise", hooks: [
-      pair("NOBODY'S TALKING", "ABOUT THIS."),
-      pair("THE BIGGEST RISER", "IN THE GAME."),
-      pair("HE'S FOUND", "SOMETHING."),
-      pair("FROM {SZN}", "TO {L5}."),
-      pair("HIS BEST", "FIVE GAMES."),
-      pair("{DELTA}.", "IN FIVE GAMES."),
-      pair("{SURNAME} IS", "FLYING."),
+    { label: "The Number", hooks: [
+      pair("{DELTA} ABOVE SEASON AVERAGE. {LENS}."),
+      pair("UP {DELTA} ON HIS SEASON AVG. {LENS}."),
+      pair("{L5} {LENS} AVERAGE. LAST 5 GAMES."),
+      pair("SEASON AVG {SZN}. LAST 5 AVG {L5}."),
+      pair("{DELTA} ABOVE HIS USUAL. {LENS}."),
+      pair("RUNNING {DELTA} ABOVE AVERAGE."),
+      pair("{L5} IN HIS LAST 5. SEASON AVG {SZN}."),
+      pair("THE GAP IS {DELTA}. {LENS}."),
+      pair("{DELTA} POINTS ABOVE HIS SEASON AVG."),
+      pair("LAST 5 AVG: {L5}. SEASON AVG: {SZN}."),
+      pair("{LENS}. THE FORM IS REAL. {L5} LAST 5."),
+      pair("UP {DELTA} ON AVERAGE. LAST 5 GAMES."),
+      pair("THE {LENS} FORM IS {L5} AVG."),
+      pair("{L5} {LENS}. THAT'S {DELTA} ABOVE HIS NORM."),
+      pair("IN FORM. {LENS}. {L5} LAST 5."),
+      pair("THE NUMBERS SAY {L5}. SEASON SAYS {SZN}."),
+      pair("{DELTA} ABOVE. {LENS}. RIGHT NOW."),
+      pair("FORM AVG {L5}. SEASON AVG {SZN}."),
+      pair("THE DIFFERENCE IS {DELTA}. {LENS}."),
+      pair("{LENS}. LAST 5: {L5}. NORM: {SZN}."),
     ]},
-    { label: "Quieter", hooks: [
-      pair("THE FORM", "NOBODY'S SEEN."),
-      pair("HE WAS {SZN}.", "NOW HE'S {L5}."),
-      pair("SOMETHING", "CHANGED."),
-      pair("UNDER", "THE RADAR."),
-      pair("THE JUMP", "IS MASSIVE."),
-      pair("HE'S BACK.", "{DELTA} IN FIVE."),
+    { label: "Quiet Confidence", hooks: [
+      pair("HE DOES IT ALMOST EVERY WEEK."),
+      pair("IT'S NOT A FLUKE."),
+      pair("THE FORM IS THERE."),
+      pair("{SURNAME} SHOWS UP."),
+      pair("NEARLY EVERY WEEK."),
+      pair("HE'S BEEN HERE BEFORE."),
+      pair("THE NUMBERS DON'T LIE."),
+      pair("CONSISTENT. ALL SEASON."),
+      pair("WEEK IN. WEEK OUT."),
+      pair("HE HASN'T GONE AWAY."),
+      pair("THE DATA BACKS IT."),
+      pair("THIS ISN'T NEW."),
+      pair("IT KEEPS HAPPENING."),
+      pair("SAME STORY. EVERY WEEK."),
+      pair("HE'S BUILT DIFFERENT."),
+      pair("THE EVIDENCE IS CLEAR."),
+      pair("THIS IS WHAT HE DOES."),
+      pair("NO SURPRISE HERE."),
+      pair("THE TRACK RECORD IS REAL."),
+      pair("SAME PLAYER. SAME RESULT. TIME AND AGAIN."),
+    ]},
+    { label: "Hype", hooks: [
+      pair("BACK IT."),
+      pair("THIS WEEK? BACK IT."),
+      pair("DON'T OVERTHINK IT."),
+      pair("IT'S SIMPLE. THE DATA IS CLEAR."),
+      pair("STOP LOOKING. START BACKING."),
+      pair("THE CASE IS CLOSED."),
+      pair("LOCK. IT. IN."),
+      pair("YOUR CALL. HIS TRACK RECORD."),
+      pair("RUNNING HOT. DON'T FADE HIM."),
+      pair("HE'S COOKING."),
+      pair("FORM OF HIS LIFE."),
+      pair("LIGHTS OUT."),
+      pair("UNSTOPPABLE RIGHT NOW."),
+      pair("ON FIRE. ALL SEASON."),
+      pair("THE NUMBERS ARE SCREAMING."),
+      pair("DON'T LEAVE HIM OUT."),
+      pair("HE'S THAT GUY RIGHT NOW."),
+      pair("THE HOTTEST PLAYER IN THE COMP."),
+      pair("ELITE. NO OTHER WORD FOR IT."),
+      pair("HOT RIGHT NOW. AND NOT SLOWING DOWN."),
+    ]},
+    { label: "Contrarian", hooks: [
+      pair("EVERYONE KNOWS. FEW ACT."),
+      pair("THE OBVIOUS PLAY ISN'T OBVIOUS TO EVERYONE."),
+      pair("WHILE OTHERS OVERTHINK IT."),
+      pair("PEOPLE ARE STILL SLEEPING ON THIS."),
+      pair("MOST PEOPLE WON'T ACT ON THIS."),
+      pair("THE DATA SAYS YES. DOES YOUR TEAM?"),
+      pair("SLEEPING ON {SURNAME} IS A MISTAKE."),
+      pair("NOT FLASHY. JUST CONSISTENT."),
+      pair("QUIET ACHIEVER. LOUD NUMBERS."),
+      pair("NO ONE TALKS ABOUT THIS ENOUGH."),
+      pair("HE'S BEEN DOING THIS FOR MONTHS."),
+      pair("THE STAT EVERYONE IGNORES."),
+      pair("UNDER THE RADAR. ON THE STATS."),
+      pair("CHECK YOUR TEAM. ARE YOU ON THIS?"),
+      pair("THE CASE EVERYONE'S MISSING."),
+      pair("IT'S IN THE DATA. IS IT IN YOUR TEAM?"),
+      pair("NOT A TREND. A TRACK RECORD."),
+      pair("THE DATA FAVOURS {SURNAME}."),
+      pair("THIS IS THE EDGE."),
+      pair("DOING IT WEEKLY. STILL BEING OVERLOOKED."),
+    ]},
+    { label: "Honest", hooks: [
+      pair("FORM CAN CHANGE. THIS IS THE LAST 5."),
+      pair("NOT EVERY WEEK. BUT RIGHT NOW."),
+      pair("THE FORM IS THERE. JUDGE THE FULL SEASON TOO."),
+      pair("LAST 5 GAMES. THAT'S ALL THIS IS."),
+      pair("FORM WINDOWS SHIFT. THIS ONE'S POINTING UP."),
+      pair("UP {DELTA}. MAKE OF IT WHAT YOU WILL."),
+      pair("THE RECENT DATA SAYS {L5}. SEASON SAYS {SZN}."),
+      pair("WE SHOW THE TREND. YOU CALL THE SHOT."),
+      pair("{DELTA} ABOVE AVERAGE. THAT'S THE HONEST PICTURE."),
+      pair("NOT A PREDICTION. A TREND."),
+      pair("THE MISSES ARE IN THE SEASON AVG TOO."),
+      pair("FORM FADES. RIGHT NOW IT'S REAL."),
+      pair("THE DATA IS THE DATA. LAST 5 GAMES."),
+      pair("NO SPIN. JUST RECENT NUMBERS."),
+      pair("UP {DELTA}. DRAW YOUR OWN CONCLUSIONS."),
+      pair("THIS IS WHAT THE LAST 5 GAMES SHOW."),
+      pair("TRANSPARENT. THE TREND IS {DELTA} ABOVE NORM."),
+      pair("REAL DATA. SHORT WINDOW. YOUR CALL."),
+      pair("THE NUMBERS. LAST 5. NOTHING ELSE."),
+      pair("{DELTA} UP. WHAT YOU DO WITH IT IS UP TO YOU."),
     ]},
   ];
 }
@@ -1046,6 +1217,7 @@ export default function ContentSheet() {
         team_name: p.team_name,
         opponent_team_name: p.opponent_team_name,
         position: (p.position_group ?? "").toUpperCase(),
+        lens: p.lens,
         season_avg: sa,
         last_5_avg: l5,
         last_3_avg: l3,
