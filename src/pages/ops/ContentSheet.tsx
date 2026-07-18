@@ -58,7 +58,7 @@ interface StatBoardPlayer {
 }
 
 type FormWindow = "L5" | "L3";
-type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen";
+type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen" | "Results";
 
 interface FormRow {
   player_name: string;
@@ -206,11 +206,13 @@ const PRICES_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
 const EVERGREEN_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
   o.value === "default" || o.value === "consistency" || o.value === "rank" || o.value === "value"
 );
+const RESULTS_SORTS: SortOption[] = SORT_OPTIONS.filter((o) => o.value === "default");
 
 function sortOptionsFor(storyType: StoryType): SortOption[] {
   if (storyType === "Form") return FORM_SORTS;
   if (storyType === "Prices") return PRICES_SORTS;
   if (storyType === "Evergreen") return EVERGREEN_SORTS;
+  if (storyType === "Results") return RESULTS_SORTS;
   return HIT_RATE_SORTS;   // "HitRates" and "All"
 }
 
@@ -255,6 +257,32 @@ const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: s
   bargain:   { label: "BARGAIN",     badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
   expensive: { label: "EXPENSIVE",    badge: "EXPENSIVE", bg: "#F5C442", text: "#080808" },
   value:     { label: "VALUE PICK",   badge: "VALUE",    bg: "#3B82F6", text: "#FFFFFF" },
+};
+
+type AccuracySummary = {
+  round_number: number;
+  round_label: string;
+  games_count: number;
+  avg_mae: number;
+  within_10_pct: number;
+  over_projected_pct: number;
+  under_projected_pct: number;
+  best_call_name: string;
+  best_call_projected: number;
+  best_call_actual: number;
+  worst_call_name: string;
+  worst_call_projected: number;
+  worst_call_actual: number;
+};
+
+type AccuracyExample = {
+  player_name: string;
+  team_name: string;
+  projection: number;
+  actual_score: number;
+  error: number;
+  accuracy_tier: string;
+  round_label: string;
 };
 
 type EvergreenStory = "elite" | "risk" | "top_ranked" | "rising";
@@ -1656,6 +1684,229 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   );
 }
 
+function ResultsSummaryCard({ summary, hook, cta }: { summary: AccuracySummary; hook: [string, string]; cta: string }) {
+  return (
+    <div
+      id="neeko-results-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
+      )}
+
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        ROUND RECAP · R{summary.round_number}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 480,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 50, width: 293, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>TRACKED</div>
+        <div style={{ position: "absolute", left: 0, top: 120, width: 293, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {summary.games_count}
+        </div>
+        <div style={{ position: "absolute", left: 293, top: 50, width: 294, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>WITHIN 10</div>
+        <div style={{ position: "absolute", left: 293, top: 120, width: 294, textAlign: "center", color: "#22C55E", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {summary.within_10_pct}%
+        </div>
+        <div style={{ position: "absolute", left: 587, top: 50, width: 293, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>AVG ERROR</div>
+        <div style={{ position: "absolute", left: 587, top: 120, width: 293, textAlign: "center", color: "#F5C442", fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+          {Number(summary.avg_mae).toFixed(1)}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 900, width: 1080, textAlign: "center", color: "#22C55E", fontSize: 40, fontWeight: 800, lineHeight: 1.2 }}>
+        ✓ {summary.best_call_name}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 960, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+        {Number(summary.best_call_projected).toFixed(0)} proj · {Number(summary.best_call_actual).toFixed(0)} actual
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1020, width: 1080, textAlign: "center", color: "#EF4444", fontSize: 40, fontWeight: 800, lineHeight: 1.2 }}>
+        ✗ {summary.worst_call_name}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 1080, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+        {Number(summary.worst_call_projected).toFixed(0)} proj · {Number(summary.worst_call_actual).toFixed(0)} actual
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1160, width: 1080, textAlign: "center", color: "#A1A1AA", fontSize: 34, fontWeight: 700 }}>
+        R{summary.round_number}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1240, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onClose: () => void }) {
+  const syntheticRow = useMemo<PriceRow>(() => ({
+    player_name: summary.best_call_name ?? "Neeko",
+    team_name: "",
+    position: "",
+    price: 0,
+    breakeven: 0,
+    projection: Number(summary.best_call_projected) || 0,
+    value_score: 0,
+    season_avg: 0,
+    last_5_avg: 0,
+    be_delta: 0,
+    matchup_label: null,
+    status: "active",
+    story: "value",
+  }), [summary]);
+  const groups = useMemo(() => buildPriceBank(syntheticRow), [syntheticRow]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-results-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        fontEmbedCSS: css,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `neeko_results_R${summary.round_number}.png`;
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function buildMultiHooks(n: number): [string, string][] {
   return [
     [`${n} PLAYERS.`, "ONE ROUND."],
@@ -2057,6 +2308,11 @@ export default function ContentSheet() {
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
   const [priceCardRow, setPriceCardRow] = useState<PriceRow | null>(null);
   const [evergreenCardRow, setEvergreenCardRow] = useState<EvergreenRow | null>(null);
+  const [resultsData, setResultsData] = useState<{
+    summary: AccuracySummary | null;
+    examples: AccuracyExample[];
+  }>({ summary: null, examples: [] });
+  const [resultsCardOpen, setResultsCardOpen] = useState(false);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
@@ -2094,6 +2350,7 @@ export default function ContentSheet() {
     setLoadingFixtures(true);
     setCompletedCalls(0);
     setTotalCalls(54);
+    setResultsData({ summary: null, examples: [] });
     (async () => {
       try {
         const { data: matchData, error: matchErr } = await supabase!.rpc(
@@ -2155,6 +2412,25 @@ export default function ContentSheet() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Results: fetch round accuracy summary + best-call examples when Results tab active.
+  // Re-fires on round change (the [round] effect above resets resultsData to null).
+  useEffect(() => {
+    if (storyType !== "Results") return;
+    let cancelled = false;
+    (async () => {
+      const [summaryRes, examplesRes] = await Promise.all([
+        supabase!.rpc("get_accuracy_round_summary", { p_season: 2026, p_round: round ?? null }),
+        supabase!.rpc("get_projection_accuracy_examples", { limit_n: 10 }),
+      ]);
+      if (cancelled) return;
+      setResultsData({
+        summary: (summaryRes.data?.[0] as AccuracySummary) ?? null,
+        examples: (examplesRes.data as AccuracyExample[]) ?? [],
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [storyType, round]);
 
   // Step 2: fire 54 calls (9 matches × 6 lenses), render progressively
   useEffect(() => {
@@ -2540,13 +2816,13 @@ export default function ContentSheet() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (loadingFixtures) {
+  if (loadingFixtures && storyType !== "Results") {
     return <div className="py-20 text-center text-xs text-zinc-500">Loading fixtures…</div>;
   }
-  if (error) {
+  if (error && storyType !== "Results") {
     return <div className="py-10 text-center text-xs text-red-400">{error}</div>;
   }
-  if (fixtures.length === 0) {
+  if (fixtures.length === 0 && storyType !== "Results") {
     return <div className="py-10 text-center text-xs text-zinc-500">No fixtures found for round {round}.</div>;
   }
 
@@ -2574,7 +2850,7 @@ export default function ContentSheet() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form", "Prices", "Evergreen"] as StoryType[]).map((s) => (
+          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results"] as StoryType[]).map((s) => (
             <button
               key={s}
               onClick={() => setStoryType(s)}
@@ -2627,7 +2903,7 @@ export default function ContentSheet() {
           </div>
         </div>
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -2663,7 +2939,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -2692,7 +2968,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Prices" && storyType !== "Evergreen" && (
+        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
@@ -2933,6 +3209,54 @@ export default function ContentSheet() {
         <MultiCardModal stack={stack} onClose={() => setMultiCardOpen(false)} />
       )}
 
+      {storyType === "Results" && (
+        <div className="space-y-4">
+          {resultsData.summary === null ? (
+            <div className="py-10 flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setResultsCardOpen(true)}
+                className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
+              >
+                Download Summary Card · R{resultsData.summary.round_number}
+              </button>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                  Best calls (R{resultsData.summary.round_number})
+                </div>
+                <div className="grid grid-cols-6 gap-2 px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div>Player</div>
+                  <div>Team</div>
+                  <div className="text-right">Projected</div>
+                  <div className="text-right">Actual</div>
+                  <div className="text-right">Error</div>
+                  <div className="text-right">Tier</div>
+                </div>
+                {[...resultsData.examples]
+                  .sort((a, b) => Number(a.error) - Number(b.error))
+                  .map((ex, i) => (
+                    <div
+                      key={`${ex.player_name}-${i}`}
+                      className="grid grid-cols-6 gap-2 px-3 py-2 text-xs text-zinc-200 bg-zinc-900/60 border border-zinc-800 rounded-lg"
+                    >
+                      <div className="truncate">{ex.player_name}</div>
+                      <div className="truncate text-zinc-400">{ex.team_name}</div>
+                      <div className="text-right">{Number(ex.projection).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.actual_score).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.error).toFixed(1)}</div>
+                      <div className="text-right">{ex.accuracy_tier}</div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {storyType === "Prices" && (
         <div className="space-y-6">
           {priceRows.length === 0 && (
@@ -3047,6 +3371,10 @@ export default function ContentSheet() {
 
       {evergreenCardRow && (
         <EvergreenCardModal row={evergreenCardRow} onClose={() => setEvergreenCardRow(null)} />
+      )}
+
+      {resultsCardOpen && resultsData.summary && (
+        <ResultsCardModal summary={resultsData.summary} onClose={() => setResultsCardOpen(false)} />
       )}
     </div>
   );
