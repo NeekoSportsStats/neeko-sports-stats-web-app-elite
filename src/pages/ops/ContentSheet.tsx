@@ -58,7 +58,7 @@ interface StatBoardPlayer {
 }
 
 type FormWindow = "L5" | "L3";
-type StoryType = "All" | "HitRates" | "Form" | "Prices";
+type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen";
 
 interface FormRow {
   player_name: string;
@@ -175,15 +175,17 @@ const CTA_OPTIONS = [
 ] as const;
 
 const SORT_OPTIONS = [
-  { value: "default",    label: "Default" },
-  { value: "hot",        label: "Hot 🔥" },
-  { value: "cold",       label: "Cold 🧊" },
-  { value: "l5",         label: "L5 Avg" },
-  { value: "l3",         label: "L3 Avg" },
-  { value: "value",      label: "Value 💎" },
-  { value: "overrated",  label: "Overrated 📉" },
-  { value: "expensive",  label: "Expensive 💸" },
-  { value: "be",         label: "BE Pressure ⚠️" },
+  { value: "default",       label: "Default" },
+  { value: "hot",           label: "Hot 🔥" },
+  { value: "cold",          label: "Cold 🧊" },
+  { value: "l5",            label: "L5 Avg" },
+  { value: "l3",            label: "L3 Avg" },
+  { value: "value",         label: "Value 💎" },
+  { value: "overrated",     label: "Overrated 📉" },
+  { value: "expensive",     label: "Expensive 💸" },
+  { value: "be",            label: "BE Pressure ⚠️" },
+  { value: "consistency",   label: "Consistency ↓" },
+  { value: "rank",          label: "Rank ↑" },
 ] as const;
 
 type SortOption = (typeof SORT_OPTIONS)[number];
@@ -201,10 +203,14 @@ const FORM_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
 const PRICES_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
   o.value === "default" || o.value === "value" || o.value === "be" || o.value === "expensive" || o.value === "overrated"
 );
+const EVERGREEN_SORTS: SortOption[] = SORT_OPTIONS.filter((o) =>
+  o.value === "default" || o.value === "consistency" || o.value === "rank" || o.value === "value"
+);
 
 function sortOptionsFor(storyType: StoryType): SortOption[] {
   if (storyType === "Form") return FORM_SORTS;
   if (storyType === "Prices") return PRICES_SORTS;
+  if (storyType === "Evergreen") return EVERGREEN_SORTS;
   return HIT_RATE_SORTS;   // "HitRates" and "All"
 }
 
@@ -220,6 +226,9 @@ type RankingsEntry = {
   team_name: string | null;
   matchup_label: string | null;
   status: string | null;
+  consistency: number | null;
+  consistency_tier: string | null;
+  rank_position: number | null;
 };
 type RankingsLookup = Map<string, RankingsEntry>;
 
@@ -247,6 +256,45 @@ const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: s
   expensive: { label: "EXPENSIVE",    badge: "EXPENSIVE", bg: "#F5C442", text: "#080808" },
   value:     { label: "VALUE PICK",   badge: "VALUE",    bg: "#3B82F6", text: "#FFFFFF" },
 };
+
+type EvergreenStory = "elite" | "risk" | "top_ranked" | "rising";
+
+type EvergreenRow = {
+  player_name: string;
+  team_name: string;
+  position: string;
+  price: number;
+  consistency: number;
+  consistency_tier: string | null;
+  rank_position: number;
+  season_avg: number;
+  last_5_avg: number;
+  value_score: number;
+  matchup_label: string | null;
+  status: string;
+  story: EvergreenStory;
+};
+
+const EVERGREEN_STORY_META: Record<EvergreenStory, { label: string; badge: string; bg: string; text: string }> = {
+  elite:       { label: "ELITE CONSISTENCY", badge: "ELITE",      bg: "#22C55E", text: "#FFFFFF" },
+  risk:        { label: "CONSISTENCY RISK",  badge: "RISK",       bg: "#EF4444", text: "#FFFFFF" },
+  top_ranked:  { label: "TOP RANKED",        badge: "TOP 30",     bg: "#F5C442", text: "#080808" },
+  rising:      { label: "RISING FORM",       badge: "RISING",     bg: "#3B82F6", text: "#FFFFFF" },
+};
+
+// Assign an evergreen story to a player. First match wins.
+// elite:      consistency >= 75
+// risk:       consistency < 45
+// top_ranked: rank_position <= 30
+// rising:     last_5_avg > season_avg * 1.10
+// Players matching none are excluded upstream.
+function assignEvergreenStory(row: Omit<EvergreenRow, "story">): EvergreenStory | null {
+  if (row.consistency >= 75) return "elite";
+  if (row.consistency < 45) return "risk";
+  if (row.rank_position <= 30) return "top_ranked";
+  if (row.last_5_avg > row.season_avg * 1.10) return "rising";
+  return null;
+}
 
 // Assign a price story to a player. First match wins.
 // trap:      be_delta >= 20 AND price >= 500000 (pricey player under projected pressure)
@@ -1048,6 +1096,335 @@ function buildPriceBank(r: PriceRow): HookGroup[] {
   return groups;
 }
 
+function buildEvergreenBank(r: EvergreenRow): HookGroup[] {
+  const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
+  const meta = EVERGREEN_STORY_META[r.story];
+  const consistency = r.consistency.toFixed(0);
+  const rank = String(r.rank_position);
+  const sa = r.season_avg.toFixed(1);
+  const l5 = r.last_5_avg.toFixed(1);
+  const sub = (t: string) =>
+    t.replace(/\{SURNAME\}/g, surname)
+      .replace(/\{CONS\}/g, consistency)
+      .replace(/\{RANK\}/g, rank)
+      .replace(/\{SA\}/g, sa)
+      .replace(/\{L5\}/g, l5);
+  const split = (s: string): [string, string] => {
+    const idx = s.indexOf(". ");
+    if (idx !== -1) return [s.slice(0, idx + 1), s.slice(idx + 2)];
+    const words = s.split(" ");
+    if (words.length <= 2) return [s, ""];
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  };
+  const pair = (s: string): [string, string] => {
+    const [a, b] = split(s);
+    return [sub(a).toUpperCase(), sub(b).toUpperCase()];
+  };
+  const groups: HookGroup[] = [
+    { label: "The Number", hooks: [
+      pair(`CONSISTENCY ${consistency}. RANK ${rank}.`),
+      pair(`RANK ${rank}. ${consistency}% CONSISTENCY.`),
+      pair(`${meta.label}. ${consistency}%.`),
+      pair(`SEASON ${sa}. L5 ${l5}.`),
+      pair(`CONSISTENCY ${consistency}%.`),
+      pair(`RANK ${rank}. SEASON ${sa}.`),
+      pair(`${consistency}%. THAT'S THE FLOOR.`),
+      pair(`RANK ${rank}. CONSISTENCY ${consistency}%.`),
+      pair(`SEASON ${sa}. RANK ${rank}.`),
+      pair(`${consistency}%. RANK ${rank}. L5 ${l5}.`),
+    ]},
+  ];
+  if (r.story === "elite") {
+    groups.push({ label: "Elite", hooks: [
+      pair(`ELITE. ${consistency}% CONSISTENCY.`),
+      pair(`THE FLOOR IS THE STORY.`),
+      pair(`${consistency}%. WEEK IN. WEEK OUT.`),
+      pair(`HE DOESN'T DROP OFF.`),
+      pair(`THE MOST CONSISTENT PLAYER.`),
+      pair(`LOCK HIM IN.`),
+      pair(`NO DOWNSIDE. ${consistency}%.`),
+      pair(`THE SAFE PICK.`),
+      pair(`EVERY WEEK. THE SAME.`),
+      pair(`{SURNAME} DOESN'T MISS.`),
+    ]});
+  } else if (r.story === "risk") {
+    groups.push({ label: "Risk", hooks: [
+      pair(`CONSISTENCY RISK. ${consistency}%.`),
+      pair(`THE FLOOR IS GONE.`),
+      pair(`VOLATILE. ${consistency}%.`),
+      pair(`HIS FORM COMES AND GOES.`),
+      pair(`BUYER BEWARE.`),
+      pair(`THE CEILING IS REAL. SO IS THE FLOOR.`),
+      pair(`${consistency}%. UP AND DOWN.`),
+      pair(`HARD TO TRUST.`),
+      pair(`THE UPSIDE TEMPTS. THE FLOOR HURTS.`),
+      pair(`{SURNAME} IS A GAMBLE.`),
+    ]});
+  } else if (r.story === "top_ranked") {
+    groups.push({ label: "Top Ranked", hooks: [
+      pair(`RANK ${rank}. TOP OF THE BOARD.`),
+      pair(`THE BEST IN THE COMP.`),
+      pair(`RANK ${rank}. THE NUMBERS DON'T LIE.`),
+      pair(`HE'S THE CEILING.`),
+      pair(`TOP 30. AND CLIMBING.`),
+      pair(`RANK ${rank}. CONSISTENCY ${consistency}%.`),
+      pair(`THE STATS ARE ELITE.`),
+      pair(`RANK ${rank}. THAT'S THE STORY.`),
+      pair(`TOP RANKED FOR A REASON.`),
+      pair(`{SURNAME}. RANK ${rank}.`),
+    ]});
+  } else {
+    groups.push({ label: "Rising", hooks: [
+      pair(`RISING. L5 ${l5}. SEASON ${sa}.`),
+      pair(`HIS FORM IS CLIMBING.`),
+      pair(`L5 ${l5}. ABOVE HIS SEASON.`),
+      pair(`THE TREND IS UP.`),
+      pair(`GET IN BEFORE THE PRICE CATCHES UP.`),
+      pair(`RISING FAST.`),
+      pair(`HIS L5 IS ${l5}. SEASON ${sa}.`),
+      pair(`FORM IS UP. PRICE HASN'T.`),
+      pair(`THE BREAKOUT IS HERE.`),
+      pair(`{SURNAME} IS RISING.`),
+    ]});
+  }
+  groups.push({ label: "Quiet Confidence", hooks: [
+    pair(`THE NUMBERS ARE THE NUMBERS.`),
+    pair(`CONSISTENCY IS THE STORY.`),
+    pair(`JUDGE IT YOURSELF.`),
+    pair(`THE DATA IS THE DATA.`),
+    pair(`WE SHOW THE NUMBERS.`),
+    pair(`NO SPIN. JUST CONSISTENCY.`),
+    pair(`FORM DRIVES PRICE.`),
+    pair(`THE FLOOR IS REAL.`),
+    pair(`WE DON'T HIDE THE BAD WEEKS.`),
+    pair(`{SURNAME}. ${consistency}%. RANK ${rank}.`),
+  ]});
+  return groups;
+}
+
+function EvergreenCard({ row, hook, cta }: { row: EvergreenRow; hook: [string, string]; cta: string }) {
+  const meta = EVERGREEN_STORY_META[row.story];
+  const consColor = row.consistency >= 75 ? "#22C55E" : row.consistency >= 45 ? "#F5C442" : "#EF4444";
+  return (
+    <div
+      id="neeko-evergreen-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: meta.bg }}>{hook[1]}</div>
+      )}
+
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.player_name} · {row.team_name} · {row.position}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 470, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: meta.bg,
+            color: meta.text,
+            borderRadius: 14,
+            padding: "10px 28px",
+            fontSize: 32,
+            fontWeight: 800,
+            letterSpacing: "0.02em",
+          }}
+        >
+          {meta.label}
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 560,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>CONSISTENCY</div>
+        <div style={{ position: "absolute", left: 0, top: 94, width: 440, textAlign: "center", color: consColor, fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {Math.round(row.consistency)}%
+        </div>
+        <div style={{ position: "absolute", left: 440, top: 50, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>RANK</div>
+        <div style={{ position: "absolute", left: 440, top: 94, width: 440, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          #{Math.round(row.rank_position)}
+        </div>
+        <div style={{ position: "absolute", left: 0, top: 270, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+          SEASON {row.season_avg.toFixed(1)} · L5 {row.last_5_avg.toFixed(1)}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1080, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.matchup_label ? `vs ${row.matchup_label}` : "BYE THIS WEEK"}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1160, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: "#F5C442",
+            borderRadius: 44,
+            padding: "22px 56px",
+            color: "#080808",
+            fontSize: 36,
+            fontWeight: 800,
+          }}
+        >
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () => void }) {
+  const groups = useMemo(() => buildEvergreenBank(row), [row]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-evergreen-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        fontEmbedCSS: css,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `${row.player_name}_evergreen_${row.story}.png`.replace(/\s+/g, "_");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <EvergreenCard row={row} hook={hook} cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; cta: string }) {
   const meta = PRICE_STORY_META[row.story];
   const beDelta = Math.round(row.be_delta);
@@ -1679,6 +2056,7 @@ export default function ContentSheet() {
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
   const [priceCardRow, setPriceCardRow] = useState<PriceRow | null>(null);
+  const [evergreenCardRow, setEvergreenCardRow] = useState<EvergreenRow | null>(null);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
@@ -1765,6 +2143,9 @@ export default function ContentSheet() {
             team_name:   (r.team_name as string | null) ?? null,
             matchup_label: (r.matchup_label as string | null) ?? null,
             status:      (r.status as string | null) ?? null,
+            consistency: r.consistency != null ? Number(r.consistency) : null,
+            consistency_tier: r.consistency_tier as string | null ?? null,
+            rank_position: r.rank_position != null ? Number(r.rank_position) : null,
           });
         }
         if (!cancelled) rankingsRef.current = map;
@@ -2047,6 +2428,72 @@ export default function ContentSheet() {
     return withStory.slice(0, 50);
   }, [storyType, sortView, rankingsRef.current]);
 
+  // Evergreen rows: derive from rankingsRef on demand when Evergreen tab is active.
+  // No new RPC — uses the rankings already fetched on mount.
+  const evergreenRows = useMemo<EvergreenRow[]>(() => {
+    if (storyType !== "Evergreen") return [];
+    const map = rankingsRef.current;
+    if (!map) return [];
+
+    // Build the qualifying pool: active, >=8 games, with consistency + rank_position.
+    const pool: Omit<EvergreenRow, "story">[] = [];
+    for (const [name, r] of map) {
+      if (!r) continue;
+      if (r.consistency === null) continue;
+      if (r.rank_position === null) continue;
+      if (r.price === null) continue;
+      if (r.value_score === null) continue;
+      if (r.games_played === null || r.games_played < 8) continue;
+      const status = (r.status ?? "").toLowerCase();
+      if (status !== "active") continue;
+      pool.push({
+        player_name: name,
+        team_name: r.team_name ?? "",
+        position: r.position ?? "",
+        price: r.price,
+        consistency: r.consistency,
+        consistency_tier: r.consistency_tier,
+        rank_position: r.rank_position,
+        season_avg: r.season_avg ?? 0,
+        last_5_avg: r.last_5_avg ?? 0,
+        value_score: r.value_score,
+        matchup_label: r.matchup_label,
+        status: r.status ?? "active",
+      });
+    }
+    if (pool.length === 0) return [];
+
+    // Assign story, group, cap 15 per group.
+    const groups = new Map<EvergreenStory, EvergreenRow[]>();
+    for (const s of ["elite", "risk", "top_ranked", "rising"] as EvergreenStory[]) groups.set(s, []);
+    for (const base of pool) {
+      const story = assignEvergreenStory(base);
+      if (!story) continue;
+      groups.get(story)!.push({ ...base, story });
+    }
+    for (const [, list] of groups) list.sort((a, b) => b.consistency - a.consistency);
+    const capped: EvergreenRow[] = [];
+    for (const s of ["elite", "risk", "top_ranked", "rising"] as EvergreenStory[]) {
+      capped.push(...(groups.get(s) ?? []).slice(0, 15));
+    }
+
+    // Sort: default = consistency DESC. Other sorts handled by the dropdown.
+    if (sortView === "consistency")      capped.sort((a, b) => b.consistency - a.consistency);
+    else if (sortView === "rank")        capped.sort((a, b) => a.rank_position - b.rank_position);
+    else if (sortView === "value")       capped.sort((a, b) => b.value_score - a.value_score);
+    else                                  capped.sort((a, b) => b.consistency - a.consistency);
+
+    return capped;
+  }, [storyType, sortView, rankingsRef.current]);
+
+  const groupedEvergreenRows = useMemo(() => {
+    const order: EvergreenStory[] = ["elite", "top_ranked", "rising", "risk"];
+    const m = new Map<EvergreenStory, EvergreenRow[]>();
+    for (const s of order) m.set(s, []);
+    for (const r of evergreenRows) m.get(r.story)!.push(r);
+    return m;
+  }, [evergreenRows]);
+
   const groupedPriceRows = useMemo(() => {
     const order: PriceStory[] = ["trap", "bargain", "expensive", "value"];
     const map = new Map<PriceStory, PriceRow[]>();
@@ -2127,7 +2574,7 @@ export default function ContentSheet() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form", "Prices"] as StoryType[]).map((s) => (
+          {(["All", "HitRates", "Form", "Prices", "Evergreen"] as StoryType[]).map((s) => (
             <button
               key={s}
               onClick={() => setStoryType(s)}
@@ -2180,7 +2627,7 @@ export default function ContentSheet() {
           </div>
         </div>
 
-        {storyType !== "Form" && storyType !== "Prices" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -2216,7 +2663,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -2245,7 +2692,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Prices" && (
+        {storyType !== "Prices" && storyType !== "Evergreen" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
@@ -2409,7 +2856,7 @@ export default function ContentSheet() {
         <div className="py-10 text-center text-xs text-zinc-500">
           No players with ≥10 games at key thresholds.
         </div>
-      ) : storyType === "Prices" ? null : (
+      ) : storyType === "Prices" ? null : storyType === "Evergreen" ? null : (
         <div className="space-y-6">
           {LENSES.filter((l) => lensFilter === "All" || lensFilter === l).map((lens) => {
             const rows = grouped.get(lens);
@@ -2542,6 +2989,64 @@ export default function ContentSheet() {
 
       {priceCardRow && (
         <PriceCardModal row={priceCardRow} onClose={() => setPriceCardRow(null)} />
+      )}
+
+      {storyType === "Evergreen" && (
+        <div className="space-y-6">
+          {evergreenRows.length === 0 && (
+            <div className="py-10 text-center text-xs text-zinc-500">
+              No evergreen stories for the current rankings pool.
+            </div>
+          )}
+          {(["elite", "top_ranked", "rising", "risk"] as EvergreenStory[]).map((story) => {
+            const rows = groupedEvergreenRows.get(story);
+            if (!rows || rows.length === 0) return null;
+            const meta = EVERGREEN_STORY_META[story];
+            return (
+              <div key={story} className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: meta.bg }}>
+                  {meta.label}
+                </div>
+                {rows.map((r, i) => (
+                  <div
+                    key={`${r.player_name}-${story}-${i}`}
+                    className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-zinc-200 font-medium truncate">
+                        {r.player_name}{" "}
+                        <span className="text-zinc-500 font-normal">· {r.team_name} · {r.position}</span>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5">
+                        {Math.round(r.consistency)}% · RANK #{Math.round(r.rank_position)} · ${(r.price / 1000).toFixed(0)}K
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">
+                        Sz {r.season_avg.toFixed(1)} · L5 {r.last_5_avg.toFixed(1)} · VS {r.value_score.toFixed(0)}
+                      </div>
+                    </div>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{ background: meta.bg, color: meta.text }}
+                    >
+                      {meta.badge}
+                    </span>
+                    <button
+                      onClick={() => setEvergreenCardRow(r)}
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                      title="Export PNG"
+                    >
+                      PNG
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {evergreenCardRow && (
+        <EvergreenCardModal row={evergreenCardRow} onClose={() => setEvergreenCardRow(null)} />
       )}
     </div>
   );
