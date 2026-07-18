@@ -70,6 +70,8 @@ interface RankedRow {
   season_avg: number | null;
   gap: number | null;
   player_status: string;
+  last_5_avg: number | null;
+  last_3_avg: number | null;
   last_10_values: number[];
 }
 
@@ -139,6 +141,14 @@ const CTA_OPTIONS = [
   "TRY IT FREE",
 ] as const;
 
+const SORT_OPTIONS = [
+  { value: "default",  label: "Default" },
+  { value: "hot",      label: "Hot 🔥" },
+  { value: "cold",     label: "Cold 🧊" },
+  { value: "l5",       label: "L5 Avg" },
+  { value: "l3",       label: "L3 Avg" },
+] as const;
+
 type HookGroup = { label: string; hooks: [string, string][] };
 
 function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts: number[] } {
@@ -149,6 +159,25 @@ function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts:
     flat.push(...g.hooks);
   }
   return { flat, starts };
+}
+
+function sortRows<T extends { last_5_avg: number | null; last_3_avg: number | null; season_avg: number | null }>(
+  rows: T[],
+  sortView: string
+): T[] {
+  if (sortView === "default") return rows;
+  return [...rows].sort((a, b) => {
+    const sa = Number(a.season_avg), sb = Number(b.season_avg);
+    const la = Number(a.last_5_avg), lb = Number(b.last_5_avg);
+    const ta = Number(a.last_3_avg), tb = Number(b.last_3_avg);
+    switch (sortView) {
+      case "hot":  return (lb - sb) - (la - sa);
+      case "cold": return (la - sa) - (lb - sb);
+      case "l5":   return lb - la;
+      case "l3":   return tb - ta;
+      default:     return 0;
+    }
+  });
 }
 
 function applyHitSub(t: string, r: RankedRow): string {
@@ -657,6 +686,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
     const node = document.getElementById("neeko-card");
     if (!node) return;
     setDownloading(true);
+    document.body.style.overflow = 'hidden';
     try {
       const blob = await toBlob(node, {
         width: 1080,
@@ -674,6 +704,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
       a.click();
       URL.revokeObjectURL(url);
     } finally {
+      document.body.style.overflow = '';
       setDownloading(false);
     }
   }
@@ -854,6 +885,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     const node = document.getElementById("neeko-multi-card");
     if (!node) return;
     setDownloading(true);
+    document.body.style.overflow = 'hidden';
     try {
       const blob = await toBlob(node, {
         width: 1080,
@@ -870,6 +902,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
       a.click();
       URL.revokeObjectURL(url);
     } finally {
+      document.body.style.overflow = '';
       setDownloading(false);
     }
   }
@@ -952,6 +985,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
     const node = document.getElementById("neeko-card");
     if (!node) return;
     setDownloading(true);
+    document.body.style.overflow = 'hidden';
     try {
       const blob = await toBlob(node, {
         width: 1080,
@@ -969,6 +1003,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
       a.click();
       URL.revokeObjectURL(url);
     } finally {
+      document.body.style.overflow = '';
       setDownloading(false);
     }
   }
@@ -1062,6 +1097,8 @@ export default function ContentSheet() {
   const [lensFilter, setLensFilter] = useState<Lens | "All">("All");
   const [formWindow, setFormWindow] = useState<FormWindow>("L5");
   const [hideOut, setHideOut] = useState(false);
+  const [thresholdFilter, setThresholdFilter] = useState<number | null>(null);
+  const [sortView, setSortView] = useState("default");
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
@@ -1179,6 +1216,8 @@ export default function ContentSheet() {
           season_avg: seasonAvg,
           gap,
           player_status: p.player_status,
+          last_5_avg: p.last_5_avg !== null && p.last_5_avg !== undefined ? Number(p.last_5_avg) : null,
+          last_3_avg: p.last_3_avg !== null && p.last_3_avg !== undefined ? Number(p.last_3_avg) : null,
           last_10_values: Array.isArray(p.last_10_values) ? p.last_10_values.map((v) => Number(v)) : [],
         });
       }
@@ -1232,15 +1271,18 @@ export default function ContentSheet() {
   }, [players, formWindow]);
 
   const visibleRows = useMemo(
-    () => (lensFilter === "All" ? rankedRows : rankedRows.filter((r) => r.lens === lensFilter)),
-    [rankedRows, lensFilter]
+    () =>
+      rankedRows
+        .filter((r) => lensFilter === "All" || r.lens === lensFilter)
+        .filter((r) => thresholdFilter === null || r.threshold === thresholdFilter),
+    [rankedRows, lensFilter, thresholdFilter]
   );
 
   const hideOutFilter = <T extends { player_status: string }>(rows: T[]): T[] =>
     hideOut ? rows.filter((r) => (r.player_status ?? "").toLowerCase() === "active") : rows;
 
-  const visibleHitRateRows = hideOutFilter(visibleRows);
-  const visibleFormRows = hideOutFilter(formRows);
+  const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView);
+  const visibleFormRows = sortRows(hideOutFilter(formRows), sortView);
 
   function copyBrief(r: RankedRow) {
     navigator.clipboard.writeText(makeBrief(r)).then(() => {
@@ -1271,12 +1313,12 @@ export default function ContentSheet() {
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
     const map = new Map<Lens, RankedRow[]>();
-    for (const r of visibleRows) {
+    for (const r of visibleHitRateRows) {
       if (!map.has(r.lens as Lens)) map.set(r.lens as Lens, []);
       map.get(r.lens as Lens)!.push(r);
     }
     return map;
-  }, [visibleRows]);
+  }, [visibleHitRateRows]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -1327,15 +1369,29 @@ export default function ContentSheet() {
               {s === "HitRates" ? "Hit Rates" : s}
             </button>
           ))}
-          <label className="ml-auto flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={hideOut}
-              onChange={(e) => setHideOut(e.target.checked)}
-              className="accent-zinc-500"
-            />
-            Hide OUT
-          </label>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sort</label>
+              <select
+                value={sortView}
+                onChange={(e) => setSortView(e.target.value)}
+                className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideOut}
+                onChange={(e) => setHideOut(e.target.checked)}
+                className="accent-zinc-500"
+              />
+              Hide OUT
+            </label>
+          </div>
         </div>
 
         {storyType !== "Form" && (
@@ -1371,6 +1427,35 @@ export default function ContentSheet() {
             >
               {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
             </button>
+          </div>
+        )}
+
+        {storyType !== "Form" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
+            <button
+              onClick={() => setThresholdFilter(null)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                thresholdFilter === null
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              All
+            </button>
+            {[20, 25, 30].map((t) => (
+              <button
+                key={t}
+                onClick={() => setThresholdFilter(t)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  thresholdFilter === t
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {t}+
+              </button>
+            ))}
           </div>
         )}
 
