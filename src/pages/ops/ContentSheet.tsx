@@ -58,7 +58,7 @@ interface StatBoardPlayer {
 }
 
 type FormWindow = "L5" | "L3";
-type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen" | "Results";
+type StoryType = "All" | "HitRates" | "Form" | "Prices" | "Evergreen" | "Results" | "Career";
 
 interface FormRow {
   player_name: string;
@@ -212,11 +212,13 @@ function sortOptionsFor(storyType: StoryType): SortOption[] {
   if (storyType === "Form") return FORM_SORTS;
   if (storyType === "Prices") return PRICES_SORTS;
   if (storyType === "Evergreen") return EVERGREEN_SORTS;
-  if (storyType === "Results") return RESULTS_SORTS;
+  if (storyType === "Results" || storyType === "Career") return RESULTS_SORTS;
   return HIT_RATE_SORTS;   // "HitRates" and "All"
 }
 
 type RankingsEntry = {
+  player_id: number | null;
+  team_id: number | null;
   value_score: number | null;
   price: number | null;
   breakeven: number | null;
@@ -1907,6 +1909,312 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   );
 }
 
+type CareerRow = {
+  stat_name: string | null;
+  career_high: number | null;
+  career_high_season: number | null;
+  career_high_week: number | null;
+  career_high_round: string | null;
+  h2h_games: number | null;
+  h2h_avg_fantasy: number | null;
+  h2h_avg_disposals: number | null;
+  meeting_season: number | null;
+  meeting_week: number | null;
+  meeting_round: string | null;
+  meeting_disposals: number | null;
+  meeting_fantasy: number | null;
+  meeting_result: string | null;
+  next_game_date: string | null;
+  next_venue: string | null;
+  next_home_team: string | null;
+  next_away_team: string | null;
+};
+
+const CAREER_STAT_ORDER = ["DISPOSALS", "GOALS", "MARKS", "TACKLES", "KICKS", "FANTASY"] as const;
+
+function CareerHighCard({
+  rows,
+  playerName,
+  teamName,
+  opponentName,
+  hook,
+  cta,
+}: {
+  rows: CareerRow[];
+  playerName: string;
+  teamName: string;
+  opponentName: string | null;
+  hook: [string, string];
+  cta: string;
+}) {
+  const highByStat = new Map<string, CareerRow>();
+  for (const r of rows) {
+    if (r.stat_name && r.career_high !== null) {
+      highByStat.set(r.stat_name.toUpperCase(), r);
+    }
+  }
+  const meetings = rows.filter((r) => r.meeting_round !== null).slice(0, 5);
+  const h2hSummary = rows.find((r) => r.h2h_games !== null && r.h2h_games > 0);
+  const hasH2H = opponentName !== null && h2hSummary !== undefined;
+
+  const panelTop = 480;
+  const cellW = 440;
+  const cellH = 180;
+  const panelHeight = 40 + 3 * cellH;
+  const h2hTop = panelTop + panelHeight + 60;
+  const ctaTop = hasH2H ? h2hTop + 120 + meetings.length * 60 + 40 : h2hTop;
+  const footerTop = ctaTop + 120;
+
+  return (
+    <div
+      id="neeko-career-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
+      )}
+
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {playerName} · {teamName}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: panelTop,
+          width: 880,
+          height: panelHeight,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        {CAREER_STAT_ORDER.map((stat, i) => {
+          const r = highByStat.get(stat);
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          const x = col * cellW;
+          const y = 30 + row * cellH;
+          const val = r?.career_high !== null && r?.career_high !== undefined ? Number(r.career_high) : null;
+          const ctx = r && r.career_high_week !== null && r.career_high_season !== null
+            ? `R${r.career_high_week} ${r.career_high_season}`
+            : "";
+          return (
+            <div key={stat} style={{ position: "absolute", left: x, top: y, width: cellW, height: cellH }}>
+              <div style={{ textAlign: "center", color: "#8A8F96", fontSize: 26, marginTop: 20 }}>{stat}</div>
+              <div style={{ textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 88, fontWeight: 800, lineHeight: 1, marginTop: 8 }}>
+                {val !== null ? val : "—"}
+              </div>
+              {ctx && (
+                <div style={{ textAlign: "center", color: "#8A8F96", fontSize: 24, marginTop: 8 }}>{ctx}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {hasH2H && h2hSummary && (
+        <>
+          <div style={{ position: "absolute", left: 0, top: h2hTop, width: 1080, textAlign: "center", color: "#FFFFFF", fontSize: 36, fontWeight: 800 }}>
+            {h2hSummary.h2h_games} GAMES vs {opponentName}
+          </div>
+          <div style={{ position: "absolute", left: 0, top: h2hTop + 56, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 28 }}>
+            AVG FANTASY {Number(h2hSummary.h2h_avg_fantasy).toFixed(1)} · AVG DISP {Number(h2hSummary.h2h_avg_disposals).toFixed(1)}
+          </div>
+          {meetings.map((m, i) => {
+            const y = h2hTop + 120 + i * 60;
+            const result = (m.meeting_result ?? "").toUpperCase();
+            const resultColor = result === "W" ? "#22C55E" : result === "L" ? "#EF4444" : "#8A8F96";
+            return (
+              <div key={i} style={{ position: "absolute", left: 100, top: y, width: 880, display: "flex", alignItems: "center", color: "#A1A1AA", fontSize: 26 }}>
+                <span style={{ width: 160 }}>{m.meeting_season} R{m.meeting_week}</span>
+                <span style={{ width: 200 }}>{Number(m.meeting_disposals).toFixed(0)} disp</span>
+                <span style={{ width: 200 }}>{Number(m.meeting_fantasy).toFixed(0)} fan</span>
+                <span style={{ color: resultColor, fontWeight: 700 }}>{result}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function CareerCardModal({
+  rows,
+  playerName,
+  teamName,
+  opponentName,
+  onClose,
+}: {
+  rows: CareerRow[];
+  playerName: string;
+  teamName: string;
+  opponentName: string | null;
+  onClose: () => void;
+}) {
+  const syntheticRow = useMemo<PriceRow>(() => ({
+    player_name: playerName,
+    team_name: teamName,
+    position: "",
+    price: 0,
+    breakeven: 0,
+    projection: 0,
+    value_score: 0,
+    season_avg: 0,
+    last_5_avg: 0,
+    be_delta: 0,
+    matchup_label: opponentName,
+    status: "active",
+    story: "value",
+  }), [playerName, teamName, opponentName]);
+  const groups = useMemo(() => buildPriceBank(syntheticRow), [syntheticRow]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const idx = Math.min(hookIdx, flat.length - 1);
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (flat[idx] ?? ["", ""]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-career-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        fontEmbedCSS: css,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = `neeko_career_${playerName.replace(/\s+/g, "_").toLowerCase()}.png`;
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {groups.map((g, gi) => (
+            <optgroup key={gi} label={g.label}>
+              {g.hooks.map((h, i) => {
+                const flatIdx = starts[gi] + i;
+                return (
+                  <option key={flatIdx} value={flatIdx}>
+                    {h[0]} {h[1]}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function buildMultiHooks(n: number): [string, string][] {
   return [
     [`${n} PLAYERS.`, "ONE ROUND."],
@@ -2313,6 +2621,16 @@ export default function ContentSheet() {
     examples: AccuracyExample[];
   }>({ summary: null, examples: [] });
   const [resultsCardOpen, setResultsCardOpen] = useState(false);
+  const [careerSearch, setCareerSearch] = useState("");
+  const [careerPlayerId, setCareerPlayerId] = useState<number | null>(null);
+  const [careerPlayerName, setCareerPlayerName] = useState<string>("");
+  const [careerPlayerTeam, setCareerPlayerTeam] = useState<string>("");
+  const [careerOpponentSearch, setCareerOpponentSearch] = useState("");
+  const [careerOpponentId, setCareerOpponentId] = useState<number | null>(null);
+  const [careerOpponentName, setCareerOpponentName] = useState<string | null>(null);
+  const [careerData, setCareerData] = useState<CareerRow[] | null>(null);
+  const [careerLoading, setCareerLoading] = useState(false);
+  const [careerCardOpen, setCareerCardOpen] = useState(false);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
@@ -2389,6 +2707,8 @@ export default function ContentSheet() {
           const name = r.player_name as string | undefined;
           if (!name) continue;
           map.set(name, {
+            player_id: r.player_id !== null && r.player_id !== undefined ? Number(r.player_id) : null,
+            team_id: r.team_id !== null && r.team_id !== undefined ? Number(r.team_id) : null,
             value_score: r.value_score !== null && r.value_score !== undefined ? Number(r.value_score) : null,
             price:       r.price !== null && r.price !== undefined ? Number(r.price) : null,
             breakeven:   r.breakeven !== null && r.breakeven !== undefined ? Number(r.breakeven) : null,
@@ -2814,15 +3134,65 @@ export default function ContentSheet() {
     return map;
   }, [visibleHitRateRows]);
 
+  const careerPlayerMatches = useMemo(() => {
+    if (careerSearch.length < 2) return [];
+    const map = rankingsRef.current;
+    if (!map) return [];
+    const q = careerSearch.toLowerCase();
+    const out: { player_id: number; player_name: string; team_name: string | null }[] = [];
+    for (const [name, entry] of map.entries()) {
+      if (name.toLowerCase().includes(q) && entry.player_id !== null) {
+        out.push({ player_id: entry.player_id, player_name: name, team_name: entry.team_name });
+      }
+      if (out.length >= 20) break;
+    }
+    return out;
+  }, [careerSearch]);
+
+  const careerOpponentMatches = useMemo(() => {
+    if (careerOpponentSearch.length < 2) return [];
+    const map = rankingsRef.current;
+    if (!map) return [];
+    const q = careerOpponentSearch.toLowerCase();
+    const teams = new Map<number, string>();
+    for (const entry of map.values()) {
+      if (entry.team_id !== null && entry.team_name && !teams.has(entry.team_id)) {
+        teams.set(entry.team_id, entry.team_name);
+      }
+    }
+    return Array.from(teams.entries())
+      .filter(([, name]) => name.toLowerCase().includes(q))
+      .slice(0, 20)
+      .map(([team_id, team_name]) => ({ team_id, team_name }));
+  }, [careerOpponentSearch]);
+
+  async function handleCareerLoad() {
+    if (careerPlayerId === null) return;
+    setCareerLoading(true);
+    setCareerData(null);
+    try {
+      const { data } = await supabase!.rpc("get_player_career_and_h2h", {
+        p_player_id: careerPlayerId,
+        p_opponent_team_id: careerOpponentId ?? null,
+        p_limit: 10,
+      });
+      setCareerData((data as CareerRow[]) ?? []);
+    } catch {
+      setCareerData([]);
+    } finally {
+      setCareerLoading(false);
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (loadingFixtures && storyType !== "Results") {
+  if (loadingFixtures && storyType !== "Results" && storyType !== "Career") {
     return <div className="py-20 text-center text-xs text-zinc-500">Loading fixtures…</div>;
   }
-  if (error && storyType !== "Results") {
+  if (error && storyType !== "Results" && storyType !== "Career") {
     return <div className="py-10 text-center text-xs text-red-400">{error}</div>;
   }
-  if (fixtures.length === 0 && storyType !== "Results") {
+  if (fixtures.length === 0 && storyType !== "Results" && storyType !== "Career") {
     return <div className="py-10 text-center text-xs text-zinc-500">No fixtures found for round {round}.</div>;
   }
 
@@ -2850,7 +3220,7 @@ export default function ContentSheet() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results"] as StoryType[]).map((s) => (
+          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results", "Career"] as StoryType[]).map((s) => (
             <button
               key={s}
               onClick={() => setStoryType(s)}
@@ -2878,6 +3248,7 @@ export default function ContentSheet() {
               ))}
             </select>
           </div>
+          {storyType !== "Career" && (
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sort</label>
@@ -2901,9 +3272,10 @@ export default function ContentSheet() {
               Hide OUT
             </label>
           </div>
+          )}
         </div>
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -2939,7 +3311,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
+        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -2968,7 +3340,7 @@ export default function ContentSheet() {
           </div>
         )}
 
-        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && (
+        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
             <button
@@ -3371,6 +3743,181 @@ export default function ContentSheet() {
 
       {evergreenCardRow && (
         <EvergreenCardModal row={evergreenCardRow} onClose={() => setEvergreenCardRow(null)} />
+      )}
+
+      {storyType === "Career" && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Player</label>
+            <input
+              value={careerSearch}
+              onChange={(e) => {
+                setCareerSearch(e.target.value);
+                setCareerPlayerId(null);
+                setCareerData(null);
+              }}
+              placeholder="Search player by name…"
+              className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+            />
+            {careerSearch.length >= 2 && careerPlayerId === null && (
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg max-h-60 overflow-y-auto">
+                {careerPlayerMatches.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-zinc-500">No matches.</div>
+                ) : (
+                  careerPlayerMatches.map((m) => (
+                    <button
+                      key={m.player_id}
+                      onClick={() => {
+                        setCareerSearch(m.player_name);
+                        setCareerPlayerId(m.player_id);
+                        setCareerPlayerName(m.player_name);
+                        setCareerPlayerTeam(m.team_name ?? "");
+                        setCareerData(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-700 transition-colors"
+                    >
+                      {m.player_name} <span className="text-zinc-500">· {m.team_name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {careerPlayerId !== null && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">vs opponent (optional)</label>
+              <input
+                value={careerOpponentSearch}
+                onChange={(e) => {
+                  setCareerOpponentSearch(e.target.value);
+                  setCareerOpponentId(null);
+                  setCareerOpponentName(null);
+                }}
+                placeholder="Search team…"
+                className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+              />
+              {careerOpponentSearch.length >= 2 && careerOpponentId === null && (
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg max-h-48 overflow-y-auto">
+                  {careerOpponentMatches.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-zinc-500">No matches.</div>
+                  ) : (
+                    careerOpponentMatches.map((t) => (
+                      <button
+                        key={t.team_id}
+                        onClick={() => {
+                          setCareerOpponentSearch(t.team_name);
+                          setCareerOpponentId(t.team_id);
+                          setCareerOpponentName(t.team_name);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-700 transition-colors"
+                      >
+                        {t.team_name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {careerOpponentId !== null && (
+                <button
+                  onClick={() => {
+                    setCareerOpponentSearch("");
+                    setCareerOpponentId(null);
+                    setCareerOpponentName(null);
+                  }}
+                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                >
+                  Clear opponent
+                </button>
+              )}
+            </div>
+          )}
+
+          {careerPlayerId !== null && (
+            <button
+              onClick={handleCareerLoad}
+              disabled={careerLoading}
+              className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+            >
+              {careerLoading ? "Loading…" : "Load Career Data"}
+            </button>
+          )}
+
+          {careerLoading && (
+            <div className="py-10 flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+            </div>
+          )}
+
+          {careerData && !careerLoading && (
+            <>
+              <button
+                onClick={() => setCareerCardOpen(true)}
+                className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
+              >
+                Download Career Card · {careerPlayerName}
+              </button>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                  Career Highs
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {CAREER_STAT_ORDER.map((stat) => {
+                    const r = careerData.find((d) => d.stat_name?.toUpperCase() === stat);
+                    return (
+                      <div key={stat} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+                        <div className="text-xs text-zinc-500 uppercase">stat</div>
+                        <div className="text-lg text-zinc-100 font-bold">{r?.career_high ?? "—"}</div>
+                        <div className="text-xs text-zinc-500">
+                          {r?.career_high_week && r?.career_high_season ? `R${r.career_high_week} ${r.career_high_season}` : ""}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {careerOpponentId !== null && careerData.some((d) => d.h2h_games !== null) && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                    H2H vs {careerOpponentName}
+                  </div>
+                  {(() => {
+                    const h2h = careerData.find((d) => d.h2h_games !== null);
+                    return (
+                      <div className="text-xs text-zinc-300">
+                        {h2h?.h2h_games} games · AVG FANTASY {Number(h2h?.h2h_avg_fantasy).toFixed(1)} · AVG DISP {Number(h2h?.h2h_avg_disposals).toFixed(1)}
+                      </div>
+                    );
+                  })()}
+                  <div className="space-y-1">
+                    {careerData.filter((d) => d.meeting_round !== null).slice(0, 5).map((m, i) => (
+                      <div key={i} className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+                        <span>{m.meeting_season} R{m.meeting_week}</span>
+                        <span>{Number(m.meeting_disposals).toFixed(0)} disp</span>
+                        <span>{Number(m.meeting_fantasy).toFixed(0)} fan</span>
+                        <span className="ml-auto font-semibold" style={{ color: (m.meeting_result ?? "").toUpperCase() === "W" ? "#22C55E" : (m.meeting_result ?? "").toUpperCase() === "L" ? "#EF4444" : "#8A8F96" }}>
+                          {m.meeting_result ?? "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {careerCardOpen && careerData && (
+        <CareerCardModal
+          rows={careerData}
+          playerName={careerPlayerName}
+          teamName={careerPlayerTeam}
+          opponentName={careerOpponentName}
+          onClose={() => setCareerCardOpen(false)}
+        />
       )}
 
       {resultsCardOpen && resultsData.summary && (
