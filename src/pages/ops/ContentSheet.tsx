@@ -450,7 +450,12 @@ function buildHitBank(r: RankedRow): HookGroup[] {
       pair("NOT A GUARANTEE. A RATE."),
       pair("THE MISSES ARE IN THERE."),
       pair("MAKE YOUR OWN CALL."),
-      pair("THE DATA IS THE DATA."),
+      pair("THE DATA IS THE DATA
+      )
+    ]
+    }
+  ]
+}."),
       pair("WE POST THE MISSES TOO."),
       pair("{RATE}%. NOT 100%. NEVER 100%."),
       pair("DRAW YOUR OWN CONCLUSIONS."),
