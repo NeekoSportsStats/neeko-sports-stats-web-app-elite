@@ -3086,7 +3086,10 @@ export default function ContentSheet() {
     return () => { cancelled = true; };
   }, [fixtures]);
 
-  // Rank: one row per player per lens — their best (highest) qualifying threshold
+  // Rank: one row per player per key threshold they have data for.
+  // No guard, no dedup, no cap — every threshold in season_threshold_hit_rates
+  // becomes its own row (including rate = 0). Negatives sink to the bottom
+  // via the rate DESC sort; OUT players demoted below active.
   const rankedRows = useMemo<RankedRow[]>(() => {
     const stories: RankedRow[] = [];
     for (const lens of LENSES) {
@@ -3096,46 +3099,40 @@ export default function ContentSheet() {
         const sthr = p.season_threshold_hit_rates;
         if (!sthr) continue;
         const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
-        // Find the HIGHEST key threshold with rate >= 60% and games >= 8
-        let best: { threshold: number; hit: ThresholdHit } | null = null;
+        // Emit a row for EVERY key threshold present in the player's hit-rate
+        // jsonb — regardless of rate or games. rate = 0 rows are included.
         for (const threshold of KEY_THRESHOLDS[lens]) {
           const hit = sthr[String(threshold)];
           if (!hit) continue;
-          if (hit.games < 8) continue;    // GUARD: exclude < 8 games
-          if (hit.rate < 60) continue;    // must clear 60%
-          if (best === null || threshold > best.threshold) {
-            best = { threshold, hit };
-          }
+          const gap = seasonAvg !== null ? seasonAvg - threshold : null;
+          headlines.push({
+            player_name: p.player_name,
+            team_name: p.team_name,
+            opponent_team_name: p.opponent_team_name,
+            match_id: p.match_id,
+            match_label: p.match_label,
+            lens,
+            threshold,
+            hits: hit.hits,
+            games: hit.games,
+            rate: hit.rate,
+            season_avg: seasonAvg,
+            gap,
+            player_status: p.player_status,
+            last_5_avg: p.last_5_avg !== null && p.last_5_avg !== undefined ? Number(p.last_5_avg) : null,
+            last_3_avg: p.last_3_avg !== null && p.last_3_avg !== undefined ? Number(p.last_3_avg) : null,
+            last_10_values: Array.isArray(p.last_10_values) ? p.last_10_values.map((v) => Number(v)) : [],
+          });
         }
-        if (!best) continue; // no qualifying threshold — player does not appear
-        const gap = seasonAvg !== null ? seasonAvg - best.threshold : null;
-        headlines.push({
-          player_name: p.player_name,
-          team_name: p.team_name,
-          opponent_team_name: p.opponent_team_name,
-          match_id: p.match_id,
-          match_label: p.match_label,
-          lens,
-          threshold: best.threshold,
-          hits: best.hit.hits,
-          games: best.hit.games,
-          rate: best.hit.rate,
-          season_avg: seasonAvg,
-          gap,
-          player_status: p.player_status,
-          last_5_avg: p.last_5_avg !== null && p.last_5_avg !== undefined ? Number(p.last_5_avg) : null,
-          last_3_avg: p.last_3_avg !== null && p.last_3_avg !== undefined ? Number(p.last_3_avg) : null,
-          last_10_values: Array.isArray(p.last_10_values) ? p.last_10_values.map((v) => Number(v)) : [],
-        });
       }
-      // Rank: threshold DESC, rate DESC, games DESC; OUT demoted below PLAYING
+      // Sort within lens: rate DESC, games DESC; OUT demoted below PLAYING.
       headlines.sort((a, b) => {
         const aOut = statusTag(a.player_status).label === "OUT";
         const bOut = statusTag(b.player_status).label === "OUT";
         if (aOut !== bOut) return aOut ? 1 : -1;
-        return b.threshold - a.threshold || b.rate - a.rate || b.games - a.games;
+        return b.rate - a.rate || b.games - a.games;
       });
-      stories.push(...headlines.slice(0, 20));
+      stories.push(...headlines);
     }
     return stories;
   }, [players]);
