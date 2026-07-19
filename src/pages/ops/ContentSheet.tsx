@@ -263,8 +263,8 @@ const HEAD_FANTASY_SORTS: { value: string; label: string }[] = [
   { value: "proj",    label: "Projected" },
 ];
 const HEAD_EVERGREEN_SORTS: { value: string; label: string }[] = [
-  { value: "default", label: "Default" },
-  { value: "mae",     label: "Accuracy MAE" },
+  { value: "mae",   label: "Accuracy MAE" },
+  { value: "howto", label: "How To Use" },
 ];
 
 function headSortOptions(head: HeadFilter): { value: string; label: string }[] {
@@ -2258,6 +2258,140 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   );
 }
 
+function HowToCard({ cta }: { cta: string }) {
+  const steps = [
+    { n: 1, title: "PICK ANY PLAYER", body: "Search 600+ players across every stat" },
+    { n: 2, title: "SEE THEIR HIT RATE", body: "Last 10 games, season, head-to-head" },
+    { n: 3, title: "BUILD YOUR CARD", body: "Free. No account. No trial." },
+  ];
+  const panelTop = 460;
+  const stepH = 220;
+  const panelHeight = 40 + steps.length * stepH;
+  const ctaTop = panelTop + panelHeight + 80;
+  return (
+    <div
+      id="neeko-howto-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: 88, letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>HOW IT WORKS</div>
+      <div style={{ position: "absolute", left: 0, top: 254, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: 88, letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>3 STEPS.</div>
+
+      <div style={{ position: "absolute", left: 100, top: panelTop, width: 880, height: panelHeight, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226" }}>
+        {steps.map((s, i) => (
+          <div key={s.n} style={{ position: "absolute", left: 0, top: 40 + i * stepH, width: 880, height: stepH, display: "flex", alignItems: "center", padding: "0 48px", borderTop: i > 0 ? "1px solid #202226" : "none" }}>
+            <div style={{ fontFamily: ANTON_FONT, fontSize: 120, fontWeight: 800, color: "#F5C442", lineHeight: 1, width: 140 }}>{s.n}</div>
+            <div style={{ flex: 1, paddingLeft: 24 }}>
+              <div style={{ fontFamily: ANTON_FONT, fontSize: 56, fontWeight: 800, color: "#FFFFFF", lineHeight: 1, letterSpacing: "-1px" }}>{s.title}</div>
+              <div style={{ marginTop: 16, color: "#8A8F96", fontSize: 32 }}>{s.body}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: ctaTop + 100, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function HowToCardModal({ onClose }: { onClose: () => void }) {
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleDownload() {
+    const node = document.getElementById("neeko-howto-card");
+    if (!node) return;
+    setDownloading(true);
+    document.body.style.overflow = 'hidden';
+    try {
+      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const blob = await toBlob(node, {
+        width: 1080,
+        height: 1920,
+        pixelRatio: 1,
+        backgroundColor: "#050505",
+        fontEmbedCSS: css,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "neeko_howto.png";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      document.body.style.overflow = '';
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-4">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">How-To Card</label>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
+            <HowToCard cta={cta} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+          <select
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          >
+            {CTA_OPTIONS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+        >
+          {downloading ? "Rendering…" : "Download PNG"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type CareerRow = {
   stat_name: string | null;
   career_high: number | null;
@@ -2966,6 +3100,7 @@ export default function ContentSheet() {
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
   const [priceCardRow, setPriceCardRow] = useState<PriceRow | null>(null);
   const [evergreenCardRow, setEvergreenCardRow] = useState<EvergreenRow | null>(null);
+  const [howToCardOpen, setHowToCardOpen] = useState(false);
   const [resultsData, setResultsData] = useState<{
     summary: AccuracySummary | null;
     examples: AccuracyExample[];
@@ -3091,10 +3226,12 @@ export default function ContentSheet() {
     return () => { cancelled = true; };
   }, []);
 
-  // Results: fetch round accuracy summary + best-call examples when Results tab active.
+  // Results / Evergreen-MAE: fetch round accuracy summary + best-call examples.
   // Re-fires on round change (the [round] effect above resets resultsData to null).
+  const evergreenNeedsAccuracy = head === "Evergreen" && sortView === "mae";
   useEffect(() => {
-    if (storyType !== "Results") return;
+    if (storyType !== "Results" && !evergreenNeedsAccuracy) return;
+    if (evergreenNeedsAccuracy && resultsData.summary !== null) return;
     let cancelled = false;
     (async () => {
       const [summaryRes, examplesRes] = await Promise.all([
@@ -3108,7 +3245,7 @@ export default function ContentSheet() {
       });
     })();
     return () => { cancelled = true; };
-  }, [storyType, round]);
+  }, [storyType, round, evergreenNeedsAccuracy, resultsData.summary]);
 
   // Board: fetch review summary + rows when Board tab active.
   async function loadBoardData(roundNum: number) {
@@ -4168,63 +4305,77 @@ export default function ContentSheet() {
         <PriceCardModal row={priceCardRow} onClose={() => setPriceCardRow(null)} />
       )}
 
-      {head === "Evergreen" && (
-        <div className="space-y-6">
-          {evergreenRows.length === 0 && (
-            <div className="py-10 text-center text-xs text-zinc-500">
-              No evergreen stories for the current rankings pool.
+      {head === "Evergreen" && sortView === "mae" && (
+        <div className="space-y-4">
+          {resultsData.summary === null ? (
+            <div className="py-10 flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
             </div>
-          )}
-          {(["elite", "top_ranked", "rising", "risk"] as EvergreenStory[]).map((story) => {
-            const rows = groupedEvergreenRows.get(story);
-            if (!rows || rows.length === 0) return null;
-            const meta = EVERGREEN_STORY_META[story];
-            return (
-              <div key={story} className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: meta.bg }}>
-                  {meta.label}
-                </div>
-                {rows.map((r, i) => (
-                  <div
-                    key={`${r.player_name}-${story}-${i}`}
-                    className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-zinc-200 font-medium truncate">
-                        {r.player_name}{" "}
-                        <span className="text-zinc-500 font-normal">· {r.team_name} · {r.position}</span>
-                      </div>
-                      <div className="text-xs text-zinc-400 mt-0.5">
-                        {Math.round(r.consistency)}% · RANK #{Math.round(r.rank_position)} · ${(r.price / 1000).toFixed(0)}K
-                      </div>
-                      <div className="text-xs text-zinc-500 mt-0.5">
-                        Sz {r.season_avg.toFixed(1)} · L5 {r.last_5_avg.toFixed(1)} · VS {r.value_score.toFixed(0)}
-                      </div>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{ background: meta.bg, color: meta.text }}
-                    >
-                      {meta.badge}
-                    </span>
-                    <button
-                      onClick={() => setEvergreenCardRow(r)}
-                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
-                      title="Export PNG"
-                    >
-                      PNG
-                    </button>
-                  </div>
-                ))}
+          ) : (
+            <>
+              <div className="text-xs text-zinc-400">
+                {resultsData.summary.featured} tracked · {resultsData.summary.within_10_pct}% within 10 · {Number(resultsData.summary.avg_mae).toFixed(1)} avg error
               </div>
-            );
-          })}
+
+              <button
+                onClick={() => setResultsCardOpen(true)}
+                className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
+              >
+                Download Summary Card · R{resultsData.summary.round_number}
+              </button>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                  Best calls (R{resultsData.summary.round_number})
+                </div>
+                <div className="grid grid-cols-6 gap-2 px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div>Player</div>
+                  <div>Team</div>
+                  <div className="text-right">Projected</div>
+                  <div className="text-right">Actual</div>
+                  <div className="text-right">Error</div>
+                  <div className="text-right">Tier</div>
+                </div>
+                {[...resultsData.examples]
+                  .sort((a, b) => Number(a.error) - Number(b.error))
+                  .map((ex, i) => (
+                    <div
+                      key={`${ex.player_name}-${i}`}
+                      className="grid grid-cols-6 gap-2 px-3 py-2 text-xs text-zinc-200 bg-zinc-900/60 border border-zinc-800 rounded-lg"
+                    >
+                      <div className="truncate">{ex.player_name}</div>
+                      <div className="truncate text-zinc-400">{ex.team_name}</div>
+                      <div className="text-right">{Number(ex.projection).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.actual_score).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.error).toFixed(1)}</div>
+                      <div className="text-right">{ex.accuracy_tier}</div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {head === "Evergreen" && sortView === "howto" && (
+        <div className="space-y-4">
+          <div className="text-xs text-zinc-400">
+            Static explainer card — no data query needed.
+          </div>
+          <button
+            onClick={() => setHowToCardOpen(true)}
+            className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
+          >
+            Download How-To Card
+          </button>
         </div>
       )}
 
       {evergreenCardRow && (
         <EvergreenCardModal row={evergreenCardRow} onClose={() => setEvergreenCardRow(null)} />
       )}
+
+      {howToCardOpen && <HowToCardModal onClose={() => setHowToCardOpen(false)} />}
 
       {storyType === "Career" && (
         <div className="space-y-4">
