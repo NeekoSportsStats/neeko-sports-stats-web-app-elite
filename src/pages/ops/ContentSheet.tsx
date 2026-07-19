@@ -639,12 +639,7 @@ function buildHitBank(r: RankedRow): HookGroup[] {
       pair("THE OBVIOUS PLAY ISN'T OBVIOUS TO EVERYONE."),
       pair("WHILE OTHERS OVERTHINK IT."),
       pair("{RATE}% AND PEOPLE ARE STILL SLEEPING."),
-      pair("MOST PEOPLE W
-      )
-    ]
-    }
-  ]
-}ON'T ACT ON THIS."),
+      pair("MOST PEOPLE WON'T ACT ON THIS."),
       pair("THE DATA SAYS YES. DOES YOUR TEAM?"),
       pair("SLEEPING ON {SURNAME} IS A MISTAKE."),
       pair("NOT FLASHY. JUST CONSISTENT."),
@@ -936,6 +931,94 @@ function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string];
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
+        NEEKO STATS
+      </div>
+    </div>
+  );
+}
+
+function HitRateFormCard({ row, hook, cta }: { row: RankedRow; hook: [string, string]; cta: string }) {
+  const season = row.season_avg !== null ? row.season_avg : 0;
+  const last5 = row.last_5_avg !== null ? row.last_5_avg : 0;
+  const delta = last5 - season;
+  const accent = delta >= 0 ? "#22C55E" : "#EF4444";
+  const deltaStr = (delta >= 0 ? "+" : "") + delta.toFixed(1);
+  return (
+    <div
+      id="neeko-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background:
+          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 88), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 88) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 88), letterSpacing: "-1px", lineHeight: 1, color: accent }}>{hook[1]}</div>
+      )}
+      <div style={{ position: "absolute", left: 0, top: 400, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        {row.player_name} · {row.team_name} · v {row.opponent_team_name}
+        {(row.player_status ?? "").toLowerCase() !== "active" && (
+          <span style={{ display: "inline-block", marginLeft: 16, background: "#3F1D1D", color: "#EF4444", fontSize: 24, fontWeight: 800, borderRadius: 10, padding: "6px 16px", verticalAlign: "middle" }}>OUT</span>
+        )}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 100,
+          top: 480,
+          width: 880,
+          height: 360,
+          borderRadius: 30,
+          background: "#0D0E11",
+          border: "1px solid #202226",
+        }}
+      >
+        <div style={{ position: "absolute", left: 0, top: 40, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>SEASON</div>
+        <div style={{ position: "absolute", left: 0, top: 80, width: 440, textAlign: "center", color: "#FFFFFF", fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {season.toFixed(1)}
+        </div>
+        <div style={{ position: "absolute", left: 440, top: 40, width: 440, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>LAST 5</div>
+        <div style={{ position: "absolute", left: 440, top: 80, width: 440, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+          {last5.toFixed(1)}
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 900, width: 1080, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 96, fontWeight: 800, lineHeight: 1 }}>
+        {deltaStr}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 1010, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>
+        {row.lens} form · last 5 games
+      </div>
+
+      <div style={{ position: "absolute", left: 100, top: 1080, width: 880, display: "flex", justifyContent: "center" }}>
+        <MiniBar values={row.last_10_values} threshold={row.threshold} avg={season} />
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1300, width: 1080, textAlign: "center" }}>
+        <span
+          style={{
+            display: "inline-block",
+            background: "#F5C442",
+            borderRadius: 44,
+            padding: "22px 56px",
+            color: "#080808",
+            fontSize: 36,
+            fontWeight: 800,
+          }}
+        >
+          {cta}
+        </span>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, top: 1410, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
         NEEKO STATS
       </div>
     </div>
@@ -2947,7 +3030,27 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 }
 
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
-  const groups = useMemo(() => buildHitBank(row), [row]);
+  const [angle, setAngle] = useState<"hitrate" | "form">("hitrate");
+  const formRow = useMemo<FormRow>(() => ({
+    player_name: row.player_name,
+    team_name: row.team_name,
+    opponent_team_name: row.opponent_team_name,
+    position: "—",
+    lens: row.lens,
+    season_avg: row.season_avg ?? 0,
+    last_5_avg: row.last_5_avg ?? 0,
+    last_3_avg: row.last_3_avg ?? 0,
+    games_played: row.games,
+    player_status: row.player_status,
+    delta: (row.last_5_avg ?? 0) - (row.season_avg ?? 0),
+    tag: ((row.last_5_avg ?? 0) - (row.season_avg ?? 0)) >= 0 ? "HOT" : "COLD",
+    match_id: row.match_id,
+    match_label: row.match_label,
+  }), [row]);
+  const groups = useMemo(
+    () => (angle === "form" ? buildFormBank(formRow, "L5") : buildHitBank(row)),
+    [angle, formRow, row]
+  );
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
@@ -3043,7 +3146,9 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} cta={cta} />
+            {angle === "form"
+              ? <HitRateFormCard row={row} hook={hook} cta={cta} />
+              : <NeekoCard row={row} hook={hook} cta={cta} />}
           </div>
         </div>
 
