@@ -639,7 +639,12 @@ function buildHitBank(r: RankedRow): HookGroup[] {
       pair("THE OBVIOUS PLAY ISN'T OBVIOUS TO EVERYONE."),
       pair("WHILE OTHERS OVERTHINK IT."),
       pair("{RATE}% AND PEOPLE ARE STILL SLEEPING."),
-      pair("MOST PEOPLE WON'T ACT ON THIS."),
+      pair("MOST PEOPLE W
+      )
+    ]
+    }
+  ]
+}ON'T ACT ON THIS."),
       pair("THE DATA SAYS YES. DOES YOUR TEAM?"),
       pair("SLEEPING ON {SURNAME} IS A MISTAKE."),
       pair("NOT FLASHY. JUST CONSISTENT."),
