@@ -263,8 +263,9 @@ const HEAD_FANTASY_SORTS: { value: string; label: string }[] = [
   { value: "proj",    label: "Projected" },
 ];
 const HEAD_EVERGREEN_SORTS: { value: string; label: string }[] = [
-  { value: "mae",   label: "Accuracy MAE" },
-  { value: "howto", label: "How To Use" },
+  { value: "mae",    label: "Accuracy MAE" },
+  { value: "weekly", label: "Weekly Accuracy" },
+  { value: "howto",  label: "How To Use" },
 ];
 
 function headSortOptions(head: HeadFilter): { value: string; label: string }[] {
@@ -3095,6 +3096,14 @@ export default function ContentSheet() {
       setSortView("default");
     }
   }, [storyType]);
+  // Per-head default sortView. When the head changes, pick a sensible default
+  // for that head rather than the generic "default" (which is invalid for
+  // Evergreen and suboptimal for Fantasy).
+  useEffect(() => {
+    if (head === "Evergreen") setSortView("mae");
+    else if (head === "Fantasy") setSortView("value");
+    else setSortView("default");
+  }, [head]);
   const [copyState, setCopyState] = useState<string | null>(null);
   const [cardRow, setCardRow] = useState<RankedRow | null>(null);
   const [formCardRow, setFormCardRow] = useState<FormRow | null>(null);
@@ -3226,9 +3235,12 @@ export default function ContentSheet() {
     return () => { cancelled = true; };
   }, []);
 
-  // Results / Evergreen-MAE: fetch round accuracy summary + best-call examples.
-  // Re-fires on round change (the [round] effect above resets resultsData to null).
-  const evergreenNeedsAccuracy = head === "Evergreen" && sortView === "mae";
+  // Results / Evergreen-MAE / Evergreen-Weekly: fetch round accuracy summary
+  // + projection examples. Re-fires on round change (the [round] effect above
+  // resets resultsData to null). One fetch serves both mae (top 10 by error)
+  // and weekly (all examples by projected DESC) — limit_n:100 returns the
+  // full list; mae slices client-side.
+  const evergreenNeedsAccuracy = head === "Evergreen" && (sortView === "mae" || sortView === "weekly");
   useEffect(() => {
     if (storyType !== "Results" && !evergreenNeedsAccuracy) return;
     if (evergreenNeedsAccuracy && resultsData.summary !== null) return;
@@ -3236,7 +3248,7 @@ export default function ContentSheet() {
     (async () => {
       const [summaryRes, examplesRes] = await Promise.all([
         supabase!.rpc("get_accuracy_round_summary", { p_season: 2026, p_round: round ?? null }),
-        supabase!.rpc("get_projection_accuracy_examples", { limit_n: 10 }),
+        supabase!.rpc("get_projection_accuracy_examples", { limit_n: 100 }),
       ]);
       if (cancelled) return;
       setResultsData({
@@ -3618,58 +3630,62 @@ export default function ContentSheet() {
     const isOut = (r: FantasyRow) => statusTag(r.status).label === "OUT";
     const formDelta = (r: FantasyRow) => r.last_5_avg - r.season_avg;
 
+    // Hot/Cold are form sorts — injured/bye players (season_avg=0 or
+    // last_5_avg=0, status !== "active") pollute the delta. Exclude them
+    // before sorting. Price-based sorts keep all players.
+    const hotColdPool = (sortView === "hot" || sortView === "cold")
+      ? filtered.filter((r) =>
+          r.season_avg > 0 &&
+          r.last_5_avg > 0 &&
+          (r.status ?? "").toLowerCase() === "active"
+        )
+      : filtered;
+    const sortPool = hotColdPool;
+
     switch (sortView) {
       case "hot":
-        filtered.sort((a, b) => {
-          const ao = isOut(a), bo = isOut(b);
-          if (ao !== bo) return ao ? 1 : -1;
-          return formDelta(b) - formDelta(a);
-        });
+        sortPool.sort((a, b) => formDelta(b) - formDelta(a));
         break;
       case "cold":
-        filtered.sort((a, b) => {
-          const ao = isOut(a), bo = isOut(b);
-          if (ao !== bo) return ao ? 1 : -1;
-          return formDelta(a) - formDelta(b);
-        });
+        sortPool.sort((a, b) => formDelta(a) - formDelta(b));
         break;
       case "value":
-        filtered.sort((a, b) => {
+        sortPool.sort((a, b) => {
           const ao = isOut(a), bo = isOut(b);
           if (ao !== bo) return ao ? 1 : -1;
           return b.value_score - a.value_score;
         });
         break;
       case "bepos":  // BE positive = price rising = be_delta most negative first
-        filtered.sort((a, b) => {
+        sortPool.sort((a, b) => {
           const ao = isOut(a), bo = isOut(b);
           if (ao !== bo) return ao ? 1 : -1;
           return a.be_delta - b.be_delta;
         });
         break;
       case "beneg":  // BE negative = price falling = be_delta most positive first
-        filtered.sort((a, b) => {
+        sortPool.sort((a, b) => {
           const ao = isOut(a), bo = isOut(b);
           if (ao !== bo) return ao ? 1 : -1;
           return b.be_delta - a.be_delta;
         });
         break;
       case "projected":
-        filtered.sort((a, b) => {
+        sortPool.sort((a, b) => {
           const ao = isOut(a), bo = isOut(b);
           if (ao !== bo) return ao ? 1 : -1;
           return b.projection - a.projection;
         });
         break;
       default:       // value_score DESC
-        filtered.sort((a, b) => {
+        sortPool.sort((a, b) => {
           const ao = isOut(a), bo = isOut(b);
           if (ao !== bo) return ao ? 1 : -1;
           return b.value_score - a.value_score;
         });
         break;
     }
-    return filtered;
+    return sortPool;
   }, [head, sortView, matchFilter, rankingsRef.current, players]);
 
   // Evergreen rows: derive from rankingsRef on demand when Evergreen tab is active.
@@ -4336,8 +4352,55 @@ export default function ContentSheet() {
                   <div className="text-right">Error</div>
                   <div className="text-right">Tier</div>
                 </div>
+                {/* mae view: top 10 best calls by error ASC (fetch returns 100) */}
                 {[...resultsData.examples]
                   .sort((a, b) => Number(a.error) - Number(b.error))
+                  .slice(0, 10)
+                  .map((ex, i) => (
+                    <div
+                      key={`${ex.player_name}-${i}`}
+                      className="grid grid-cols-6 gap-2 px-3 py-2 text-xs text-zinc-200 bg-zinc-900/60 border border-zinc-800 rounded-lg"
+                    >
+                      <div className="truncate">{ex.player_name}</div>
+                      <div className="truncate text-zinc-400">{ex.team_name}</div>
+                      <div className="text-right">{Number(ex.projection).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.actual_score).toFixed(0)}</div>
+                      <div className="text-right">{Number(ex.error).toFixed(1)}</div>
+                      <div className="text-right">{ex.accuracy_tier}</div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {head === "Evergreen" && sortView === "weekly" && (
+        <div className="space-y-4">
+          {resultsData.summary === null ? (
+            <div className="py-10 flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+            </div>
+          ) : resultsData.examples.length === 0 ? (
+            <div className="py-10 text-center text-xs text-zinc-500">
+              No projection examples for R{resultsData.summary.round_number}.
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-zinc-400">
+                {resultsData.examples.length} players · R{resultsData.summary.round_number} · ordered by projected score
+              </div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-6 gap-2 px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div>Player</div>
+                  <div>Team</div>
+                  <div className="text-right">Projected</div>
+                  <div className="text-right">Actual</div>
+                  <div className="text-right">Error</div>
+                  <div className="text-right">Tier</div>
+                </div>
+                {[...resultsData.examples]
+                  .sort((a, b) => Number(b.projection) - Number(a.projection))
                   .map((ex, i) => (
                     <div
                       key={`${ex.player_name}-${i}`}
