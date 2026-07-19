@@ -413,6 +413,66 @@ function flattenGroups(groups: HookGroup[]): { flat: [string, string][]; starts:
   return { flat, starts };
 }
 
+// Hit Rates head sort. Applies one of 5 modes to rankedRows, with OUT
+// players demoted to the bottom in every mode. `default` and `rate` both
+// keep the existing rate-DESC, games-DESC order (the builder's default).
+function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
+  const out = [...rows];
+  const isOut = (r: RankedRow) => statusTag(r.player_status).label === "OUT";
+  const weighted = (r: RankedRow) => r.rate * Math.min(r.games, 18) / 18;
+  const l5Delta = (r: RankedRow) => {
+    const sa = r.season_avg !== null ? Number(r.season_avg) : null;
+    const l5 = r.last_5_avg !== null ? Number(r.last_5_avg) : null;
+    return sa !== null && l5 !== null && isFinite(sa) && isFinite(l5) ? l5 - sa : null;
+  };
+  switch (sortView) {
+    case "consist":
+      out.sort((a, b) => {
+        const ao = isOut(a), bo = isOut(b);
+        if (ao !== bo) return ao ? 1 : -1;
+        return weighted(b) - weighted(a);
+      });
+      break;
+    case "inconsist":
+      out.sort((a, b) => {
+        const ao = isOut(a), bo = isOut(b);
+        if (ao !== bo) return ao ? 1 : -1;
+        // rate = 0 rows sink to the bottom (treated as "most inconsistent"
+        // only among players who actually hit sometimes).
+        const az = a.rate === 0, bz = b.rate === 0;
+        if (az !== bz) return az ? 1 : -1;
+        return weighted(a) - weighted(b);
+      });
+      break;
+    case "l5rise":
+      out.sort((a, b) => {
+        const ao = isOut(a), bo = isOut(b);
+        if (ao !== bo) return ao ? 1 : -1;
+        const da = l5Delta(a), db = l5Delta(b);
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return db - da;
+      });
+      break;
+    case "l5drop":
+      out.sort((a, b) => {
+        const ao = isOut(a), bo = isOut(b);
+        if (ao !== bo) return ao ? 1 : -1;
+        const da = l5Delta(a), db = l5Delta(b);
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
+      });
+      break;
+    default:
+      // "default" and "rate" — keep builder order (rate DESC, games DESC).
+      break;
+  }
+  return out;
+}
+
 function sortRows<T extends { player_name: string; last_5_avg: number | null; last_3_avg: number | null; season_avg: number | null }>(
   rows: T[],
   sortView: string,
@@ -3263,7 +3323,9 @@ export default function ContentSheet() {
   const hideOutFilter = <T extends { player_status: string }>(rows: T[]): T[] =>
     hideOut ? rows.filter((r) => (r.player_status ?? "").toLowerCase() === "active") : rows;
 
-  const visibleHitRateRows = sortRows(hideOutFilter(visibleRows), sortView, rankingsRef.current);
+  const visibleHitRateRows = head === "HitRates"
+    ? sortHitRateRows(hideOutFilter(visibleRows), sortView)
+    : hideOutFilter(visibleRows);
   const visibleFormRows = sortRows(
     hideOutFilter(formRows.filter((r) => matchFilter === null || r.match_id === matchFilter)),
     sortView,
