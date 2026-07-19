@@ -311,6 +311,22 @@ type PriceRow = {
 
 type PriceStory = PriceRow["story"];
 
+type FantasyRow = {
+  player_name: string;
+  team_name: string;
+  position: string;
+  price: number;
+  breakeven: number;
+  projection: number;
+  value_score: number;
+  season_avg: number;      // fantasy points season avg
+  last_5_avg: number;      // fantasy points L5 avg
+  be_delta: number;        // breakeven - projection
+  matchup_label: string | null;
+  status: string;
+  match_id: number | null;
+};
+
 const PRICE_STORY_META: Record<PriceStory, { label: string; badge: string; bg: string; text: string }> = {
   trap:      { label: "PRICE TRAP",  badge: "TRAP",      bg: "#EF4444", text: "#FFFFFF" },
   bargain:   { label: "BARGAIN",     badge: "BARGAIN",   bg: "#22C55E", text: "#FFFFFF" },
@@ -3408,6 +3424,117 @@ export default function ContentSheet() {
     return withStory.slice(0, 50);
   }, [storyType, sortView, rankingsRef.current]);
 
+  // Fantasy rows: flat list joining rankingsRef (price/BE/projection/value)
+  // with the fantasy-lens players array (season_avg, last_5_avg, match_id).
+  // No new RPC — both sources are already fetched on mount.
+  const fantasyRows = useMemo<FantasyRow[]>(() => {
+    if (head !== "Fantasy") return [];
+    const map = rankingsRef.current;
+    if (!map) return [];
+
+    // Index fantasy-lens player rows by name for the join.
+    const fantasyStats = new Map<string, { season_avg: number; last_5_avg: number; match_id: number | null }>();
+    for (const p of players) {
+      if (p.lens !== "fantasy") continue;
+      const sa = p.season_avg !== null ? Number(p.season_avg) : 0;
+      const l5 = p.last_5_avg !== null ? Number(p.last_5_avg) : 0;
+      const existing = fantasyStats.get(p.player_name);
+      if (existing) {
+        // Prefer a non-null match_id (player in this round's games).
+        if (existing.match_id === null && p.match_id !== null) {
+          fantasyStats.set(p.player_name, { season_avg: sa, last_5_avg: l5, match_id: p.match_id });
+        }
+      } else {
+        fantasyStats.set(p.player_name, { season_avg: sa, last_5_avg: l5, match_id: p.match_id ?? null });
+      }
+    }
+
+    const rows: FantasyRow[] = [];
+    for (const [name, r] of map) {
+      if (!r) continue;
+      if (r.price === null) continue;
+      const proj = r.projection ?? 0;
+      const be = r.breakeven ?? 0;
+      const fs = fantasyStats.get(name);
+      rows.push({
+        player_name: name,
+        team_name: r.team_name ?? "",
+        position: r.position ?? "",
+        price: r.price,
+        breakeven: be,
+        projection: proj,
+        value_score: r.value_score ?? 0,
+        season_avg: fs?.season_avg ?? 0,
+        last_5_avg: fs?.last_5_avg ?? 0,
+        be_delta: be - proj,
+        matchup_label: r.matchup_label ?? null,
+        status: r.status ?? "active",
+        match_id: fs?.match_id ?? null,
+      });
+    }
+
+    // Game filter: when a specific game is selected, keep only players in it.
+    const filtered = matchFilter === null
+      ? rows
+      : rows.filter((r) => r.match_id === matchFilter);
+
+    const isOut = (r: FantasyRow) => statusTag(r.status).label === "OUT";
+    const formDelta = (r: FantasyRow) => r.last_5_avg - r.season_avg;
+
+    switch (sortView) {
+      case "hot":
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return formDelta(b) - formDelta(a);
+        });
+        break;
+      case "cold":
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return formDelta(a) - formDelta(b);
+        });
+        break;
+      case "value":
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return b.value_score - a.value_score;
+        });
+        break;
+      case "bepos":  // BE positive = price rising = be_delta most negative first
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return a.be_delta - b.be_delta;
+        });
+        break;
+      case "beneg":  // BE negative = price falling = be_delta most positive first
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return b.be_delta - a.be_delta;
+        });
+        break;
+      case "projected":
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return b.projection - a.projection;
+        });
+        break;
+      default:       // value_score DESC
+        filtered.sort((a, b) => {
+          const ao = isOut(a), bo = isOut(b);
+          if (ao !== bo) return ao ? 1 : -1;
+          return b.value_score - a.value_score;
+        });
+        break;
+    }
+    return filtered;
+  }, [head, sortView, matchFilter, rankingsRef.current, players]);
+
   // Evergreen rows: derive from rankingsRef on demand when Evergreen tab is active.
   // No new RPC — uses the rankings already fetched on mount.
   const evergreenRows = useMemo<EvergreenRow[]>(() => {
@@ -3978,53 +4105,59 @@ export default function ContentSheet() {
       )}
 
       {head === "Fantasy" && (
-        <div className="space-y-6">
-          {priceRows.length === 0 && (
+        <div className="space-y-2">
+          {fantasyRows.length === 0 && (
             <div className="py-10 text-center text-xs text-zinc-500">
-              No price stories for the current rankings pool.
+              No fantasy rows for the current rankings pool.
             </div>
           )}
-          {(["trap", "bargain", "expensive", "value"] as PriceStory[]).map((story) => {
-            const rows = groupedPriceRows.get(story);
-            if (!rows || rows.length === 0) return null;
-            const meta = PRICE_STORY_META[story];
+          {fantasyRows.map((r, i) => {
+            const tag = statusTag(r.status);
+            const priceRow: PriceRow = {
+              player_name: r.player_name,
+              team_name: r.team_name,
+              position: r.position,
+              price: r.price,
+              breakeven: r.breakeven,
+              projection: r.projection,
+              value_score: r.value_score,
+              season_avg: r.season_avg,
+              last_5_avg: r.last_5_avg,
+              be_delta: r.be_delta,
+              matchup_label: r.matchup_label,
+              status: r.status,
+              story: "value",
+            };
             return (
-              <div key={story} className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: meta.bg }}>
-                  {meta.label}
-                </div>
-                {rows.map((r, i) => (
-                  <div
-                    key={`${r.player_name}-${story}-${i}`}
-                    className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-zinc-200 font-medium truncate">
-                        {r.player_name}{" "}
-                        <span className="text-zinc-500 font-normal">· {r.team_name} · {r.position}</span>
-                      </div>
-                      <div className="text-xs text-zinc-400 mt-0.5">
-                        ${(r.price / 1000).toFixed(0)}K · BE {Math.round(r.breakeven)} · Proj {Math.round(r.projection)}
-                      </div>
-                      <div className="text-xs text-zinc-500 mt-0.5">
-                        Δ {r.be_delta > 0 ? "+" : ""}{Math.round(r.be_delta)} · Sz {r.season_avg.toFixed(1)} · L5 {r.last_5_avg.toFixed(1)}
-                      </div>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{ background: meta.bg, color: meta.text }}
-                    >
-                      {meta.badge}
-                    </span>
-                    <button
-                      onClick={() => setPriceCardRow(r)}
-                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
-                      title="Export PNG"
-                    >
-                      PNG
-                    </button>
+              <div
+                key={`${r.player_name}-${i}`}
+                className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-zinc-200 font-medium truncate">
+                    {r.player_name}{" "}
+                    <span className="text-zinc-500 font-normal">· {r.team_name} · {r.position}</span>
+                    {tag.label !== "OK" && (
+                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ background: tag.cls, color: "#080808" }}>
+                        {tag.label}
+                      </span>
+                    )}
                   </div>
-                ))}
+                  <div className="text-xs text-zinc-400 mt-0.5">
+                    ${(r.price / 1000).toFixed(0)}K · BE {Math.round(r.breakeven)} · Proj {Math.round(r.projection)} · Δ {r.be_delta > 0 ? "+" : ""}{Math.round(r.be_delta)}
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    Sz {r.season_avg.toFixed(1)} · L5 {r.last_5_avg.toFixed(1)} · VS {r.value_score.toFixed(0)}
+                    {r.matchup_label ? ` · ${r.matchup_label}` : ""}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPriceCardRow(priceRow)}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                  title="Export PNG"
+                >
+                  PNG
+                </button>
               </div>
             );
           })}
