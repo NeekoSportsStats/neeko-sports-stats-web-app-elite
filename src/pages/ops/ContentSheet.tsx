@@ -239,6 +239,40 @@ function sortOptionsFor(storyType: StoryType): SortOption[] {
   return HIT_RATE_SORTS;   // "HitRates" and "All"
 }
 
+// ── Head filters (3-head restructure) ────────────────────────────────────────
+// The 7 story tabs collapse into 3 heads. Each head shows a different view
+// and a different set of contextual sub-filters. Sort option sets are scoped
+// per head; the underlying sort logic is wired in a later prompt.
+type HeadFilter = "HitRates" | "Fantasy" | "Evergreen";
+
+const HEAD_HITRATE_SORTS: { value: string; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "rate",    label: "Hit Rate ↓" },
+  { value: "consist", label: "Most Consistent" },
+  { value: "inconsist", label: "Least Consistent" },
+  { value: "l5rise",  label: "L5 Riser" },
+  { value: "l5drop",  label: "L5 Dropper" },
+];
+const HEAD_FANTASY_SORTS: { value: string; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "hot",     label: "Hot" },
+  { value: "cold",    label: "Cold" },
+  { value: "value",   label: "Best Value" },
+  { value: "bepos",   label: "BE Positive" },
+  { value: "beneg",   label: "BE Negative" },
+  { value: "proj",    label: "Projected" },
+];
+const HEAD_EVERGREEN_SORTS: { value: string; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "mae",     label: "Accuracy MAE" },
+];
+
+function headSortOptions(head: HeadFilter): { value: string; label: string }[] {
+  if (head === "Fantasy") return HEAD_FANTASY_SORTS;
+  if (head === "Evergreen") return HEAD_EVERGREEN_SORTS;
+  return HEAD_HITRATE_SORTS;
+}
+
 type RankingsEntry = {
   player_id: number | null;
   team_id: number | null;
@@ -2834,6 +2868,7 @@ export default function ContentSheet() {
   const [loadingFixtures, setLoadingFixtures] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [storyType, setStoryType] = useState<StoryType>("All");
+  const [head, setHead] = useState<HeadFilter>("HitRates");
   const [lensFilter, setLensFilter] = useState<Lens | "All">("All");
   const [formWindow, setFormWindow] = useState<FormWindow>("L5");
   const [hideOut, setHideOut] = useState(false);
@@ -3503,39 +3538,23 @@ export default function ContentSheet() {
         </div>
       </div>
 
-      {/* Filter bar — STORY / LENS / WINDOW + Hide OUT */}
+      {/* Filter bar — 3 HEADS + contextual sub-filters + Hide OUT */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Story</span>
-          {(["All", "HitRates", "Form", "Prices", "Evergreen", "Results", "Career", "Board"] as StoryType[]).map((s) => (
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Head</span>
+          {(["HitRates", "Fantasy", "Evergreen"] as HeadFilter[]).map((h) => (
             <button
-              key={s}
-              onClick={() => setStoryType(s)}
+              key={h}
+              onClick={() => setHead(h)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                storyType === s
+                head === h
                   ? "bg-zinc-700 text-zinc-100"
                   : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              {s === "HitRates" ? "Hit Rates" : s}
+              {h === "HitRates" ? "Hit Rates" : h}
             </button>
           ))}
-          <div className="flex items-center gap-2 ml-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Round</label>
-            <select
-              value={round ?? currentRound ?? 19}
-              onChange={(e) => setRound(Number(e.target.value))}
-              disabled={availableRounds.length === 0 || loadingFixtures}
-              className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-40"
-            >
-              {availableRounds.map((r) => (
-                <option key={r} value={r}>
-                  {r === currentRound ? `R${r} (current)` : `R${r}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          {storyType !== "Career" && storyType !== "Board" && (
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sort</label>
@@ -3544,7 +3563,7 @@ export default function ContentSheet() {
                 onChange={(e) => setSortView(e.target.value)}
                 className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
               >
-                {visibleSortOptions.map((o) => (
+                {headSortOptions(head).map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
@@ -3559,10 +3578,38 @@ export default function ContentSheet() {
               Hide OUT
             </label>
           </div>
-          )}
         </div>
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
+        {/* Game dropdown — shown for HitRates and Fantasy, NOT Evergreen */}
+        {head !== "Evergreen" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Game</span>
+            <select
+              value={matchFilter ?? ""}
+              onChange={(e) => setMatchFilter(e.target.value ? Number(e.target.value) : null)}
+              className="bg-zinc-800 text-zinc-100 text-xs rounded-lg px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500 min-w-[180px]"
+            >
+              <option value="">All Games</option>
+              {availableMatches.map((m) => (
+                <option key={m.match_id} value={m.match_id}>
+                  {m.match_label}
+                </option>
+              ))}
+            </select>
+            {head === "HitRates" && (
+              <button
+                onClick={copyAll}
+                disabled={visibleHitRateRows.length === 0}
+                className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
+              >
+                {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Lens pills — HitRates head ONLY */}
+        {head === "HitRates" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Lens</span>
             <button
@@ -3588,17 +3635,11 @@ export default function ContentSheet() {
                 {LENS_LABELS[lens]}
               </button>
             ))}
-            <button
-              onClick={copyAll}
-              disabled={visibleHitRateRows.length === 0}
-              className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-200 transition-colors"
-            >
-              {copyState === "ALL" ? "Copied!" : "⧉ Copy All"}
-            </button>
           </div>
         )}
 
-        {storyType !== "Form" && storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
+        {/* Threshold pills — HitRates head ONLY */}
+        {head === "HitRates" && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Threshold</span>
             <button
@@ -3622,55 +3663,6 @@ export default function ContentSheet() {
                 }`}
               >
                 {t}+
-              </button>
-            ))}
-          </div>
-        )}
-
-        {storyType !== "Prices" && storyType !== "Evergreen" && storyType !== "Results" && storyType !== "Career" && storyType !== "Board" && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Match</span>
-            <button
-              onClick={() => setMatchFilter(null)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                matchFilter === null
-                  ? "bg-zinc-700 text-zinc-100"
-                  : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              All
-            </button>
-            {availableMatches.map((m) => (
-              <button
-                key={m.match_id}
-                onClick={() => setMatchFilter(m.match_id)}
-                title={m.match_label}
-                className={`max-w-[180px] truncate px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  matchFilter === m.match_id
-                    ? "bg-zinc-700 text-zinc-100"
-                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {m.match_label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {storyType === "Form" && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-1">Window</span>
-            {(["L5", "L3"] as FormWindow[]).map((w) => (
-              <button
-                key={w}
-                onClick={() => setFormWindow(w)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  formWindow === w
-                    ? "bg-zinc-700 text-zinc-100"
-                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {w}
               </button>
             ))}
           </div>
@@ -3787,11 +3779,11 @@ export default function ContentSheet() {
             })}
           </div>
         )
-      ) : visibleHitRateRows.length === 0 && allDone ? (
+      ) : head !== "HitRates" ? null : visibleHitRateRows.length === 0 && allDone ? (
         <div className="py-10 text-center text-xs text-zinc-500">
           No players with ≥10 games at key thresholds.
         </div>
-      ) : storyType === "Prices" ? null : storyType === "Evergreen" ? null : (
+      ) : (
         <div className="space-y-6">
           {LENSES.filter((l) => lensFilter === "All" || lensFilter === l).map((lens) => {
             const rows = grouped.get(lens);
@@ -3923,7 +3915,7 @@ export default function ContentSheet() {
         </div>
       )}
 
-      {storyType === "Prices" && (
+      {head === "Fantasy" && (
         <div className="space-y-6">
           {priceRows.length === 0 && (
             <div className="py-10 text-center text-xs text-zinc-500">
@@ -3981,7 +3973,7 @@ export default function ContentSheet() {
         <PriceCardModal row={priceCardRow} onClose={() => setPriceCardRow(null)} />
       )}
 
-      {storyType === "Evergreen" && (
+      {head === "Evergreen" && (
         <div className="space-y-6">
           {evergreenRows.length === 0 && (
             <div className="py-10 text-center text-xs text-zinc-500">
