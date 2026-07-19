@@ -3359,11 +3359,23 @@ export default function ContentSheet() {
         const sthr = p.season_threshold_hit_rates;
         if (!sthr) continue;
         const seasonAvg = p.season_avg !== null && p.season_avg !== undefined ? parseFloat(p.season_avg) : null;
-        // Emit a row for EVERY key threshold present in the player's hit-rate
-        // jsonb — regardless of rate or games. rate = 0 rows are included.
-        for (const threshold of KEY_THRESHOLDS[lens]) {
+        // Floor-anchor filter: drop the lower "always clears" rows.
+        // For a player like Daicos (15+:100, 20+:100, 25+:100, 30+:70), the
+        // 15+/20+ rows are noise — he always clears them. Keep only the
+        // highest threshold at rate===100 (the floor anchor) plus every
+        // threshold where rate<100 (the informative rows).
+        const keys = KEY_THRESHOLDS[lens];
+        const alwaysClears = keys.filter((t) => {
+          const h = sthr[String(t)];
+          return h && h.rate === 100;
+        });
+        const floorAnchor = alwaysClears.length
+          ? alwaysClears[alwaysClears.length - 1]
+          : null;
+        for (const threshold of keys) {
           const hit = sthr[String(threshold)];
           if (!hit) continue;
+          if (hit.rate === 100 && threshold !== floorAnchor) continue;
           const gap = seasonAvg !== null ? seasonAvg - threshold : null;
           headlines.push({
             player_name: p.player_name,
