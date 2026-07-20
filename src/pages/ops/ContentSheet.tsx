@@ -295,7 +295,11 @@ function CardPreview({ children, maxWidth = 380 }: { children: ReactNode; maxWid
       ref={ref}
       style={{
         width: `min(100%, ${maxWidth}px)`,
-        aspectRatio: "9 / 16",
+        aspectRatio: "9 
+      }
+      }
+  )
+}/ 16",
         overflow: "hidden",
         borderRadius: 12,
         margin: "0 auto",
