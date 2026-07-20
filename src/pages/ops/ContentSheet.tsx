@@ -889,28 +889,26 @@ function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
 function MiniBar({ values, threshold, avg }: { values: number[]; threshold: number; avg: number }) {
   const vals = values.slice(-10);
   if (vals.length === 0) return null;
-  const barW = 64;
-  const gap = 12;
+  const barW = 74;
+  const gap = 14;
+  const chartW = 940;
   const groupW = vals.length * barW + (vals.length - 1) * gap;
-  const startX = (880 - groupW) / 2;
+  const startX = (chartW - groupW) / 2;
   const maxVal = Math.max(...vals, threshold, 1);
-  const thresholdY = 160 - Math.round((threshold / maxVal) * 140);
+  const thresholdY = 185 - Math.round((threshold / maxVal) * 160);
   return (
-    <svg width={880} height={180} style={{ display: "block" }}>
-      <line x1={0} y1={thresholdY} x2={880} y2={thresholdY} stroke="#F5C442" strokeWidth={2} strokeDasharray="6 4" />
-      <text x={876} y={thresholdY - 6} textAnchor="end" fontSize={22} fill="#F5C442" fontWeight={700} fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'>
-        avg {avg.toFixed(1)}
-      </text>
+    <svg width={chartW} height={210} style={{ display: "block" }}>
+      <line x1={0} y1={thresholdY} x2={chartW} y2={thresholdY} stroke="#F5C442" strokeWidth={2} strokeDasharray="6 4" />
       {vals.map((val, i) => {
-        const barH = Math.max(20, Math.round((val / maxVal) * 140));
+        const barH = Math.max(22, Math.round((val / maxVal) * 160));
         const x = startX + i * (barW + gap);
-        const y = 160 - barH;
+        const y = 185 - barH;
         const fill = val >= threshold ? "#22C55E" : "#EF4444";
         return (
           <g key={i}>
-            <rect x={x} y={y} width={barW} height={barH} rx={6} fill={fill} />
+            <rect x={x} y={y} width={barW} height={barH} rx={7} fill={fill} />
             {barH >= 30 && (
-              <text x={x + barW / 2} y={y - 8} textAnchor="middle" fontSize={20} fill="#FFFFFF" fontWeight={700} fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'>
+              <text x={x + barW / 2} y={y - 9} textAnchor="middle" fontSize={24} fill="#FFFFFF" fontWeight={700} fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'>
                 {val}
               </text>
             )}
@@ -943,8 +941,9 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
       {hook[1] && (
         <div style={{ position: "absolute", left: 0, top: 180 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: row.rate >= 75 ? "#22C55E" : "#EF4444" }}>{hook[1]}</div>
       )}
-      <div style={{ position: "absolute", left: 0, top: 540, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
-        {row.player_name} · {row.team_name} · v {row.opponent_team_name}
+      <div style={{ position: "absolute", left: 0, top: 495, width: 1080, textAlign: "center", color: "#9CA3AF", fontSize: 32, lineHeight: 1.4 }}>
+        <div>{row.player_name} · {row.team_name}</div>
+        <div style={{ marginTop: 14 }}>v {row.opponent_team_name}</div>
         {(row.player_status ?? "").toLowerCase() !== "active" && (
           <span style={{ display: "inline-block", marginLeft: 16, background: "#3F1D1D", color: "#EF4444", fontSize: 24, fontWeight: 800, borderRadius: 10, padding: "6px 16px", verticalAlign: "middle" }}>OUT</span>
         )}
@@ -954,7 +953,7 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
         style={{
           position: "absolute",
           left: 100,
-          top: 640,
+          top: 620,
           width: 880,
           height: 380,
           borderRadius: 30,
@@ -972,16 +971,16 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
       </div>
 
       {showBar && (
-        <div style={{ position: "absolute", left: 100, top: 1100, width: 880, display: "flex", justifyContent: "center" }}>
+        <div style={{ position: "absolute", left: 70, top: 1060, width: 940, display: "flex", justifyContent: "center" }}>
           <MiniBar values={row.last_10_values} threshold={row.threshold} avg={avg} />
         </div>
       )}
 
-      <div style={{ position: "absolute", left: 0, top: 1300, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
-        Season average {row.season_avg !== null ? avg.toFixed(1) : "—"}
+      <div style={{ position: "absolute", left: 0, top: 1290, width: 1080, textAlign: "center", color: "#F5C442", fontSize: 26, fontWeight: 800, letterSpacing: "0.04em" }}>
+        SEASON AVG {row.season_avg !== null ? avg.toFixed(1) : "—"}
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1420, width: 1080, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, top: 1350, width: 1080, textAlign: "center" }}>
         <span
           style={{
             display: "inline-block",
@@ -997,8 +996,8 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1660, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
+      <div style={{ position: "absolute", left: 0, top: 1510, width: 1080, textAlign: "center" }}>
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 234, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
