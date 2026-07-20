@@ -820,7 +820,7 @@ function MiniBar({ values, threshold, avg }: { values: number[]; threshold: numb
   );
 }
 
-function NeekoCard({ row, hook, cta, logoUrl }: { row: RankedRow; hook: [string, string]; cta: string; logoUrl: string }) {
+function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow; hook: [string, string]; cta: string; logoUrl: string; showBar?: boolean }) {
   const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
   const avg = row.season_avg !== null ? row.season_avg : 0;
   return (
@@ -870,9 +870,11 @@ function NeekoCard({ row, hook, cta, logoUrl }: { row: RankedRow; hook: [string,
         </div>
       </div>
 
-      <div style={{ position: "absolute", left: 100, top: 920, width: 880, display: "flex", justifyContent: "center" }}>
-        <MiniBar values={row.last_10_values} threshold={row.threshold} avg={avg} />
-      </div>
+      {showBar && (
+        <div style={{ position: "absolute", left: 100, top: 920, width: 880, display: "flex", justifyContent: "center" }}>
+          <MiniBar values={row.last_10_values} threshold={row.threshold} avg={avg} />
+        </div>
+      )}
 
       <div style={{ position: "absolute", left: 0, top: 1070, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
         Season average {row.season_avg !== null ? avg.toFixed(1) : "—"}
@@ -2939,7 +2941,28 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   const logoUrl = _logoDataUrl;
-  const groups = useMemo(() => buildHitBank(row), [row]);
+  const [angle, setAngle] = useState<"hitrate" | "form">("hitrate");
+  const [showBar, setShowBar] = useState(true);
+  const formRow: FormRow = {
+    player_name: row.player_name,
+    team_name: row.team_name,
+    opponent_team_name: row.opponent_team_name ?? "",
+    position: "—",
+    lens: row.lens,
+    season_avg: row.season_avg ?? 0,
+    last_5_avg: row.last_5_avg ?? 0,
+    last_3_avg: row.last_3_avg ?? 0,
+    games_played: row.games,
+    player_status: row.player_status,
+    delta: (row.last_5_avg ?? 0) - (row.season_avg ?? 0),
+    tag: ((row.last_5_avg ?? 0) - (row.season_avg ?? 0)) >= 0 ? "HOT" : "COLD",
+    match_id: row.match_id,
+    match_label: row.match_label,
+  };
+  const groups = useMemo(
+    () => (angle === "form" ? buildFormBank(formRow, "L5") : buildHitBank(row)),
+    [angle, row, formRow]
+  );
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
@@ -3001,9 +3024,33 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
+            {angle === "hitrate" ? (
+              <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBar} />
+            ) : (
+              <FormCard row={formRow} formWindow="L5" hook={hook} cta={cta} logoUrl={logoUrl} />
+            )}
           </div>
         </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAngle("hitrate")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "hitrate" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
+          >
+            Hit Rate Story
+          </button>
+          <button
+            onClick={() => setAngle("form")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "form" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
+          >
+            Form Story
+          </button>
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+          <input type="checkbox" checked={showBar} onChange={(e) => setShowBar(e.target.checked)} />
+          Bar chart
+        </label>
 
         <select
           value={hookIdx}
