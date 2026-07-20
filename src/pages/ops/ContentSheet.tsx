@@ -671,29 +671,58 @@ function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
     const [a, b] = split(s);
     return [applyFormSub(a, r, formWindow).toUpperCase(), applyFormSub(b, r, formWindow).toUpperCase()];
   };
+  // For COLD hooks, render {DELTA} as an absolute value so "DOWN 4.2" reads
+  // naturally instead of "DOWN -4.2".
+  const rAbs: FormRow = { ...r, delta: Math.abs(r.delta) };
+  const pairAbs = (s: string): [string, string] => {
+    const [a, b] = split(s);
+    return [applyFormSub(a, rAbs, formWindow).toUpperCase(), applyFormSub(b, rAbs, formWindow).toUpperCase()];
+  };
+  const numberHooks = r.tag === "COLD" ? [
+    pairAbs("{DELTA} BELOW SEASON AVERAGE. {LENS}."),
+    pairAbs("DOWN {DELTA} ON HIS SEASON AVG. {LENS}."),
+    pair("{L5} {LENS} AVERAGE. LAST 5 GAMES."),
+    pair("SEASON AVG {SZN}. LAST 5 AVG {L5}."),
+    pairAbs("{DELTA} BELOW HIS USUAL. {LENS}."),
+    pairAbs("RUNNING {DELTA} BELOW AVERAGE."),
+    pair("{L5} IN HIS LAST 5. SEASON AVG {SZN}."),
+    pairAbs("THE GAP IS {DELTA}. {LENS}."),
+    pairAbs("{DELTA} POINTS BELOW HIS SEASON AVG."),
+    pair("LAST 5 AVG: {L5}. SEASON AVG: {SZN}."),
+    pair("{LENS}. THE FORM IS GONE. {L5} LAST 5."),
+    pairAbs("DOWN {DELTA} ON AVERAGE. LAST 5 GAMES."),
+    pair("THE {LENS} FORM IS {L5} AVG."),
+    pairAbs("{L5} {LENS}. THAT'S {DELTA} BELOW HIS NORM."),
+    pair("OUT OF FORM. {LENS}. {L5} LAST 5."),
+    pair("THE NUMBERS SAY {L5}. SEASON SAYS {SZN}."),
+    pairAbs("{DELTA} BELOW. {LENS}. RIGHT NOW."),
+    pair("FORM AVG {L5}. SEASON AVG {SZN}."),
+    pairAbs("THE DIFFERENCE IS {DELTA}. {LENS}."),
+    pair("{LENS}. LAST 5: {L5}. NORM: {SZN}."),
+  ] : [
+    pair("{DELTA} ABOVE SEASON AVERAGE. {LENS}."),
+    pair("UP {DELTA} ON HIS SEASON AVG. {LENS}."),
+    pair("{L5} {LENS} AVERAGE. LAST 5 GAMES."),
+    pair("SEASON AVG {SZN}. LAST 5 AVG {L5}."),
+    pair("{DELTA} ABOVE HIS USUAL. {LENS}."),
+    pair("RUNNING {DELTA} ABOVE AVERAGE."),
+    pair("{L5} IN HIS LAST 5. SEASON AVG {SZN}."),
+    pair("THE GAP IS {DELTA}. {LENS}."),
+    pair("{DELTA} POINTS ABOVE HIS SEASON AVG."),
+    pair("LAST 5 AVG: {L5}. SEASON AVG: {SZN}."),
+    pair("{LENS}. THE FORM IS REAL. {L5} LAST 5."),
+    pair("UP {DELTA} ON AVERAGE. LAST 5 GAMES."),
+    pair("THE {LENS} FORM IS {L5} AVG."),
+    pair("{L5} {LENS}. THAT'S {DELTA} ABOVE HIS NORM."),
+    pair("IN FORM. {LENS}. {L5} LAST 5."),
+    pair("THE NUMBERS SAY {L5}. SEASON SAYS {SZN}."),
+    pair("{DELTA} ABOVE. {LENS}. RIGHT NOW."),
+    pair("FORM AVG {L5}. SEASON AVG {SZN}."),
+    pair("THE DIFFERENCE IS {DELTA}. {LENS}."),
+    pair("{LENS}. LAST 5: {L5}. NORM: {SZN}."),
+  ];
   return [
-    { label: "The Number", hooks: [
-      pair("{DELTA} ABOVE SEASON AVERAGE. {LENS}."),
-      pair("UP {DELTA} ON HIS SEASON AVG. {LENS}."),
-      pair("{L5} {LENS} AVERAGE. LAST 5 GAMES."),
-      pair("SEASON AVG {SZN}. LAST 5 AVG {L5}."),
-      pair("{DELTA} ABOVE HIS USUAL. {LENS}."),
-      pair("RUNNING {DELTA} ABOVE AVERAGE."),
-      pair("{L5} IN HIS LAST 5. SEASON AVG {SZN}."),
-      pair("THE GAP IS {DELTA}. {LENS}."),
-      pair("{DELTA} POINTS ABOVE HIS SEASON AVG."),
-      pair("LAST 5 AVG: {L5}. SEASON AVG: {SZN}."),
-      pair("{LENS}. THE FORM IS REAL. {L5} LAST 5."),
-      pair("UP {DELTA} ON AVERAGE. LAST 5 GAMES."),
-      pair("THE {LENS} FORM IS {L5} AVG."),
-      pair("{L5} {LENS}. THAT'S {DELTA} ABOVE HIS NORM."),
-      pair("IN FORM. {LENS}. {L5} LAST 5."),
-      pair("THE NUMBERS SAY {L5}. SEASON SAYS {SZN}."),
-      pair("{DELTA} ABOVE. {LENS}. RIGHT NOW."),
-      pair("FORM AVG {L5}. SEASON AVG {SZN}."),
-      pair("THE DIFFERENCE IS {DELTA}. {LENS}."),
-      pair("{LENS}. LAST 5: {L5}. NORM: {SZN}."),
-    ]},
+    { label: "The Number", hooks: numberHooks },
     { label: "Quiet Confidence", hooks: [
       pair("HE DOES IT ALMOST EVERY WEEK."),
       pair("IT'S NOT A FLUKE."),
