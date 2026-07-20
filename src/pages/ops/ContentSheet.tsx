@@ -285,8 +285,7 @@ type RankingsEntry = {
   last_5_avg: number | null;
   games_played: number | null;
   position: string | null;
-  team
-}_name: string | null;
+  team_name: string | null;
   matchup_label: string | null;
   status: string | null;
   consistency: number | null;
@@ -4154,7 +4153,14 @@ export default function ContentSheet() {
                         </div>
                         {r.season_avg !== null && (
                           <div className="text-xs text-zinc-500 mt-0.5">
-                            season avg {r.season_avg.toFixed(1)} {fmtGap(r.gap)}
+                            season avg {r.season_avg.toFixed(1)}
+                            {r.last_5_avg !== null && (() => {
+                              const d = Number(r.last_5_avg) - Number(r.season_avg);
+                              const arrow = d >= 0 ? "▲" : "▼";
+                              const cls = d >= 0 ? "text-green-400" : "text-red-400";
+                              const sign = d >= 0 ? "+" : "";
+                              return <> · L5 {r.last_5_avg.toFixed(1)} <span className={cls}>({arrow}{sign}{d.toFixed(1)})</span></>;
+                            })()}
                           </div>
                         )}
                       </div>
