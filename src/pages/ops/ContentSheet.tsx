@@ -895,7 +895,7 @@ function NeekoCard({ row, hook, cta, logoUrl }: { row: RankedRow; hook: [string,
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -975,7 +975,7 @@ function FormCard({ row, formWindow, hook, cta, logoUrl }: { row: FormRow; formW
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1230, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -1422,7 +1422,7 @@ function EvergreenCard({ row, hook, cta, logoUrl }: { row: EvergreenRow; hook: [
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -1654,7 +1654,7 @@ function PriceCard({ row, hook, cta, logoUrl }: { row: PriceRow; hook: [string, 
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -1856,7 +1856,7 @@ function BoardSummaryCard({ summary, hook, cta, logoUrl }: { summary: BoardSumma
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -2080,7 +2080,7 @@ function ResultsSummaryCard({ summary, hook, cta, logoUrl }: { summary: Accuracy
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -2275,7 +2275,7 @@ function HowToCard({ cta, logoUrl }: { cta: string; logoUrl: string }) {
       </div>
 
       <div style={{ position: "absolute", left: 0, top: ctaTop + 100, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -2512,7 +2512,7 @@ function CareerHighCard({
       </div>
 
       <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>
-        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -2762,7 +2762,7 @@ function MultiCard({ stack, hook, cta, logoUrl }: { stack: StackRow[]; hook: [st
       <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
         <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
       </div>
-      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>{logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}</div>
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>{logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}</div>
     </div>
   );
 }
