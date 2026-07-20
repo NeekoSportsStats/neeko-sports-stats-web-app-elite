@@ -2999,19 +2999,10 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
+        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
+          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
+            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
+          </div>
         </div>
 
         <select
@@ -3033,10 +3024,19 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
           ))}
         </select>
 
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
         </div>
 
         <div className="flex items-center gap-2">
