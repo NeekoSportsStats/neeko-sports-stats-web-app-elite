@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useId, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 let _logoDataUrl = "";
 import * as ReactDOM from 'react-dom/client';
@@ -120,6 +121,190 @@ async function exportStackToPNG(
     document.body.style.overflow = '';
     setCarouselLoading(false);
   }
+}
+
+// ── Shared modal building blocks ─────────────────────────────────────────────
+
+function useBodyScrollLock(isOpen: boolean) {
+  const savedScrollY = useRef(0);
+  const saved = useRef<Record<string, string>>({});
+  const locked = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!locked.current) {
+      savedScrollY.current = window.scrollY;
+      saved.current = {
+        position: document.body.style.position,
+        top: document.body.style.top,
+        left: document.body.style.left,
+        right: document.body.style.right,
+        width: document.body.style.width,
+        overflow: document.body.style.overflow,
+        htmlOverflow: document.documentElement.style.overflow,
+      };
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${savedScrollY.current}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+      locked.current = true;
+    }
+    return () => {
+      if (locked.current) {
+        document.body.style.position = saved.current.position;
+        document.body.style.top = saved.current.top;
+        document.body.style.left = saved.current.left;
+        document.body.style.right = saved.current.right;
+        document.body.style.width = saved.current.width;
+        document.body.style.overflow = saved.current.overflow;
+        document.documentElement.style.overflow = saved.current.htmlOverflow;
+        window.scrollTo(0, savedScrollY.current);
+        locked.current = false;
+      }
+    };
+  }, [isOpen]);
+}
+
+function CardModalShell({
+  onClose,
+  title,
+  children,
+}: {
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  useBodyScrollLock(true);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  const prevFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    prevFocus.current = document.activeElement as HTMLElement;
+    const t = setTimeout(() => {
+      const el = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      (el ?? panelRef.current)?.focus();
+    }, 50);
+    return () => {
+      clearTimeout(t);
+      prevFocus.current?.focus?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab") {
+        const panel = panelRef.current;
+        if (!panel) return;
+        const f = panel.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (f.length === 0) return;
+        if (e.shiftKey && document.activeElement === f[0]) {
+          e.preventDefault();
+          f[f.length - 1].focus();
+        } else if (!e.shiftKey && document.activeElement === f[f.length - 1]) {
+          e.preventDefault();
+          f[0].focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100dvh",
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.8)",
+        overscrollBehavior: "contain",
+        paddingTop: "max(12px, env(safe-area-inset-top))",
+        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+        paddingLeft: "max(12px, env(safe-area-inset-left))",
+        paddingRight: "max(12px, env(safe-area-inset-right))",
+      }}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-2xl border border-zinc-700 bg-zinc-900 w-full max-w-[480px]"
+        style={{
+          maxHeight: "100dvh",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <div className="flex items-center justify-between gap-4 p-4 sticky top-0 bg-zinc-900 border-b border-zinc-800 z-10">
+          <label id={headingId} className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{title}</label>
+          <button onClick={onClose} aria-label="Close dialog" className="text-zinc-400 hover:text-zinc-100 text-lg leading-none min-h-[44px] min-w-[44px] flex items-center justify-center">
+            ✕
+          </button>
+        </div>
+        <div className="p-4 space-y-4">
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function CardPreview({ children, maxWidth = 380 }: { children: ReactNode; maxWidth?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.32);
+
+  useEffect(() => {
+    function update() {
+      const el = ref.current;
+      if (!el) return;
+      setScale(el.clientWidth / 1080);
+    }
+    update();
+    const ro = new ResizeObserver(update);
+    if (ref.current) ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        width: `min(100%, ${maxWidth}px)`,
+        aspectRatio: "9 / 16",
+        overflow: "hidden",
+        borderRadius: 12,
+        margin: "0 auto",
+      }}
+    >
+      <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: 1080, height: 1920 }}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -1102,14 +1287,6 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
       ? [customA.toUpperCase(), customB.toUpperCase()]
       : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-card");
     if (!node) return;
@@ -1118,89 +1295,78 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            disabled={isOut}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            disabled={isOut}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
-          />
-        </div>
-
-        <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
+    <CardModalShell onClose={onClose} title="Form Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
           disabled={isOut}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          disabled={isOut}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+        />
+      </div>
+
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        disabled={isOut}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
+
+      {isOut && (
+        <p className="text-xs text-zinc-500 italic">OUT players get a fixed hook — form isn't the story, availability is.</p>
+      )}
+
+      <CardPreview>
+        <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+        <select
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        {isOut && (
-          <p className="text-xs text-zinc-500 italic">OUT players get a fixed hook — form isn't the story, availability is.</p>
-        )}
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -1530,14 +1696,6 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-evergreen-card");
     if (!node) return;
@@ -1546,82 +1704,71 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Evergreen Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
 
+      <CardPreview>
+        <EvergreenCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <EvergreenCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -1746,14 +1893,6 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-price-card");
     if (!node) return;
@@ -1762,82 +1901,71 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Price Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
 
+      <CardPreview>
+        <PriceCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <PriceCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -1947,14 +2075,6 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-board-card");
     if (!node) return;
@@ -1963,82 +2083,71 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Board Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
 
+      <CardPreview>
+        <BoardSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <BoardSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -2155,14 +2264,6 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-results-card");
     if (!node) return;
@@ -2171,82 +2272,71 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Results Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
 
+      <CardPreview>
+        <ResultsSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -2309,14 +2399,6 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
   const [downloading, setDownloading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-howto-card");
     if (!node) return;
@@ -2324,48 +2406,37 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">How-To Card</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="How-To Card">
+      <CardPreview>
+        <HowToCard cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
 
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <HowToCard cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+        <select
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -2567,14 +2638,6 @@ function CareerCardModal({
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-career-card");
     if (!node) return;
@@ -2583,82 +2646,71 @@ function CareerCardModal({
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Career Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
 
+      <CardPreview>
+        <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
@@ -2772,14 +2824,6 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : hooks[hookIdx];
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-multi-card");
     if (!node) return;
@@ -2799,93 +2843,81 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
       );
       await new Promise(r => setTimeout(r, 120));
       const node = container.firstChild as HTMLElement;
-      // Detach but keep node alive for toBlob; cleanup after render.
       return node;
     };
     await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError);
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Multi Card">
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {hooks.map((h, i) => (
+          <option key={i} value={i}>
+            {h[0]} {h[1]}
+          </option>
+        ))}
+      </select>
 
+      <CardPreview>
+        <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} />
+      </CardPreview>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
         <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
         >
-          {hooks.map((h, i) => (
-            <option key={i} value={i}>
-              {h[0]} {h[1]}
-            </option>
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
-        <button
-          onClick={handleCarousel}
-          disabled={carouselLoading}
-          className="w-full py-4 rounded-xl font-bold text-sm bg-zinc-800
-            text-zinc-100 border border-zinc-700 hover:bg-zinc-700
-            disabled:opacity-50 transition-colors"
-        >
-          {carouselLoading
-            ? `Exporting ${stack.length} slides...`
-            : `Export Carousel (${stack.length} slides)`}
-        </button>
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+      <button
+        onClick={handleCarousel}
+        disabled={carouselLoading}
+        className="w-full py-4 rounded-xl font-bold text-sm bg-zinc-800
+          text-zinc-100 border border-zinc-700 hover:bg-zinc-700
+          disabled:opacity-50 transition-colors"
+      >
+        {carouselLoading
+          ? `Exporting ${stack.length} slides...`
+          : `Export Carousel (${stack.length} slides)`}
+      </button>
+    </CardModalShell>
   );
 }
 
@@ -2926,14 +2958,6 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : (flat[idx] ?? ["", ""]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleDownload() {
     const node = document.getElementById("neeko-card");
     if (!node) return;
@@ -2942,106 +2966,95 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-4">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
-            ✕
-          </button>
-        </div>
+    <CardModalShell onClose={onClose} title="Create Card">
+      <CardPreview>
+        {angle === "hitrate" ? (
+          <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBar} />
+        ) : (
+          <FormCard row={formRow} formWindow="L5" hook={hook} cta={cta} logoUrl={logoUrl} />
+        )}
+      </CardPreview>
 
-        <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
-          <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            {angle === "hitrate" ? (
-              <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBar} />
-            ) : (
-              <FormCard row={formRow} formWindow="L5" hook={hook} cta={cta} logoUrl={logoUrl} />
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => setAngle("hitrate")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "hitrate" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
-          >
-            Hit Rate Story
-          </button>
-          <button
-            onClick={() => setAngle("form")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "form" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
-          >
-            Form Story
-          </button>
-        </div>
-
-        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
-          <input type="checkbox" checked={showBar} onChange={(e) => setShowBar(e.target.checked)} />
-          Bar chart
-        </label>
-
-        <select
-          value={hookIdx}
-          onChange={(e) => setHookIdx(Number(e.target.value))}
-          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      <div className="flex gap-2">
+        <button
+          onClick={() => setAngle("hitrate")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "hitrate" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
         >
-          {groups.map((g, gi) => (
-            <optgroup key={gi} label={g.label}>
-              {g.hooks.map((h, i) => {
-                const flatIdx = starts[gi] + i;
-                return (
-                  <option key={flatIdx} value={flatIdx}>
-                    {h[0]} {h[1]}
-                  </option>
-                );
-              })}
-            </optgroup>
+          Hit Rate Story
+        </button>
+        <button
+          onClick={() => setAngle("form")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "form" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
+        >
+          Form Story
+        </button>
+      </div>
+
+      <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+        <input type="checkbox" checked={showBar} onChange={(e) => setShowBar(e.target.checked)} />
+        Bar chart
+      </label>
+
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
+
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+        <select
+          value={cta}
+          onChange={(e) => setCta(e.target.value)}
+          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        <div className="flex flex-col gap-2">
-          <input
-            value={customA}
-            onChange={(e) => setCustomA(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-          <input
-            value={customB}
-            onChange={(e) => setCustomB(e.target.value)}
-            placeholder="Write your own…"
-            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-          <select
-            value={cta}
-            onChange={(e) => setCta(e.target.value)}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {CTA_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-        >
-          {downloading ? "Rendering…" : "Download PNG"}
-        </button>
-        {exportError && (
-          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
-            {exportError}
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
+      >
+        {downloading ? "Rendering…" : "Download PNG"}
+      </button>
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
   );
 }
 
