@@ -87,6 +87,7 @@ async function exportStackToPNG(
   renderSlide: (row: { player_name: string }, index: number, total: number) => Promise<HTMLElement>,
   setCarouselLoading: (v: boolean) => void,
   setExportError: (msg: string | null) => void,
+  filenamePrefix = "neeko_slide",
 ): Promise<void> {
   setCarouselLoading(true);
   setExportError(null);
@@ -107,8 +108,8 @@ async function exportStackToPNG(
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const surname = row.player_name.split(' ').pop() ?? row.player_name;
-        a.download = `neeko_slide_${i+1}_of_${stack.length}_${surname}.png`;
+        const surname = (row.player_name.split(' ').pop() ?? row.player_name).replace(/[^a-zA-Z0-9-]/g, "");
+        a.download = `${filenamePrefix}_${String(i + 1).padStart(2, "0")}_${surname}.png`;
         a.click();
         URL.revokeObjectURL(url);
       }
@@ -2724,16 +2725,16 @@ function buildMultiHooks(n: number): [string, string][] {
   ];
 }
 
-function CarouselSlide({ row, hook, cta, index, total }: {
+function CarouselSlide({ row, hook, cta, index, total, showBar = true }: {
   row: RankedRow | FormRow; hook: [string,string]; cta: string;
-  index: number; total: number;
+  index: number; total: number; showBar?: boolean;
 }) {
   const logoUrl = _logoDataUrl;
   const isHitRate = "threshold" in row && "rate" in row;
   return (
     <div style={{ position: "relative", width: 1080, height: 1920 }}>
       {isHitRate
-        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} logoUrl={logoUrl} />
+        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBar} />
         : <FormCard row={row as FormRow} hook={hook} cta={cta} logoUrl={logoUrl} />}
       <div style={{ position: "absolute", top: 60, right: 80,
         color: "#565A60", fontSize: 28, fontFamily: "system-ui",
@@ -2744,14 +2745,92 @@ function CarouselSlide({ row, hook, cta, index, total }: {
   );
 }
 
-function MultiCard({ stack, hook, cta, logoUrl }: { stack: StackRow[]; hook: [string, string]; cta: string; logoUrl: string }) {
+type MultiCardLayout = "single-page" | "carousel";
+
+function MultiCardLayoutSelector({ value, onChange, disabled }: { value: MultiCardLayout; onChange: (v: MultiCardLayout) => void; disabled?: boolean }) {
+  return (
+    <div role="radiogroup" aria-label="Card layout" className="flex rounded-lg border border-zinc-700 overflow-hidden">
+      {(["single-page", "carousel"] as MultiCardLayout[]).map((opt) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            disabled={disabled}
+            onClick={() => onChange(opt)}
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors min-h-[44px] ${
+              active ? "bg-amber-500 text-black" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            } disabled:opacity-40`}
+          >
+            {opt === "single-page" ? "Single Page" : "Carousel"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BarChartToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 cursor-pointer min-h-[44px]">
+      <span className="text-sm text-zinc-200 font-medium">Show recent-game bar chart</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? "bg-amber-500" : "bg-zinc-600"}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${checked ? "translate-x-6" : ""}`} />
+      </button>
+    </label>
+  );
+}
+
+function PlayerStatSection({ row, index, total, showBar }: { row: StackRow; index: number; total: number; showBar: boolean }) {
+  const isHR = "lens" in row && "threshold" in row;
+  const hr = row as RankedRow;
+  const fr = row as FormRow;
+  const isOut = statusTag(row.player_status).label === "OUT";
+  const context = isHR ? `${hr.threshold}+ ${hr.lens}` : `season ${fr.season_avg.toFixed(1)} → L5 ${fr.last_5_avg.toFixed(1)}`;
+  const bigStat = isHR ? `${hr.rate}%` : `${fr.delta >= 0 ? "+" : ""}${fr.delta.toFixed(1)}`;
+  const subStat = isHR ? `${hr.hits} from ${hr.games}` : `${fr.games_played} games`;
+  const accent = isHR ? (hr.rate >= 90 ? "#22C55E" : "#F5C442") : (fr.delta < 0 ? "#EF4444" : "#22C55E");
+  const avg = isHR && hr.season_avg !== null ? hr.season_avg : 0;
+  const isLast = index === total - 1;
+  return (
+    <div style={{ position: "relative", width: "100%", minHeight: showBar ? 360 : 200, padding: "24px 40px", borderBottom: isLast ? "none" : "1px solid #202226" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <span style={{ color: "#FFFFFF", fontSize: 40, fontWeight: 800, lineHeight: 1 }}>{row.player_name.toUpperCase()}</span>
+        {isOut && (
+          <span style={{ display: "inline-block", background: "#3F1D1D", color: "#EF4444", fontSize: 20, borderRadius: 10, padding: "4px 12px", fontWeight: 700 }}>OUT</span>
+        )}
+      </div>
+      <div style={{ color: "#8A8F96", fontSize: 26, marginBottom: 12 }}>{row.team_name} · {context}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: showBar ? 12 : 0 }}>
+        <span style={{ color: accent, fontSize: 62, fontWeight: 800, lineHeight: 1 }}>{bigStat}</span>
+        <span style={{ color: "#8A8F96", fontSize: 24 }}>{subStat}</span>
+        {isHR && <span style={{ color: "#F5C442", fontSize: 24, fontWeight: 700, marginLeft: "auto" }}>AVG {avg.toFixed(1)}</span>}
+      </div>
+      {showBar && isHR && (
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+          <MiniBar values={hr.last_10_values} threshold={hr.threshold} avg={avg} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SinglePageMultiPlayerCard({ stack, hook, cta, logoUrl, showBar }: { stack: StackRow[]; hook: [string, string]; cta: string; logoUrl: string; showBar: boolean }) {
   const n = stack.length;
-  const panelTop = 480;
-  const rowH = 140;
-  const panelHeight = 40 + n * rowH + 40;
+  const panelTop = 460;
+  const sectionMinH = showBar ? 360 : 200;
+  const panelHeight = 40 + n * sectionMinH + 40;
   const panelBottom = panelTop + panelHeight;
-  const ctaTop = panelBottom + 90;
-  const footerTop = panelBottom + 200;
+  const ctaTop = Math.min(panelBottom + 80, 1620);
+  const footerTop = ctaTop + 130;
   return (
     <div
       id="neeko-multi-card"
@@ -2759,8 +2838,7 @@ function MultiCard({ stack, hook, cta, logoUrl }: { stack: StackRow[]; hook: [st
         width: 1080,
         height: 1920,
         position: "relative",
-        background:
-          "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        background: "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
         fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         letterSpacing: "-0.02em",
         overflow: "hidden",
@@ -2771,36 +2849,11 @@ function MultiCard({ stack, hook, cta, logoUrl }: { stack: StackRow[]; hook: [st
       {hook[1] && (
         <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
       )}
-
-      <div style={{ position: "absolute", left: 80, top: panelTop, width: 920, height: panelHeight, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226" }}>
-        {stack.map((r, i) => {
-          const isHR = "lens" in r && "threshold" in r;
-          const hr = r as RankedRow;
-          const fr = r as FormRow;
-          const isOut = statusTag(r.player_status).label === "OUT";
-          const context = isHR ? `${hr.threshold}+ ${hr.lens}` : `season ${fr.season_avg.toFixed(1)} → L5 ${fr.last_5_avg.toFixed(1)}`;
-          const bigStat = isHR ? `${hr.rate}%` : `${fr.delta >= 0 ? "+" : ""}${fr.delta.toFixed(1)}`;
-          const subStat = isHR ? `${hr.hits} from ${hr.games}` : `${fr.games_played} games`;
-          const accent = isHR ? (hr.rate >= 90 ? "#22C55E" : "#F5C442") : (fr.delta < 0 ? "#EF4444" : "#22C55E");
-          const isLast = i === n - 1;
-          const y = 40 + i * rowH;
-          return (
-            <div key={i} style={{ position: "absolute", left: 0, top: y, width: 920, height: 130 }}>
-              <div style={{ position: "absolute", left: 40, top: 16, display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ color: "#FFFFFF", fontSize: 40, fontWeight: 800, lineHeight: 1 }}>{r.player_name.toUpperCase()}</span>
-                {isOut && (
-                  <span style={{ display: "inline-block", background: "#3F1D1D", color: "#EF4444", fontSize: 20, borderRadius: 10, padding: "4px 12px", fontWeight: 700 }}>OUT</span>
-                )}
-              </div>
-              <div style={{ position: "absolute", left: 40, top: 66, color: "#8A8F96", fontSize: 26 }}>{r.team_name} · {context}</div>
-              <div style={{ position: "absolute", right: 40, top: 20, color: accent, fontSize: 62, fontWeight: 800, lineHeight: 1 }}>{bigStat}</div>
-              <div style={{ position: "absolute", right: 40, top: 90, color: "#8A8F96", fontSize: 24 }}>{subStat}</div>
-              {!isLast && <div style={{ position: "absolute", left: 40, right: 40, bottom: 0, height: 1, background: "#202226" }} />}
-            </div>
-          );
-        })}
+      <div style={{ position: "absolute", left: 80, top: panelTop, width: 920, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226", overflow: "hidden" }}>
+        {stack.map((r, i) => (
+          <PlayerStatSection key={stackKey(r)} row={r} index={i} total={n} showBar={showBar} />
+        ))}
       </div>
-
       <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
         <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
       </div>
@@ -2818,13 +2871,18 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const [carouselLoading, setCarouselLoading] = useState(false);
+  const [slideLoading, setSlideLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [layout, setLayout] = useState<MultiCardLayout>("carousel");
+  const [showBarChart, setShowBarChart] = useState(true);
+  const [layoutWarning, setLayoutWarning] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const hook: [string, string] = hasCustom
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : hooks[hookIdx];
 
+  const SINGLE_PAGE_MAX = 3;
   const slideCount = stack.length;
   const maxIndex = Math.max(slideCount - 1, 0);
   const clampedIndex = Math.min(Math.max(activeIndex, 0), maxIndex);
@@ -2845,32 +2903,80 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     return () => window.removeEventListener("keydown", onKey);
   }, [maxIndex]);
 
-  async function handleDownload() {
-    const node = document.getElementById("neeko-multi-card");
-    if (!node) return;
-    await exportNodeToPNG(node, `neeko_stack_${stack.length}.png`, setDownloading, setExportError);
+  function handleLayoutChange(next: MultiCardLayout) {
+    if (next === "single-page" && stack.length > SINGLE_PAGE_MAX) {
+      setLayoutWarning(`Single Page supports up to ${SINGLE_PAGE_MAX} players. You have ${stack.length} selected. Remove ${stack.length - SINGLE_PAGE_MAX} player${stack.length - SINGLE_PAGE_MAX > 1 ? "s" : ""} or stay in Carousel.`);
+      return;
+    }
+    setLayoutWarning(null);
+    setLayout(next);
   }
 
-  async function handleCarousel() {
-    const renderSlide = async (row: { player_name: string }, index: number, total: number) => {
-      const container = document.createElement('div');
-      container.style.cssText =
-        'position:fixed;left:-9999px;top:0;width:1080px;height:1920px;';
+  async function handleDownloadSinglePage() {
+    const node = document.getElementById("neeko-multi-card");
+    if (!node) return;
+    await exportNodeToPNG(node, `neeko_players_${stack.length}_single_page.png`, setDownloading, setExportError);
+  }
+
+  async function handleDownloadCurrentSlide() {
+    setSlideLoading(true);
+    setExportError(null);
+    document.body.style.overflow = "hidden";
+    try {
+      const row = stack[clampedIndex];
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1920px;";
       document.body.appendChild(container);
       const root = ReactDOM.createRoot(container);
-      root.render(
-        <CarouselSlide row={row as StackRow} hook={hook} cta={cta}
-          index={index} total={total} />
-      );
-      await new Promise(r => setTimeout(r, 120));
+      root.render(<CarouselSlide row={row} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} showBar={showBarChart} />);
+      await new Promise((r) => setTimeout(r, 120));
+      const node = container.firstChild as HTMLElement;
+      const fontEmbedCSS = await getEmbeddedFontCSS(node);
+      const blob = await toBlob(node, { width: 1080, height: 1920, pixelRatio: 1, backgroundColor: "#050505", fontEmbedCSS, style: { transform: "scale(1)", transformOrigin: "top left" } });
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const surname = (row.player_name.split(" ").pop() ?? row.player_name).replace(/[^a-zA-Z0-9-]/g, "");
+        a.download = `neeko_carousel_${String(clampedIndex + 1).padStart(2, "0")}_${surname}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      root.unmount();
+      container.remove();
+    } catch (error) {
+      console.error("[ContentSheet] Current slide export failed:", error);
+      setExportError("Slide export failed. Please try again.");
+    } finally {
+      document.body.style.overflow = "";
+      setSlideLoading(false);
+    }
+  }
+
+  async function handleDownloadAllSlides() {
+    const renderSlide = async (row: { player_name: string }, index: number, total: number) => {
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1920px;";
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+      root.render(<CarouselSlide row={row as StackRow} hook={hook} cta={cta} index={index} total={total} showBar={showBarChart} />);
+      await new Promise((r) => setTimeout(r, 120));
       const node = container.firstChild as HTMLElement;
       return node;
     };
-    await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError);
+    await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError, "neeko_carousel");
   }
 
   return (
     <CardModalShell onClose={onClose} title="Multi Card">
+      <MultiCardLayoutSelector value={layout} onChange={handleLayoutChange} />
+      {layoutWarning && (
+        <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs text-center">
+          {layoutWarning}
+        </div>
+      )}
+      <BarChartToggle checked={showBarChart} onChange={setShowBarChart} />
+
       <div className="flex flex-col gap-2">
         <input
           value={customA}
@@ -2900,116 +3006,86 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 
       {/* Hidden full-resolution export node — always 1080×1920, never visible */}
       <div style={{ position: "absolute", left: -9999, top: 0, width: 1080, height: 1920, overflow: "hidden" }} aria-hidden="true">
-        <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} />
+        {layout === "single-page" ? (
+          <SinglePageMultiPlayerCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBarChart} />
+        ) : (
+          <CarouselSlide row={stack[clampedIndex]} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} showBar={showBarChart} />
+        )}
       </div>
 
-      {/* Carousel viewport — one card per slide, responsive */}
-      <div
-        className="carousel-viewport"
-        style={{ width: "100%", overflow: "hidden", borderRadius: 12 }}
-      >
-        <div
-          className="carousel-track"
-          style={{
-            display: "flex",
-            width: "100%",
-            transform: `translate3d(-${clampedIndex * 100}%, 0, 0)`,
-            transition: "transform 300ms ease",
-            willChange: "transform",
-          }}
-        >
-          {stack.map((row) => (
-            <div
-              key={stackKey(row)}
-              className="carousel-slide"
-              style={{ flex: "0 0 100%", minWidth: 0 }}
-            >
-              <CardPreview>
-                <CarouselSlide row={row} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} />
-              </CardPreview>
+      {layout === "single-page" ? (
+        <CardPreview>
+          <SinglePageMultiPlayerCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBarChart} />
+        </CardPreview>
+      ) : (
+        <>
+          {/* Carousel viewport — one card per slide, responsive */}
+          <div className="carousel-viewport" style={{ width: "100%", overflow: "hidden", borderRadius: 12 }}>
+            <div className="carousel-track" style={{ display: "flex", width: "100%", transform: `translate3d(-${clampedIndex * 100}%, 0, 0)`, transition: "transform 300ms ease", willChange: "transform" }}>
+              {stack.map((row, i) => (
+                <div key={stackKey(row)} className="carousel-slide" style={{ flex: "0 0 100%", minWidth: 0 }}>
+                  <CardPreview>
+                    <CarouselSlide row={row} hook={hook} cta={cta} index={i + 1} total={slideCount} showBar={showBarChart} />
+                  </CardPreview>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Navigation controls */}
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-          disabled={clampedIndex === 0}
-          className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]"
-        >
-          ← Prev
-        </button>
-        <span className="text-xs text-zinc-400 font-medium tabular-nums">
-          {clampedIndex + 1} / {slideCount}
-        </span>
-        <button
-          type="button"
-          onClick={() => setActiveIndex((i) => Math.min(maxIndex, i + 1))}
-          disabled={clampedIndex === maxIndex}
-          className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]"
-        >
-          Next →
-        </button>
-      </div>
-
-      {/* Slide dots */}
-      {slideCount > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          {stack.map((row, i) => (
-            <button
-              key={stackKey(row)}
-              type="button"
-              onClick={() => setActiveIndex(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              className={`rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                i === clampedIndex ? "bg-amber-500" : "bg-zinc-700 hover:bg-zinc-600"
-              }`}
-            >
-              <span className="block w-2 h-2 rounded-full bg-current" style={{ color: i === clampedIndex ? "#080808" : "#a1a1aa" }} />
+          {/* Navigation controls */}
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" onClick={() => setActiveIndex((i) => Math.max(0, i - 1))} disabled={clampedIndex === 0} className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]">
+              ← Prev
             </button>
-          ))}
-        </div>
+            <span className="text-xs text-zinc-400 font-medium tabular-nums">
+              {clampedIndex + 1} / {slideCount}
+            </span>
+            <button type="button" onClick={() => setActiveIndex((i) => Math.min(maxIndex, i + 1))} disabled={clampedIndex === maxIndex} className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]">
+              Next →
+            </button>
+          </div>
+
+          {/* Slide dots */}
+          {slideCount > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              {stack.map((row, i) => (
+                <button key={stackKey(row)} type="button" onClick={() => setActiveIndex(i)} aria-label={`Go to slide ${i + 1}`} className={`rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${i === clampedIndex ? "bg-amber-500" : "bg-zinc-700 hover:bg-zinc-600"}`}>
+                  <span className="block w-2 h-2 rounded-full bg-current" style={{ color: i === clampedIndex ? "#080808" : "#a1a1aa" }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex items-center gap-2">
         <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
-        <select
-          value={cta}
-          onChange={(e) => setCta(e.target.value)}
-          className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-        >
+        <select value={cta} onChange={(e) => setCta(e.target.value)} className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500">
           {CTA_OPTIONS.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
       </div>
 
-      <button
-        onClick={handleDownload}
-        disabled={downloading}
-        className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors"
-      >
-        {downloading ? "Rendering…" : "Download PNG"}
-      </button>
+      {layout === "single-page" ? (
+        <button onClick={handleDownloadSinglePage} disabled={downloading} className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors">
+          {downloading ? "Rendering…" : "Download Single Page"}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <button onClick={handleDownloadCurrentSlide} disabled={slideLoading} className="flex-1 px-3 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors">
+            {slideLoading ? "Rendering…" : "Download Slide"}
+          </button>
+          <button onClick={handleDownloadAllSlides} disabled={carouselLoading} className="flex-1 px-3 py-2.5 bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-50 text-sm font-semibold rounded-lg transition-colors">
+            {carouselLoading ? `Exporting ${slideCount}…` : `All Slides (${slideCount})`}
+          </button>
+        </div>
+      )}
       {exportError && (
         <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
           {exportError}
         </div>
       )}
-      <button
-        onClick={handleCarousel}
-        disabled={carouselLoading}
-        className="w-full py-4 rounded-xl font-bold text-sm bg-zinc-800
-          text-zinc-100 border border-zinc-700 hover:bg-zinc-700
-          disabled:opacity-50 transition-colors"
-      >
-        {carouselLoading
-          ? `Exporting ${stack.length} slides...`
-          : `Export Carousel (${stack.length} slides)`}
-      </button>
     </CardModalShell>
   );
 }
@@ -3890,12 +3966,12 @@ export default function ContentSheet() {
     const k = stackKey(row);
     setStack((prev) => {
       if (prev.some((r) => stackKey(r) === k)) return prev.filter((r) => stackKey(r) !== k);
-      if (prev.length >= 6) return prev;
+      if (prev.length >= 5) return prev;
       return [...prev, row];
     });
   }
 
-  const stackFull = stack.length >= 6;
+  const stackFull = stack.length >= 5;
 
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
@@ -4123,7 +4199,7 @@ export default function ContentSheet() {
       {/* Stack bar */}
       {stack.length > 0 && (
         <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
-          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/6</span>
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/5</span>
           {stack.map((r) => {
             const k = stackKey(r);
             const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
