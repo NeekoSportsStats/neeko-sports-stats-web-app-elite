@@ -2819,10 +2819,31 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   const [downloading, setDownloading] = useState(false);
   const [carouselLoading, setCarouselLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const hook: [string, string] = hasCustom
     ? [customA.toUpperCase(), customB.toUpperCase()]
     : hooks[hookIdx];
+
+  const slideCount = stack.length;
+  const maxIndex = Math.max(slideCount - 1, 0);
+  const clampedIndex = Math.min(Math.max(activeIndex, 0), maxIndex);
+
+  useEffect(() => {
+    setActiveIndex((cur) => Math.min(Math.max(cur, 0), Math.max(slideCount - 1, 0)));
+  }, [slideCount]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") {
+        setActiveIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        setActiveIndex((i) => Math.min(maxIndex, i + 1));
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maxIndex]);
 
   async function handleDownload() {
     const node = document.getElementById("neeko-multi-card");
@@ -2877,9 +2898,81 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
         ))}
       </select>
 
-      <CardPreview>
+      {/* Hidden full-resolution export node — always 1080×1920, never visible */}
+      <div style={{ position: "absolute", left: -9999, top: 0, width: 1080, height: 1920, overflow: "hidden" }} aria-hidden="true">
         <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} />
-      </CardPreview>
+      </div>
+
+      {/* Carousel viewport — one card per slide, responsive */}
+      <div
+        className="carousel-viewport"
+        style={{ width: "100%", overflow: "hidden", borderRadius: 12 }}
+      >
+        <div
+          className="carousel-track"
+          style={{
+            display: "flex",
+            width: "100%",
+            transform: `translate3d(-${clampedIndex * 100}%, 0, 0)`,
+            transition: "transform 300ms ease",
+            willChange: "transform",
+          }}
+        >
+          {stack.map((row) => (
+            <div
+              key={stackKey(row)}
+              className="carousel-slide"
+              style={{ flex: "0 0 100%", minWidth: 0 }}
+            >
+              <CardPreview>
+                <CarouselSlide row={row} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} />
+              </CardPreview>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation controls */}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
+          disabled={clampedIndex === 0}
+          className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]"
+        >
+          ← Prev
+        </button>
+        <span className="text-xs text-zinc-400 font-medium tabular-nums">
+          {clampedIndex + 1} / {slideCount}
+        </span>
+        <button
+          type="button"
+          onClick={() => setActiveIndex((i) => Math.min(maxIndex, i + 1))}
+          disabled={clampedIndex === maxIndex}
+          className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]"
+        >
+          Next →
+        </button>
+      </div>
+
+      {/* Slide dots */}
+      {slideCount > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          {stack.map((row, i) => (
+            <button
+              key={stackKey(row)}
+              type="button"
+              onClick={() => setActiveIndex(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              className={`rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                i === clampedIndex ? "bg-amber-500" : "bg-zinc-700 hover:bg-zinc-600"
+              }`}
+            >
+              <span className="block w-2 h-2 rounded-full bg-current" style={{ color: i === clampedIndex ? "#080808" : "#a1a1aa" }} />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
