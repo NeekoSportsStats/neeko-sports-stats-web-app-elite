@@ -486,10 +486,7 @@ function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
       });
       break;
     default:
-      // "default" and "rate" — keep builder
-  }
-} order (rate DESC, games DESC).
-      break;
+      // "default" and "rate" — keep builder's rate-DESC, games-DESC order
   }
   return out;
 }
@@ -1092,7 +1089,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -1529,7 +1526,7 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <EvergreenCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <EvergreenCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -1761,7 +1758,7 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <PriceCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <PriceCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -1978,7 +1975,7 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <BoardSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <BoardSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -2202,7 +2199,7 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -2337,7 +2334,7 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <HowToCard cta={cta} logoUrl={logoDataUrl} />
+            <HowToCard cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -2646,7 +2643,7 @@ function CareerCardModal({
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -2689,12 +2686,13 @@ function CarouselSlide({ row, hook, cta, index, total }: {
   row: RankedRow | FormRow; hook: [string,string]; cta: string;
   index: number; total: number;
 }) {
+  const logoUrl = _logoDataUrl;
   const isHitRate = "threshold" in row && "rate" in row;
   return (
     <div style={{ position: "relative", width: 1080, height: 1920 }}>
       {isHitRate
-        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} logoUrl={logoDataUrl} />
-        : <FormCard row={row as FormRow} hook={hook} cta={cta} logoUrl={logoDataUrl} />}
+        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} logoUrl={logoUrl} />
+        : <FormCard row={row as FormRow} hook={hook} cta={cta} logoUrl={logoUrl} />}
       <div style={{ position: "absolute", top: 60, right: 80,
         color: "#565A60", fontSize: 28, fontFamily: "system-ui",
         fontWeight: 600, letterSpacing: "0.05em" }}>
@@ -2899,7 +2897,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
@@ -3037,7 +3035,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoUrl} />
           </div>
         </div>
 
