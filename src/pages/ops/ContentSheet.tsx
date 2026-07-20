@@ -639,49 +639,7 @@ function buildHitBank(r: RankedRow): HookGroup[] {
       pair("THE OBVIOUS PLAY ISN'T OBVIOUS TO EVERYONE."),
       pair("WHILE OTHERS OVERTHINK IT."),
       pair("{RATE}% AND PEOPLE ARE STILL SLEEPING."),
-      pair("MOST PEOPLE W
-      )
-    ]
-    }
-  ]
-}ON'T ACT ON THIS."),
-      pair("THE DATA SAYS YES. DOES YOUR TEAM?"),
-      pair("SLEEPING ON {SURNAME} IS A MISTAKE."),
-      pair("NOT FLASHY. JUST CONSISTENT."),
-      pair("QUIET ACHIEVER. LOUD NUMBERS."),
-      pair("NO ONE TALKS ABOUT THIS ENOUGH."),
-      pair("HE'S BEEN DOING THIS FOR MONTHS."),
-      pair("THE STAT EVERYONE IGNORES."),
-      pair("UNDER THE RADAR. ON THE STATS."),
-      pair("{RATE}%. CHECK YOUR TEAM."),
-      pair("THE CASE EVERYONE'S MISSING."),
-      pair("IT'S IN THE DATA. IS IT IN YOUR TEAM?"),
-      pair("NOT A TREND. A TRACK RECORD."),
-      pair("THE DATA FAVOURS {SURNAME}."),
-      pair("THIS IS THE EDGE."),
-      pair("{HITS} HITS. STILL BEING OVERLOOKED."),
-    ]},
-    { label: "Honest", hooks: [
-      pair("JUDGE IT YOURSELF."),
-      pair("WE SHOW THE DATA. YOU MAKE THE CALL."),
-      pair("{MISSES} MISSES. WE COUNT THOSE TOO."),
-      pair("NOT A GUARANTEE. A RATE."),
-      pair("THE MISSES ARE IN THERE."),
-      pair("MAKE YOUR OWN CALL."),
-      pair("THE DATA IS THE DATA."),
-      pair("WE POST THE MISSES TOO."),
-      pair("{RATE}%. NOT 100%. NEVER 100%."),
-      pair("DRAW YOUR OWN CONCLUSIONS."),
-      pair("THE HONEST PICTURE."),
-      pair("THIS IS WHAT THE DATA SHOWS."),
-      pair("{HITS} HITS. {MISSES} MISSES. BOTH MATTER."),
-      pair("NO SPIN. JUST NUMBERS."),
-      pair("SEE THE FULL PICTURE."),
-      pair("WE DON'T HIDE THE MISSES."),
-      pair("REAL DATA. YOUR DECISION."),
-      pair("THE NUMBERS. NOTHING ELSE."),
-      pair("{RATE}%. WHAT YOU DO WITH IT IS UP TO YOU."),
-      pair("TRANSPARENCY. THAT'S THE EDGE."),
+      pair("MOST PEOPLE WON'T ACT ON THIS."),
     ]},
   ];
 }
@@ -2801,10 +2759,15 @@ function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, str
 function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
   const hooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
   const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const [carouselLoading, setCarouselLoading] = useState(false);
-  const hook = hooks[hookIdx];
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : hooks[hookIdx];
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2888,21 +2851,37 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
       <div onClick={(e) => e.stopPropagation()} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hook</label>
-          <select
-            value={hookIdx}
-            onChange={(e) => setHookIdx(Number(e.target.value))}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {hooks.map((h, i) => (
-              <option key={i} value={i}>
-                {h[0]} {h[1]}
-              </option>
-            ))}
-          </select>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-100 text-lg leading-none">
             ✕
           </button>
         </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            value={customA}
+            onChange={(e) => setCustomA(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+          <input
+            value={customB}
+            onChange={(e) => setCustomB(e.target.value)}
+            placeholder="Write your own…"
+            className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <select
+          value={hookIdx}
+          onChange={(e) => setHookIdx(Number(e.target.value))}
+          className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {hooks.map((h, i) => (
+            <option key={i} value={i}>
+              {h[0]} {h[1]}
+            </option>
+          ))}
+        </select>
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
