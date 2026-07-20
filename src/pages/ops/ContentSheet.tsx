@@ -486,7 +486,9 @@ function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
       });
       break;
     default:
-      // "default" and "rate" — keep builder order (rate DESC, games DESC).
+      // "default" and "rate" — keep builder
+  }
+} order (rate DESC, games DESC).
       break;
   }
   return out;
