@@ -939,11 +939,11 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
       }}
     >
       <AntonStyle />
-      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 96), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      <div style={{ position: "absolute", left: 0, top: 180, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 96), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
       {hook[1] && (
-        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: row.rate >= 75 ? "#22C55E" : "#EF4444" }}>{hook[1]}</div>
+        <div style={{ position: "absolute", left: 0, top: 180 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: row.rate >= 75 ? "#22C55E" : "#EF4444" }}>{hook[1]}</div>
       )}
-      <div style={{ position: "absolute", left: 0, top: 450, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+      <div style={{ position: "absolute", left: 0, top: 540, width: 1080, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
         {row.player_name} · {row.team_name} · v {row.opponent_team_name}
         {(row.player_status ?? "").toLowerCase() !== "active" && (
           <span style={{ display: "inline-block", marginLeft: 16, background: "#3F1D1D", color: "#EF4444", fontSize: 24, fontWeight: 800, borderRadius: 10, padding: "6px 16px", verticalAlign: "middle" }}>OUT</span>
@@ -954,34 +954,34 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
         style={{
           position: "absolute",
           left: 100,
-          top: 540,
+          top: 640,
           width: 880,
-          height: 360,
+          height: 380,
           borderRadius: 30,
           background: "#0D0E11",
           border: "1px solid #202226",
         }}
       >
-        <div style={{ position: "absolute", left: 0, top: 50, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>HIT RATE</div>
-        <div style={{ position: "absolute", left: 0, top: 94, width: 880, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
+        <div style={{ position: "absolute", left: 0, top: 56, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 30 }}>HIT RATE</div>
+        <div style={{ position: "absolute", left: 0, top: 104, width: 880, textAlign: "center", color: accent, fontFamily: ANTON_FONT, fontSize: 142, fontWeight: 800, lineHeight: 1 }}>
           {row.rate}%
         </div>
-        <div style={{ position: "absolute", left: 0, top: 260, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
+        <div style={{ position: "absolute", left: 0, top: 280, width: 880, textAlign: "center", color: "#8A8F96", fontSize: 32 }}>
           {row.hits} games from {row.games} this season
         </div>
       </div>
 
       {showBar && (
-        <div style={{ position: "absolute", left: 100, top: 920, width: 880, display: "flex", justifyContent: "center" }}>
+        <div style={{ position: "absolute", left: 100, top: 1100, width: 880, display: "flex", justifyContent: "center" }}>
           <MiniBar values={row.last_10_values} threshold={row.threshold} avg={avg} />
         </div>
       )}
 
-      <div style={{ position: "absolute", left: 0, top: 1070, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
+      <div style={{ position: "absolute", left: 0, top: 1300, width: 1080, textAlign: "center", color: "#565A60", fontSize: 32 }}>
         Season average {row.season_avg !== null ? avg.toFixed(1) : "—"}
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1140, width: 1080, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, top: 1420, width: 1080, textAlign: "center" }}>
         <span
           style={{
             display: "inline-block",
@@ -997,7 +997,7 @@ function NeekoCard({ row, hook, cta, logoUrl, showBar = true }: { row: RankedRow
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, top: 1660, width: 1080, textAlign: "center" }}>
         {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
