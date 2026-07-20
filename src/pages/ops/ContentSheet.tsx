@@ -21,6 +21,20 @@ function AntonStyle() {
   return <style dangerouslySetInnerHTML={{ __html: `@import url('${ANTON_FONT_URL}');` }} />;
 }
 
+// Fetch the Anton font CSS for html-to-image embedding. Wrapped so a CSP
+// block or network failure can never produce an unhandled rejection —
+// toBlob proceeds without fontEmbedCSS and the card falls back to Impact.
+async function fetchAntonEmbedCSS(): Promise<string> {
+  try {
+    const res = await fetch(ANTON_FONT_URL);
+    if (!res.ok) throw new Error(`Anton font fetch failed: ${res.status}`);
+    return await res.text();
+  } catch (err) {
+    console.warn("[ContentSheet] Anton font CSS unavailable, using fallback font:", err);
+    return "";
+  }
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface StatBoardMatch {
@@ -1015,7 +1029,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -1459,7 +1473,7 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -1691,7 +1705,7 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -2132,7 +2146,7 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -2302,7 +2316,7 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -2576,7 +2590,7 @@ function CareerCardModal({
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -2797,7 +2811,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
@@ -2823,7 +2837,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     setCarouselLoading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       for (let i = 0; i < stack.length; i++) {
         const row = stack[i];
         const container = document.createElement('div');
@@ -2989,7 +3003,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
     setDownloading(true);
     document.body.style.overflow = 'hidden';
     try {
-      const css = await fetch(ANTON_FONT_URL).then(r => r.text());
+      const css = await fetchAntonEmbedCSS();
       const blob = await toBlob(node, {
         width: 1080,
         height: 1920,
