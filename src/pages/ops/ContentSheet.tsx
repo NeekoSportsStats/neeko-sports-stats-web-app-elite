@@ -784,6 +784,7 @@ function sortRows<T extends { player_name: string; last_5_avg: number | null; la
   rankings?: RankingsLookup | null
 ): T[] {
   if (sortView === "default") return rows;
+}
 
   if (sortView === "value" || sortView === "overrated" || sortView === "expensive" || sortView === "be") {
     return [...rows].sort((a, b) => {
