@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+
+let _logoDataUrl = "";
 import * as ReactDOM from 'react-dom/client';
 import { toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
@@ -819,7 +821,7 @@ function MiniBar({ values, threshold, avg }: { values: number[]; threshold: numb
   );
 }
 
-function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string]; cta: string }) {
+function NeekoCard({ row, hook, cta, logoUrl }: { row: RankedRow; hook: [string, string]; cta: string; logoUrl: string }) {
   const accent = row.rate >= 90 ? "#22C55E" : "#F5C442";
   const avg = row.season_avg !== null ? row.season_avg : 0;
   return (
@@ -894,13 +896,13 @@ function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string];
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
-function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: FormWindow; hook: [string, string]; cta: string }) {
+function FormCard({ row, formWindow, hook, cta, logoUrl }: { row: FormRow; formWindow: FormWindow; hook: [string, string]; cta: string; logoUrl: string }) {
   const accent = row.delta < 0 ? "#EF4444" : "#22C55E";
   const deltaStr = (row.delta >= 0 ? "+" : "") + row.delta.toFixed(1);
   const lastLabel = formWindow === "L3" ? "LAST 3" : "LAST 5";
@@ -974,13 +976,14 @@ function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: Fo
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1230, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow: FormWindow; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const groups = useMemo(() => buildFormBank(row, formWindow), [row, formWindow]);
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -1087,7 +1090,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} />
+            <FormCard row={row} formWindow={formWindow} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -1330,7 +1333,7 @@ function buildEvergreenBank(r: EvergreenRow): HookGroup[] {
   return groups;
 }
 
-function EvergreenCard({ row, hook, cta }: { row: EvergreenRow; hook: [string, string]; cta: string }) {
+function EvergreenCard({ row, hook, cta, logoUrl }: { row: EvergreenRow; hook: [string, string]; cta: string; logoUrl: string }) {
   const meta = EVERGREEN_STORY_META[row.story];
   const consColor = row.consistency >= 75 ? "#22C55E" : row.consistency >= 45 ? "#F5C442" : "#EF4444";
   return (
@@ -1420,13 +1423,14 @@ function EvergreenCard({ row, hook, cta }: { row: EvergreenRow; hook: [string, s
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const groups = useMemo(() => buildEvergreenBank(row), [row]);
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -1523,7 +1527,7 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <EvergreenCard row={row} hook={hook} cta={cta} />
+            <EvergreenCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -1552,7 +1556,7 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
   );
 }
 
-function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; cta: string }) {
+function PriceCard({ row, hook, cta, logoUrl }: { row: PriceRow; hook: [string, string]; cta: string; logoUrl: string }) {
   const meta = PRICE_STORY_META[row.story];
   const beDelta = Math.round(row.be_delta);
   const deltaColor = beDelta > 0 ? "#EF4444" : beDelta < 0 ? "#22C55E" : "#8A8F96";
@@ -1651,13 +1655,14 @@ function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; 
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const groups = useMemo(() => buildPriceBank(row), [row]);
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -1754,7 +1759,7 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <PriceCard row={row} hook={hook} cta={cta} />
+            <PriceCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -1783,7 +1788,7 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   );
 }
 
-function BoardSummaryCard({ summary, hook, cta }: { summary: BoardSummary; hook: [string, string]; cta: string }) {
+function BoardSummaryCard({ summary, hook, cta, logoUrl }: { summary: BoardSummary; hook: [string, string]; cta: string; logoUrl: string }) {
   return (
     <div
       id="neeko-board-card"
@@ -1852,13 +1857,14 @@ function BoardSummaryCard({ summary, hook, cta }: { summary: BoardSummary; hook:
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const syntheticRow = useMemo<PriceRow>(() => ({
     player_name: "Neeko",
     team_name: "",
@@ -1970,7 +1976,7 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <BoardSummaryCard summary={summary} hook={hook} cta={cta} />
+            <BoardSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -1999,7 +2005,7 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
   );
 }
 
-function ResultsSummaryCard({ summary, hook, cta }: { summary: AccuracySummary; hook: [string, string]; cta: string }) {
+function ResultsSummaryCard({ summary, hook, cta, logoUrl }: { summary: AccuracySummary; hook: [string, string]; cta: string; logoUrl: string }) {
   return (
     <div
       id="neeko-results-card"
@@ -2075,13 +2081,14 @@ function ResultsSummaryCard({ summary, hook, cta }: { summary: AccuracySummary; 
       </div>
 
       <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const syntheticRow = useMemo<PriceRow>(() => ({
     player_name: summary.best_call_name ?? "Neeko",
     team_name: "",
@@ -2193,7 +2200,7 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} />
+            <ResultsSummaryCard summary={summary} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -2222,7 +2229,7 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   );
 }
 
-function HowToCard({ cta }: { cta: string }) {
+function HowToCard({ cta, logoUrl }: { cta: string; logoUrl: string }) {
   const steps = [
     { n: 1, title: "PICK ANY PLAYER", body: "Search 600+ players across every stat" },
     { n: 2, title: "SEE THEIR HIT RATE", body: "Last 10 games, season, head-to-head" },
@@ -2269,13 +2276,14 @@ function HowToCard({ cta }: { cta: string }) {
       </div>
 
       <div style={{ position: "absolute", left: 0, top: ctaTop + 100, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
 }
 
 function HowToCardModal({ onClose }: { onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
 
@@ -2327,7 +2335,7 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <HowToCard cta={cta} />
+            <HowToCard cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -2386,6 +2394,7 @@ function CareerHighCard({
   opponentName,
   hook,
   cta,
+  logoUrl,
 }: {
   rows: CareerRow[];
   playerName: string;
@@ -2393,6 +2402,7 @@ function CareerHighCard({
   opponentName: string | null;
   hook: [string, string];
   cta: string;
+  logoUrl: string;
 }) {
   const highByStat = new Map<string, CareerRow>();
   for (const r of rows) {
@@ -2503,7 +2513,7 @@ function CareerHighCard({
       </div>
 
       <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>
-        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
+        {logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}
       </div>
     </div>
   );
@@ -2522,6 +2532,7 @@ function CareerCardModal({
   opponentName: string | null;
   onClose: () => void;
 }) {
+  const logoUrl = _logoDataUrl;
   const syntheticRow = useMemo<PriceRow>(() => ({
     player_name: playerName,
     team_name: teamName,
@@ -2633,7 +2644,7 @@ function CareerCardModal({
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} />
+            <CareerHighCard rows={rows} playerName={playerName} teamName={teamName} opponentName={opponentName} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -2680,8 +2691,8 @@ function CarouselSlide({ row, hook, cta, index, total }: {
   return (
     <div style={{ position: "relative", width: 1080, height: 1920 }}>
       {isHitRate
-        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} />
-        : <FormCard row={row as FormRow} hook={hook} cta={cta} />}
+        ? <NeekoCard row={row as RankedRow} hook={hook} cta={cta} logoUrl={logoDataUrl} />
+        : <FormCard row={row as FormRow} hook={hook} cta={cta} logoUrl={logoDataUrl} />}
       <div style={{ position: "absolute", top: 60, right: 80,
         color: "#565A60", fontSize: 28, fontFamily: "system-ui",
         fontWeight: 600, letterSpacing: "0.05em" }}>
@@ -2691,7 +2702,7 @@ function CarouselSlide({ row, hook, cta, index, total }: {
   );
 }
 
-function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, string]; cta: string }) {
+function MultiCard({ stack, hook, cta, logoUrl }: { stack: StackRow[]; hook: [string, string]; cta: string; logoUrl: string }) {
   const n = stack.length;
   const panelTop = 480;
   const rowH = 140;
@@ -2751,12 +2762,13 @@ function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, str
       <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
         <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
       </div>
-      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}><img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} /></div>
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>{logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 90, width: "auto", opacity: 0.9 }} />}</div>
     </div>
   );
 }
 
 function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const hooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
@@ -2885,7 +2897,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.32)", transformOrigin: "top left" }}>
-            <MultiCard stack={stack} hook={hook} cta={cta} />
+            <MultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -2926,6 +2938,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
 }
 
 function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
   const groups = useMemo(() => buildHitBank(row), [row]);
   const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
   const [hookIdx, setHookIdx] = useState(0);
@@ -3022,7 +3035,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 
         <div style={{ width: 346, height: 615, overflow: "hidden", borderRadius: 12 }}>
           <div style={{ transform: "scale(0.28)", transformOrigin: "top left" }}>
-            <NeekoCard row={row} hook={hook} cta={cta} />
+            <NeekoCard row={row} hook={hook} cta={cta} logoUrl={logoDataUrl} />
           </div>
         </div>
 
@@ -3054,6 +3067,19 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
 export default function ContentSheet() {
+  const [logoDataUrl, setLogoDataUrl] = useState<string>(_logoDataUrl);
+  useEffect(() => {
+    if (_logoDataUrl) return;
+    fetch("/logo.png")
+      .then((r) => r.blob())
+      .then((blob) => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }))
+      .then((d) => { _logoDataUrl = d; setLogoDataUrl(d); })
+      .catch(() => setLogoDataUrl(""));
+  }, []);
   const [round, setRound] = useState<number | null>(null);
   const [currentRound, setCurrentRound] = useState<number | null>(null);
   const [fixtures, setFixtures] = useState<StatBoardMatch[]>([]);
