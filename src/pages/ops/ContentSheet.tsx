@@ -893,8 +893,8 @@ function NeekoCard({ row, hook, cta }: { row: RankedRow; hook: [string, string];
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1250, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -973,8 +973,8 @@ function FormCard({ row, formWindow, hook, cta }: { row: FormRow; formWindow: Fo
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1230, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1230, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -1419,8 +1419,8 @@ function EvergreenCard({ row, hook, cta }: { row: EvergreenRow; hook: [string, s
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -1650,8 +1650,8 @@ function PriceCard({ row, hook, cta }: { row: PriceRow; hook: [string, string]; 
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1280, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -1851,8 +1851,8 @@ function BoardSummaryCard({ summary, hook, cta }: { summary: BoardSummary; hook:
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -2074,8 +2074,8 @@ function ResultsSummaryCard({ summary, hook, cta }: { summary: AccuracySummary; 
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: 1340, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -2268,8 +2268,8 @@ function HowToCard({ cta }: { cta: string }) {
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: ctaTop + 100, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: ctaTop + 100, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -2502,8 +2502,8 @@ function CareerHighCard({
         </span>
       </div>
 
-      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>
-        NEEKO STATS
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>
+        <img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} />
       </div>
     </div>
   );
@@ -2751,7 +2751,7 @@ function MultiCard({ stack, hook, cta }: { stack: StackRow[]; hook: [string, str
       <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
         <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
       </div>
-      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center", color: "#565A60", fontSize: 26 }}>NEEKO STATS</div>
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}><img src="/logo.png" alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 64, width: "auto", opacity: 0.9 }} /></div>
     </div>
   );
 }
