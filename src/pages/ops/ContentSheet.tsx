@@ -285,7 +285,8 @@ type RankingsEntry = {
   last_5_avg: number | null;
   games_played: number | null;
   position: string | null;
-  team_name: string | null;
+  team
+}_name: string | null;
   matchup_label: string | null;
   status: string | null;
   consistency: number | null;
