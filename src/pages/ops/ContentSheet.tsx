@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 
 let _logoDataUrl = "";
 import * as ReactDOM from 'react-dom/client';
-import { toBlob } from "html-to-image";
+import { getFontEmbedCSS, toBlob } from "html-to-image";
 import { supabase } from "@/lib/supabaseClient";
 
-const ANTON_FONT_URL = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
 const ANTON_FONT = "'Anton', Impact, sans-serif";
 function antonFit(s: string, base: number): number {
   if (s.length <= 16) return base;
@@ -18,20 +17,108 @@ function splitHook(hook: string): [string, string] {
   return [hook.slice(0, dot + 1).trim(), hook.slice(dot + 1).trim()];
 }
 function AntonStyle() {
-  return <style dangerouslySetInnerHTML={{ __html: `@import url('${ANTON_FONT_URL}');` }} />;
+  return <style dangerouslySetInnerHTML={{ __html: `@font-face { font-family: "Anton"; src: url("/fonts/Anton-Regular.woff2") format("woff2"); font-style: normal; font-weight: 400; font-display: swap; }` }} />;
 }
 
-// Fetch the Anton font CSS for html-to-image embedding. Wrapped so a CSP
-// block or network failure can never produce an unhandled rejection —
-// toBlob proceeds without fontEmbedCSS and the card falls back to Impact.
-async function fetchAntonEmbedCSS(): Promise<string> {
+// Generate fully-embedded font CSS once (from the locally-hosted Anton font)
+// so exported PNGs render Anton without any runtime Google Fonts request.
+// Cached module-level so repeated downloads reuse the same promise.
+let embeddedFontCSSPromise: Promise<string> | null = null;
+
+function getEmbeddedFontCSS(node: HTMLElement): Promise<string> {
+  if (!embeddedFontCSSPromise) {
+    embeddedFontCSSPromise = getFontEmbedCSS(node).catch((error) => {
+      embeddedFontCSSPromise = null;
+      console.warn(
+        "[ContentSheet] Could not prepare embedded font CSS. Falling back to Impact.",
+        error,
+      );
+      return "";
+    });
+  }
+  return embeddedFontCSSPromise;
+}
+
+// Shared PNG export: prepares embedded font CSS, renders the node to a blob,
+// triggers a download, and surfaces a visible error if anything fails.
+// Never throws — callers can await it without their own try/catch.
+async function exportNodeToPNG(
+  node: HTMLElement,
+  filename: string,
+  setDownloading: (v: boolean) => void,
+  setExportError: (msg: string | null) => void,
+): Promise<void> {
+  setDownloading(true);
+  setExportError(null);
+  document.body.style.overflow = 'hidden';
   try {
-    const res = await fetch(ANTON_FONT_URL);
-    if (!res.ok) throw new Error(`Anton font fetch failed: ${res.status}`);
-    return await res.text();
-  } catch (err) {
-    console.warn("[ContentSheet] Anton font CSS unavailable, using fallback font:", err);
-    return "";
+    const fontEmbedCSS = await getEmbeddedFontCSS(node);
+    const blob = await toBlob(node, {
+      width: 1080,
+      height: 1920,
+      pixelRatio: 1,
+      backgroundColor: "#050505",
+      fontEmbedCSS,
+      style: { transform: "scale(1)", transformOrigin: "top left" },
+    });
+    if (!blob) {
+      throw new Error("Image rendering returned no blob.");
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("[ContentSheet] PNG export failed:", error);
+    setExportError("Download failed. Please try again.");
+  } finally {
+    document.body.style.overflow = '';
+    setDownloading(false);
+  }
+}
+
+// Shared carousel export: renders each stack slide to its own PNG. Reuses the
+// cached embedded font CSS. Surfaces a visible error if the batch fails.
+async function exportStackToPNG(
+  stack: { player_name: string }[],
+  renderSlide: (row: { player_name: string }, index: number, total: number) => Promise<HTMLElement>,
+  setCarouselLoading: (v: boolean) => void,
+  setExportError: (msg: string | null) => void,
+): Promise<void> {
+  setCarouselLoading(true);
+  setExportError(null);
+  document.body.style.overflow = 'hidden';
+  try {
+    // Prime the font CSS cache with a representative node.
+    const primer = await renderSlide(stack[0], 0, stack.length);
+    const fontEmbedCSS = await getEmbeddedFontCSS(primer);
+    for (let i = 0; i < stack.length; i++) {
+      const row = stack[i];
+      const node = await renderSlide(row, i, stack.length);
+      const blob = await toBlob(node, {
+        width: 1080, height: 1920, pixelRatio: 1,
+        backgroundColor: "#050505", fontEmbedCSS,
+        style: { transform: "scale(1)", transformOrigin: "top left" },
+      });
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const surname = row.player_name.split(' ').pop() ?? row.player_name;
+        a.download = `neeko_slide_${i+1}_of_${stack.length}_${surname}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      await new Promise(r => setTimeout(r, 80));
+    }
+  } catch (error) {
+    console.error("[ContentSheet] Carousel export failed:", error);
+    setExportError("Carousel export failed. Please try again.");
+  } finally {
+    document.body.style.overflow = '';
+    setCarouselLoading(false);
   }
 }
 
@@ -1006,6 +1093,7 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const isOut = (row.player_status ?? "").toLowerCase() !== "active";
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
@@ -1026,30 +1114,8 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
   async function handleDownload() {
     const node = document.getElementById("neeko-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `${row.player_name}_form_${formWindow}.png`.replace(/\s+/g, "_");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `${row.player_name}_form_${formWindow}.png`.replace(/\s+/g, "_");
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -1129,6 +1195,11 @@ function FormCardModal({ row, formWindow, onClose }: { row: FormRow; formWindow:
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1453,6 +1524,7 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -1470,30 +1542,8 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
   async function handleDownload() {
     const node = document.getElementById("neeko-evergreen-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `${row.player_name}_evergreen_${row.story}.png`.replace(/\s+/g, "_");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `${row.player_name}_evergreen_${row.story}.png`.replace(/\s+/g, "_");
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -1566,6 +1616,11 @@ function EvergreenCardModal({ row, onClose }: { row: EvergreenRow; onClose: () =
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1685,6 +1740,7 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -1702,30 +1758,8 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
   async function handleDownload() {
     const node = document.getElementById("neeko-price-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `${row.player_name}_price_${row.story}.png`.replace(/\s+/g, "_");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `${row.player_name}_price_${row.story}.png`.replace(/\s+/g, "_");
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -1798,6 +1832,11 @@ function PriceCardModal({ row, onClose }: { row: PriceRow; onClose: () => void }
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1902,6 +1941,7 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -1919,30 +1959,8 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
   async function handleDownload() {
     const node = document.getElementById("neeko-board-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetch(ANTON_FONT_URL).then((r) => r.text());
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `neeko_board_R${summary.round_number}.png`;
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `neeko_board_R${summary.round_number}.png`;
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -2015,6 +2033,11 @@ function BoardCardModal({ summary, onClose }: { summary: BoardSummary; onClose: 
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2126,6 +2149,7 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -2143,30 +2167,8 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
   async function handleDownload() {
     const node = document.getElementById("neeko-results-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `neeko_results_R${summary.round_number}.png`;
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `neeko_results_R${summary.round_number}.png`;
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -2239,6 +2241,11 @@ function ResultsCardModal({ summary, onClose }: { summary: AccuracySummary; onCl
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2301,6 +2308,7 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
   const logoUrl = _logoDataUrl;
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2313,29 +2321,7 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
   async function handleDownload() {
     const node = document.getElementById("neeko-howto-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "neeko_howto.png";
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    await exportNodeToPNG(node, "neeko_howto.png", setDownloading, setExportError);
   }
 
   return (
@@ -2374,6 +2360,11 @@ function HowToCardModal({ onClose }: { onClose: () => void }) {
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2570,6 +2561,7 @@ function CareerCardModal({
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -2587,30 +2579,8 @@ function CareerCardModal({
   async function handleDownload() {
     const node = document.getElementById("neeko-career-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `neeko_career_${playerName.replace(/\s+/g, "_").toLowerCase()}.png`;
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `neeko_career_${playerName.replace(/\s+/g, "_").toLowerCase()}.png`;
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -2683,6 +2653,11 @@ function CareerCardModal({
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2792,6 +2767,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
   const [carouselLoading, setCarouselLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const hook: [string, string] = hasCustom
     ? [customA.toUpperCase(), customB.toUpperCase()]
@@ -2808,70 +2784,26 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   async function handleDownload() {
     const node = document.getElementById("neeko-multi-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `neeko_stack_${stack.length}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    await exportNodeToPNG(node, `neeko_stack_${stack.length}.png`, setDownloading, setExportError);
   }
 
   async function handleCarousel() {
-    setCarouselLoading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      for (let i = 0; i < stack.length; i++) {
-        const row = stack[i];
-        const container = document.createElement('div');
-        container.style.cssText =
-          'position:fixed;left:-9999px;top:0;width:1080px;height:1920px;';
-        document.body.appendChild(container);
-        const root = ReactDOM.createRoot(container);
-        root.render(
-          <CarouselSlide row={row} hook={hook} cta={cta}
-            index={i + 1} total={stack.length} />
-        );
-        await new Promise(r => setTimeout(r, 120));
-        const blob = await toBlob(container.firstChild as HTMLElement, {
-          width: 1080, height: 1920, pixelRatio: 1,
-          backgroundColor: "#050505", fontEmbedCSS: css,
-          style: { transform: "scale(1)", transformOrigin: "top left" },
-        });
-        root.unmount();
-        document.body.removeChild(container);
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          const surname = row.player_name.split(' ').pop() ?? row.player_name;
-          a.download = `neeko_slide_${i+1}_of_${stack.length}_${surname}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-        await new Promise(r => setTimeout(r, 80));
-      }
-    } finally {
-      document.body.style.overflow = '';
-      setCarouselLoading(false);
-    }
+    const renderSlide = async (row: { player_name: string }, index: number, total: number) => {
+      const container = document.createElement('div');
+      container.style.cssText =
+        'position:fixed;left:-9999px;top:0;width:1080px;height:1920px;';
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+      root.render(
+        <CarouselSlide row={row as StackRow} hook={hook} cta={cta}
+          index={index} total={total} />
+      );
+      await new Promise(r => setTimeout(r, 120));
+      const node = container.firstChild as HTMLElement;
+      // Detach but keep node alive for toBlob; cleanup after render.
+      return node;
+    };
+    await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError);
   }
 
   return (
@@ -2937,6 +2869,11 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
         <button
           onClick={handleCarousel}
           disabled={carouselLoading}
@@ -2983,6 +2920,7 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   const [customB, setCustomB] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
   const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
   const idx = Math.min(hookIdx, flat.length - 1);
   const hook: [string, string] = hasCustom
@@ -3000,30 +2938,8 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
   async function handleDownload() {
     const node = document.getElementById("neeko-card");
     if (!node) return;
-    setDownloading(true);
-    document.body.style.overflow = 'hidden';
-    try {
-      const css = await fetchAntonEmbedCSS();
-      const blob = await toBlob(node, {
-        width: 1080,
-        height: 1920,
-        pixelRatio: 1,
-        backgroundColor: "#050505",
-        fontEmbedCSS: css,
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-      });
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename = `${row.player_name}_${row.lens}_${row.threshold}.png`.replace(/\s+/g, "_");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      document.body.style.overflow = '';
-      setDownloading(false);
-    }
+    const filename = `${row.player_name}_${row.lens}_${row.threshold}.png`.replace(/\s+/g, "_");
+    await exportNodeToPNG(node, filename, setDownloading, setExportError);
   }
 
   return (
@@ -3120,6 +3036,11 @@ function CardModal({ row, onClose }: { row: RankedRow; onClose: () => void }) {
         >
           {downloading ? "Rendering…" : "Download PNG"}
         </button>
+        {exportError && (
+          <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+            {exportError}
+          </div>
+        )}
       </div>
     </div>
   );
