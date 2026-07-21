@@ -740,7 +740,9 @@ function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
       });
       break;
     case "inconsist":
-      out.sort((a, b) => {
+      out.
+  }
+}sort((a, b) => {
         const ao = isOut(a), bo = isOut(b);
         if (ao !== bo) return ao ? 1 : -1;
         // rate = 0 rows sink to the bottom (treated as "most inconsistent"
