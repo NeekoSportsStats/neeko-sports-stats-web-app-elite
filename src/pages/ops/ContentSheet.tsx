@@ -417,6 +417,10 @@ function stackKey(row: StackRow): string {
   return `form|${row.player_name}`;
 }
 
+function fantasyStackKey(row: FantasyRow): string {
+  return `fantasy|${row.player_name}|${row.match_id ?? 0}`;
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const LENSES = ["disposals", "goals", "marks", "tackles", "kicks", "fantasy"] as const;
@@ -740,9 +744,7 @@ function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
       });
       break;
     case "inconsist":
-      out.
-  }
-}sort((a, b) => {
+      out.sort((a, b) => {
         const ao = isOut(a), bo = isOut(b);
         if (ao !== bo) return ao ? 1 : -1;
         // rate = 0 rows sink to the bottom (treated as "most inconsistent"
@@ -2865,6 +2867,347 @@ function SinglePageMultiPlayerCard({ stack, hook, cta, logoUrl, showBar }: { sta
   );
 }
 
+function FantasyPlayerSection({ row, index, total, sortView }: { row: FantasyRow; index: number; total: number; sortView: string }) {
+  const isLast = index === total - 1;
+  const showValue = sortView === "value" || sortView === "bargain";
+  const showBE = sortView === "be" || sortView === "trap";
+  const keyNum = showBE ? Math.round(row.breakeven) : row.value_score.toFixed(0);
+  const keyColor = showBE ? "#F5C442" : "#F5C442";
+  const keyLabel = showBE ? "BE" : "VS";
+  return (
+    <div style={{ position: "relative", width: "100%", minHeight: 280, padding: "28px 40px", borderBottom: isLast ? "none" : "1px solid #202226" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <span style={{ color: "#FFFFFF", fontSize: 40, fontWeight: 800, lineHeight: 1, flex: 1, minWidth: 0 }}>{row.player_name.toUpperCase()}</span>
+        <span style={{ color: keyColor, fontSize: 56, fontWeight: 800, lineHeight: 1, fontFamily: ANTON_FONT }}>{keyNum}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 10 }}>
+        <span style={{ color: "#8A8F96", fontSize: 26 }}>{row.team_name} · {row.position} · ${(row.price / 1000).toFixed(0)}K</span>
+        <span style={{ color: "#8A8F96", fontSize: 24 }}>Proj {Math.round(row.projection)} · L5 {row.last_5_avg.toFixed(1)}</span>
+      </div>
+    </div>
+  );
+}
+
+function FantasyMultiCard({ stack, hook, cta, logoUrl, sortView }: { stack: FantasyRow[]; hook: [string, string]; cta: string; logoUrl: string; sortView: string }) {
+  const n = stack.length;
+  const panelTop = 460;
+  const sectionMinH = 280;
+  const panelHeight = 40 + n * sectionMinH + 40;
+  const panelBottom = panelTop + panelHeight;
+  const ctaTop = Math.min(panelBottom + 80, 1620);
+  const footerTop = ctaTop + 130;
+  return (
+    <div
+      id="neeko-fantasy-multi-card"
+      style={{
+        width: 1080,
+        height: 1920,
+        position: "relative",
+        background: "radial-gradient(900px 700px at 12% 4%, rgba(28,22,9,0.92) 0%, #050505 62%), #050505",
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        letterSpacing: "-0.02em",
+        overflow: "hidden",
+      }}
+    >
+      <AntonStyle />
+      <div style={{ position: "absolute", left: 0, top: 150, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[0], 96), letterSpacing: "-1px", lineHeight: 1, color: "#FFFFFF" }}>{hook[0]}</div>
+      {hook[1] && (
+        <div style={{ position: "absolute", left: 0, top: 150 + antonFit(hook[0], 96) + 16, width: 1080, textAlign: "center", fontFamily: ANTON_FONT, fontSize: antonFit(hook[1], 96), letterSpacing: "-1px", lineHeight: 1, color: "#F5C442" }}>{hook[1]}</div>
+      )}
+      <div style={{ position: "absolute", left: 80, top: panelTop, width: 920, borderRadius: 30, background: "#0D0E11", border: "1px solid #202226", overflow: "hidden" }}>
+        {stack.map((r, i) => (
+          <FantasyPlayerSection key={fantasyStackKey(r)} row={r} index={i} total={n} sortView={sortView} />
+        ))}
+      </div>
+      <div style={{ position: "absolute", left: 0, top: ctaTop, width: 1080, textAlign: "center" }}>
+        <span style={{ display: "inline-block", background: "#F5C442", borderRadius: 44, padding: "22px 56px", color: "#080808", fontSize: 36, fontWeight: 800 }}>{cta}</span>
+      </div>
+      <div style={{ position: "absolute", left: 0, top: footerTop, width: 1080, textAlign: "center" }}>{logoUrl && <img src={logoUrl} alt="Neeko's Sports Stats" style={{ display: "block", margin: "0 auto", height: 180, width: "auto", opacity: 0.9 }} />}</div>
+    </div>
+  );
+}
+
+function FantasyMultiCardModal({ stack, sortView, onClose }: { stack: FantasyRow[]; sortView: string; onClose: () => void }) {
+  const logoUrl = _logoDataUrl;
+  const [hookIdx, setHookIdx] = useState(0);
+  const [customA, setCustomA] = useState("");
+  const [customB, setCustomB] = useState("");
+  const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [downloading, setDownloading] = useState(false);
+  const [carouselLoading, setCarouselLoading] = useState(false);
+  const [slideLoading, setSlideLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [layout, setLayout] = useState<MultiCardLayout>("carousel");
+  const [layoutWarning, setLayoutWarning] = useState<string | null>(null);
+  const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
+
+  // Build hook bank from first player (all share the same price/value structure)
+  const firstRow = stack[0];
+  const syntheticPriceRow: PriceRow = useMemo(() => ({
+    player_name: firstRow?.player_name ?? "Neeko",
+    team_name: firstRow?.team_name ?? "",
+    position: firstRow?.position ?? "",
+    price: firstRow?.price ?? 0,
+    breakeven: firstRow?.breakeven ?? 0,
+    projection: firstRow?.projection ?? 0,
+    value_score: firstRow?.value_score ?? 0,
+    season_avg: firstRow?.season_avg ?? 0,
+    last_5_avg: firstRow?.last_5_avg ?? 0,
+    be_delta: firstRow?.be_delta ?? 0,
+    matchup_label: firstRow?.matchup_label ?? null,
+    status: firstRow?.status ?? "active",
+    story: "value",
+  }), [firstRow]);
+  const groups = useMemo(() => buildPriceBank(syntheticPriceRow), [syntheticPriceRow]);
+  const { flat, starts } = useMemo(() => flattenGroups(groups), [groups]);
+  const hooks = flat;
+
+  const idx = Math.min(hookIdx, Math.max(hooks.length - 1, 0));
+  const hook: [string, string] = hasCustom
+    ? [customA.toUpperCase(), customB.toUpperCase()]
+    : (hooks[idx] ?? ["BEST VALUE. THIS ROUND.", "CHEAPEST POINTS."]);
+
+  const SINGLE_PAGE_MAX = 5;
+  const slideCount = stack.length;
+  const maxIndex = Math.max(slideCount - 1, 0);
+  const clampedIndex = Math.min(Math.max(activeIndex, 0), maxIndex);
+
+  useEffect(() => {
+    setActiveIndex((cur) => Math.min(Math.max(cur, 0), Math.max(slideCount - 1, 0)));
+  }, [slideCount]);
+
+  useEffect(() => {
+    setHookIdx((cur) => Math.min(cur, Math.max(hooks.length - 1, 0)));
+  }, [hooks.length]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") setActiveIndex((i) => Math.max(0, i - 1));
+      else if (e.key === "ArrowRight") setActiveIndex((i) => Math.min(maxIndex, i + 1));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maxIndex]);
+
+  function handleLayoutChange(next: MultiCardLayout) {
+    if (next === "single-page" && stack.length > SINGLE_PAGE_MAX) {
+      setLayoutWarning(`Single Page supports up to ${SINGLE_PAGE_MAX} players. You have ${stack.length} selected. Remove ${stack.length - SINGLE_PAGE_MAX} player${stack.length - SINGLE_PAGE_MAX > 1 ? "s" : ""} or stay in Carousel.`);
+      return;
+    }
+    setLayoutWarning(null);
+    setLayout(next);
+  }
+
+  async function handleDownloadSinglePage() {
+    const node = document.getElementById("neeko-fantasy-multi-card");
+    if (!node) return;
+    await exportNodeToPNG(node, `neeko_fantasy_${stack.length}_single_page.png`, setDownloading, setExportError);
+  }
+
+  async function handleDownloadCurrentSlide() {
+    setSlideLoading(true);
+    setExportError(null);
+    document.body.style.overflow = "hidden";
+    try {
+      const row = stack[clampedIndex];
+      const priceRow: PriceRow = {
+        player_name: row.player_name, team_name: row.team_name, position: row.position,
+        price: row.price, breakeven: row.breakeven, projection: row.projection,
+        value_score: row.value_score, season_avg: row.season_avg, last_5_avg: row.last_5_avg,
+        be_delta: row.be_delta, matchup_label: row.matchup_label, status: row.status, story: "value",
+      };
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1920px;";
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+      root.render(<PriceCard row={priceRow} hook={hook} cta={cta} logoUrl={logoUrl} />);
+      await new Promise((r) => setTimeout(r, 120));
+      const node = container.firstChild as HTMLElement;
+      const fontEmbedCSS = await getEmbeddedFontCSS(node);
+      const blob = await toBlob(node, { width: 1080, height: 1920, pixelRatio: 1, backgroundColor: "#050505", fontEmbedCSS, style: { transform: "scale(1)", transformOrigin: "top left" } });
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const surname = (row.player_name.split(" ").pop() ?? row.player_name).replace(/[^a-zA-Z0-9-]/g, "");
+        a.download = `neeko_fantasy_carousel_${String(clampedIndex + 1).padStart(2, "0")}_${surname}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      root.unmount();
+      container.remove();
+    } catch (error) {
+      console.error("[ContentSheet] Fantasy slide export failed:", error);
+      setExportError("Slide export failed. Please try again.");
+    } finally {
+      document.body.style.overflow = "";
+      setSlideLoading(false);
+    }
+  }
+
+  async function handleDownloadAllSlides() {
+    const renderSlide = async (row: FantasyRow, index: number, total: number) => {
+      const priceRow: PriceRow = {
+        player_name: row.player_name, team_name: row.team_name, position: row.position,
+        price: row.price, breakeven: row.breakeven, projection: row.projection,
+        value_score: row.value_score, season_avg: row.season_avg, last_5_avg: row.last_5_avg,
+        be_delta: row.be_delta, matchup_label: row.matchup_label, status: row.status, story: "value",
+      };
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1920px;";
+      document.body.appendChild(container);
+      const root = ReactDOM.createRoot(container);
+      root.render(<PriceCard row={priceRow} hook={hook} cta={cta} logoUrl={logoUrl} />);
+      await new Promise((r) => setTimeout(r, 120));
+      return container.firstChild as HTMLElement;
+    };
+    await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError, "neeko_fantasy_carousel");
+  }
+
+  return (
+    <CardModalShell onClose={onClose} title="Fantasy Multi Card">
+      <MultiCardLayoutSelector value={layout} onChange={handleLayoutChange} />
+      {layoutWarning && (
+        <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs text-center">
+          {layoutWarning}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <input
+          value={customA}
+          onChange={(e) => setCustomA(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+        <input
+          value={customB}
+          onChange={(e) => setCustomB(e.target.value)}
+          placeholder="Write your own…"
+          className="bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
+
+      <select
+        value={hookIdx}
+        onChange={(e) => setHookIdx(Number(e.target.value))}
+        className="w-full bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+      >
+        {groups.map((g, gi) => (
+          <optgroup key={gi} label={g.label}>
+            {g.hooks.map((h, i) => {
+              const flatIdx = starts[gi] + i;
+              return (
+                <option key={flatIdx} value={flatIdx}>
+                  {h[0]} {h[1]}
+                </option>
+              );
+            })}
+          </optgroup>
+        ))}
+      </select>
+
+      {/* Hidden full-resolution export node */}
+      <div style={{ position: "absolute", left: -9999, top: 0, width: 1080, height: 1920, overflow: "hidden" }} aria-hidden="true">
+        {layout === "single-page" ? (
+          <FantasyMultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} sortView={sortView} />
+        ) : (
+          (() => {
+            const row = stack[clampedIndex];
+            const priceRow: PriceRow = {
+              player_name: row.player_name, team_name: row.team_name, position: row.position,
+              price: row.price, breakeven: row.breakeven, projection: row.projection,
+              value_score: row.value_score, season_avg: row.season_avg, last_5_avg: row.last_5_avg,
+              be_delta: row.be_delta, matchup_label: row.matchup_label, status: row.status, story: "value",
+            };
+            return <PriceCard row={priceRow} hook={hook} cta={cta} logoUrl={logoUrl} />;
+          })()
+        )}
+      </div>
+
+      {layout === "single-page" ? (
+        <CardPreview>
+          <FantasyMultiCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} sortView={sortView} />
+        </CardPreview>
+      ) : (
+        <>
+          <div className="carousel-viewport" style={{ width: "100%", overflow: "hidden", borderRadius: 12 }}>
+            <div className="carousel-track" style={{ display: "flex", width: "100%", transform: `translate3d(-${clampedIndex * 100}%, 0, 0)`, transition: "transform 300ms ease", willChange: "transform" }}>
+              {stack.map((row, i) => {
+                const priceRow: PriceRow = {
+                  player_name: row.player_name, team_name: row.team_name, position: row.position,
+                  price: row.price, breakeven: row.breakeven, projection: row.projection,
+                  value_score: row.value_score, season_avg: row.season_avg, last_5_avg: row.last_5_avg,
+                  be_delta: row.be_delta, matchup_label: row.matchup_label, status: row.status, story: "value",
+                };
+                return (
+                  <div key={fantasyStackKey(row)} className="carousel-slide" style={{ flex: "0 0 100%", minWidth: 0 }}>
+                    <CardPreview>
+                      <PriceCard row={priceRow} hook={hook} cta={cta} logoUrl={logoUrl} />
+                    </CardPreview>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" onClick={() => setActiveIndex((i) => Math.max(0, i - 1))} disabled={clampedIndex === 0} className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]">
+              ← Prev
+            </button>
+            <span className="text-xs text-zinc-400 font-medium tabular-nums">
+              {clampedIndex + 1} / {slideCount}
+            </span>
+            <button type="button" onClick={() => setActiveIndex((i) => Math.min(maxIndex, i + 1))} disabled={clampedIndex === maxIndex} className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-40 transition-colors text-sm font-medium min-h-[44px]">
+              Next →
+            </button>
+          </div>
+
+          {slideCount > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              {stack.map((row, i) => (
+                <button key={fantasyStackKey(row)} type="button" onClick={() => setActiveIndex(i)} aria-label={`Go to slide ${i + 1}`} className={`rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${i === clampedIndex ? "bg-amber-500" : "bg-zinc-700 hover:bg-zinc-600"}`}>
+                  <span className="block w-2 h-2 rounded-full bg-current" style={{ color: i === clampedIndex ? "#080808" : "#a1a1aa" }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex-shrink-0">CTA</label>
+        <select value={cta} onChange={(e) => setCta(e.target.value)} className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-lg px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500">
+          {CTA_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
+      {layout === "single-page" ? (
+        <button onClick={handleDownloadSinglePage} disabled={downloading} className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors">
+          {downloading ? "Rendering…" : "Download Single Page"}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <button onClick={handleDownloadCurrentSlide} disabled={slideLoading} className="flex-1 px-3 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold rounded-lg transition-colors">
+            {slideLoading ? "Rendering…" : "Download Slide"}
+          </button>
+          <button onClick={handleDownloadAllSlides} disabled={carouselLoading} className="flex-1 px-3 py-2.5 bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-50 text-sm font-semibold rounded-lg transition-colors">
+            {carouselLoading ? `Exporting ${slideCount}…` : `All Slides (${slideCount})`}
+          </button>
+        </div>
+      )}
+      {exportError && (
+        <div className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+          {exportError}
+        </div>
+      )}
+    </CardModalShell>
+  );
+}
+
 function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
   const logoUrl = _logoDataUrl;
   const [hookIdx, setHookIdx] = useState(0);
@@ -3371,6 +3714,8 @@ export default function ContentSheet() {
   const [careerCardOpen, setCareerCardOpen] = useState(false);
   const [stack, setStack] = useState<StackRow[]>([]);
   const [multiCardOpen, setMultiCardOpen] = useState(false);
+  const [fantasyStack, setFantasyStack] = useState<FantasyRow[]>([]);
+  const [fantasyMultiCardOpen, setFantasyMultiCardOpen] = useState(false);
   const rankingsRef = useRef<RankingsLookup | null>(null);
 
   // Step 1a: resolve current round once on mount. Available rounds are
@@ -4036,6 +4381,17 @@ export default function ContentSheet() {
 
   const stackFull = stack.length >= 5;
 
+  function toggleFantasyStack(row: FantasyRow) {
+    const k = fantasyStackKey(row);
+    setFantasyStack((prev) => {
+      if (prev.some((r) => fantasyStackKey(r) === k)) return prev.filter((r) => fantasyStackKey(r) !== k);
+      if (prev.length >= 5) return prev;
+      return [...prev, row];
+    });
+  }
+
+  const fantasyStackFull = fantasyStack.length >= 5;
+
   // Group visible rows by lens for display
   const grouped = useMemo(() => {
     const map = new Map<Lens, RankedRow[]>();
@@ -4259,7 +4615,7 @@ export default function ContentSheet() {
         )}
       </div>
 
-      {/* Stack bar */}
+      {/* Stack bar — Hit Rates / Form */}
       {stack.length > 0 && (
         <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
           <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {stack.length}/5</span>
@@ -4285,6 +4641,40 @@ export default function ContentSheet() {
             </button>
             <button
               onClick={() => setMultiCardOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-black transition-colors"
+            >
+              Build Card →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stack bar — Fantasy */}
+      {head === "Fantasy" && fantasyStack.length > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3">
+          <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">STACK {fantasyStack.length}/5</span>
+          {fantasyStack.map((r) => {
+            const k = fantasyStackKey(r);
+            const surname = (r.player_name.split(" ").pop() ?? r.player_name).toUpperCase();
+            return (
+              <button
+                key={k}
+                onClick={() => setFantasyStack((prev) => prev.filter((s) => fantasyStackKey(s) !== k))}
+                className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+              >
+                {surname} ×
+              </button>
+            );
+          })}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setFantasyStack([])}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setFantasyMultiCardOpen(true)}
               className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-black transition-colors"
             >
               Build Card →
@@ -4560,6 +4950,14 @@ export default function ContentSheet() {
                   </div>
                 </div>
                 <button
+                  onClick={() => toggleFantasyStack(r)}
+                  disabled={!fantasyStack.some((s) => fantasyStackKey(s) === fantasyStackKey(r)) && fantasyStackFull}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors flex-shrink-0"
+                  title={fantasyStack.some((s) => fantasyStackKey(s) === fantasyStackKey(r)) ? "Remove from stack" : "Add to stack"}
+                >
+                  {fantasyStack.some((s) => fantasyStackKey(s) === fantasyStackKey(r)) ? "−" : "+"}
+                </button>
+                <button
                   onClick={() => setPriceCardRow(priceRow)}
                   className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
                   title="Export PNG"
@@ -4570,6 +4968,10 @@ export default function ContentSheet() {
             );
           })}
         </div>
+      )}
+
+      {fantasyMultiCardOpen && fantasyStack.length > 0 && (
+        <FantasyMultiCardModal stack={fantasyStack} sortView={sortView} onClose={() => setFantasyMultiCardOpen(false)} />
       )}
 
       {priceCardRow && (
