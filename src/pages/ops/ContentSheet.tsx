@@ -740,9 +740,7 @@ function sortHitRateRows(rows: RankedRow[], sortView: string): RankedRow[] {
       });
       break;
     case "inconsist":
-      out.
-  }
-}sort((a, b) => {
+      out.sort((a, b) => {
         const ao = isOut(a), bo = isOut(b);
         if (ao !== bo) return ao ? 1 : -1;
         // rate = 0 rows sink to the bottom (treated as "most inconsistent"
@@ -2749,12 +2747,11 @@ function CarouselSlide({ row, hook, cta, index, total, showBar = true }: {
 
 type MultiCardLayout = "single-page" | "carousel";
 
-function MultiCardLayoutSelector({ value, onChange, singlePageDisabled }: { value: MultiCardLayout; onChange: (v: MultiCardLayout) => void; singlePageDisabled?: boolean }) {
+function MultiCardLayoutSelector({ value, onChange, disabled }: { value: MultiCardLayout; onChange: (v: MultiCardLayout) => void; disabled?: boolean }) {
   return (
     <div role="radiogroup" aria-label="Card layout" className="flex rounded-lg border border-zinc-700 overflow-hidden">
       {(["single-page", "carousel"] as MultiCardLayout[]).map((opt) => {
         const active = value === opt;
-        const disabled = opt === "single-page" && singlePageDisabled;
         return (
           <button
             key={opt}
@@ -2867,6 +2864,7 @@ function SinglePageMultiPlayerCard({ stack, hook, cta, logoUrl, showBar }: { sta
 
 function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => void }) {
   const logoUrl = _logoDataUrl;
+  const hooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
   const [hookIdx, setHookIdx] = useState(0);
   const [customA, setCustomA] = useState("");
   const [customB, setCustomB] = useState("");
@@ -2879,40 +2877,10 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   const [layout, setLayout] = useState<MultiCardLayout>("carousel");
   const [showBarChart, setShowBarChart] = useState(true);
   const [layoutWarning, setLayoutWarning] = useState<string | null>(null);
-  const [angle, setAngle] = useState<"hitrate" | "form">("hitrate");
   const hasCustom = customA.trim().length > 0 || customB.trim().length > 0;
-  const formRows: FormRow[] = useMemo(() => stack.map((r): FormRow => {
-    const hr = r as RankedRow;
-    const delta = (hr.last_5_avg ?? 0) - (hr.season_avg ?? 0);
-    return {
-      player_name: hr.player_name,
-      team_name: hr.team_name,
-      opponent_team_name: hr.opponent_team_name ?? "",
-      position: "—",
-      lens: hr.lens,
-      season_avg: hr.season_avg ?? 0,
-      last_5_avg: hr.last_5_avg ?? 0,
-      last_3_avg: hr.last_3_avg ?? 0,
-      games_played: hr.games,
-      player_status: hr.player_status,
-      delta,
-      tag: delta >= 0 ? "HOT" : "COLD",
-      match_id: hr.match_id,
-      match_label: hr.match_label,
-    };
-  }), [stack]);
-  const hitHooks = useMemo(() => buildMultiHooks(stack.length), [stack.length]);
-  const formGroups = useMemo(
-    () => angle === "form" && formRows.length > 0 ? buildFormBank(formRows[0], "L5") : [],
-    [angle, formRows]
-  );
-  const { flat: formFlat } = useMemo(() => flattenGroups(formGroups), [formGroups]);
-  const hooks = angle === "form" ? formFlat : hitHooks;
-  const renderRows = angle === "form" ? formRows : stack;
-  const idx = Math.min(hookIdx, Math.max(hooks.length - 1, 0));
   const hook: [string, string] = hasCustom
     ? [customA.toUpperCase(), customB.toUpperCase()]
-    : (hooks[idx] ?? ["", ""]);
+    : hooks[hookIdx];
 
   const SINGLE_PAGE_MAX = 3;
   const slideCount = stack.length;
@@ -2922,17 +2890,6 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   useEffect(() => {
     setActiveIndex((cur) => Math.min(Math.max(cur, 0), Math.max(slideCount - 1, 0)));
   }, [slideCount]);
-
-  useEffect(() => {
-    if (angle === "form" && layout === "single-page") {
-      setLayout("carousel");
-      setLayoutWarning(null);
-    }
-  }, [angle, layout]);
-
-  useEffect(() => {
-    setHookIdx((cur) => Math.min(cur, Math.max(hooks.length - 1, 0)));
-  }, [hooks.length]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2947,10 +2904,6 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
   }, [maxIndex]);
 
   function handleLayoutChange(next: MultiCardLayout) {
-    if (next === "single-page" && angle === "form") {
-      setLayoutWarning("Single Page is not available for Form Story. Each player renders as a separate Form Card in Carousel mode.");
-      return;
-    }
     if (next === "single-page" && stack.length > SINGLE_PAGE_MAX) {
       setLayoutWarning(`Single Page supports up to ${SINGLE_PAGE_MAX} players. You have ${stack.length} selected. Remove ${stack.length - SINGLE_PAGE_MAX} player${stack.length - SINGLE_PAGE_MAX > 1 ? "s" : ""} or stay in Carousel.`);
       return;
@@ -2970,7 +2923,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
     setExportError(null);
     document.body.style.overflow = "hidden";
     try {
-      const row = renderRows[clampedIndex];
+      const row = stack[clampedIndex];
       const container = document.createElement("div");
       container.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1920px;";
       document.body.appendChild(container);
@@ -3011,34 +2964,18 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
       const node = container.firstChild as HTMLElement;
       return node;
     };
-    await exportStackToPNG(renderRows, renderSlide, setCarouselLoading, setExportError, "neeko_carousel");
+    await exportStackToPNG(stack, renderSlide, setCarouselLoading, setExportError, "neeko_carousel");
   }
 
   return (
     <CardModalShell onClose={onClose} title="Multi Card">
-      <MultiCardLayoutSelector value={layout} onChange={handleLayoutChange} singlePageDisabled={angle === "form"} />
+      <MultiCardLayoutSelector value={layout} onChange={handleLayoutChange} />
       {layoutWarning && (
         <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs text-center">
           {layoutWarning}
         </div>
       )}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setAngle("hitrate")}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "hitrate" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
-        >
-          Hit Rate Story
-        </button>
-        <button
-          onClick={() => setAngle("form")}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${angle === "form" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-900 text-zinc-400"}`}
-        >
-          Form Story
-        </button>
-      </div>
-      {angle === "hitrate" && (
-        <BarChartToggle checked={showBarChart} onChange={setShowBarChart} />
-      )}
+      <BarChartToggle checked={showBarChart} onChange={setShowBarChart} />
 
       <div className="flex flex-col gap-2">
         <input
@@ -3072,7 +3009,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
         {layout === "single-page" ? (
           <SinglePageMultiPlayerCard stack={stack} hook={hook} cta={cta} logoUrl={logoUrl} showBar={showBarChart} />
         ) : (
-          <CarouselSlide row={renderRows[clampedIndex]} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} showBar={showBarChart} />
+          <CarouselSlide row={stack[clampedIndex]} hook={hook} cta={cta} index={clampedIndex + 1} total={slideCount} showBar={showBarChart} />
         )}
       </div>
 
@@ -3085,7 +3022,7 @@ function MultiCardModal({ stack, onClose }: { stack: StackRow[]; onClose: () => 
           {/* Carousel viewport — one card per slide, responsive */}
           <div className="carousel-viewport" style={{ width: "100%", overflow: "hidden", borderRadius: 12 }}>
             <div className="carousel-track" style={{ display: "flex", width: "100%", transform: `translate3d(-${clampedIndex * 100}%, 0, 0)`, transition: "transform 300ms ease", willChange: "transform" }}>
-              {renderRows.map((row, i) => (
+              {stack.map((row, i) => (
                 <div key={stackKey(row)} className="carousel-slide" style={{ flex: "0 0 100%", minWidth: 0 }}>
                   <CardPreview>
                     <CarouselSlide row={row} hook={hook} cta={cta} index={i + 1} total={slideCount} showBar={showBarChart} />
