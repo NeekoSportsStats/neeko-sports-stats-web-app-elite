@@ -1073,7 +1073,7 @@ function buildFormBank(r: FormRow, formWindow: FormWindow): HookGroup[] {
 }
 
 function MiniBar({ values, threshold, avg }: { values: number[]; threshold: number; avg: number }) {
-  const vals = values.slice(-10);
+  const vals = values.slice(-10).reverse();
   if (vals.length === 0) return null;
   const barW = 74;
   const gap = 14;
