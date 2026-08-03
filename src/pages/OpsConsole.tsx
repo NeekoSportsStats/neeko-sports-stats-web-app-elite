@@ -270,7 +270,29 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
     let statusCount = 0;
     const skipped: string[] = [];
     try {
-      const priceRows = result.resolved.map((r) => ({ player_id: r.player_id, price: r.price }));
+      // Build lookup of raw paste status by fantasy_id — pass through exactly
+      // as it appears in the paste; the database normalises server-side.
+      const rawStatusById = new Map<number, string>();
+      try {
+        const parsed = JSON.parse(json.trim());
+        if (Array.isArray(parsed)) {
+          for (const el of parsed) {
+            if (el && typeof el === "object" && "id" in el && "status" in el) {
+              const s = (el as Record<string, unknown>).status;
+              if (typeof s === "string" && s.trim()) {
+                rawStatusById.set(Number((el as Record<string, unknown>).id), s);
+              }
+            }
+          }
+        }
+      } catch { /* best-effort — status is optional */ }
+
+      const priceRows = result.resolved.map((r) => {
+        const row: Record<string, unknown> = { player_id: r.player_id, price: r.price };
+        const rawStatus = rawStatusById.get(r.fantasy_id);
+        if (rawStatus) row.player_status = rawStatus;
+        return row;
+      });
       const { data, error: rpcErr } = await supabase!.rpc("commit_prices_and_refresh", {
         p_action: "commit",
         p_rows: priceRows,
