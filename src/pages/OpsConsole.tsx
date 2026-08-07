@@ -747,6 +747,169 @@ function MismatchesTab() {
   );
 }
 
+// ── Tab: Team Sheets ──────────────────────────────────────────────────────────
+
+interface ApplyNamedSquadsResult {
+  cleared: { player_id: number; player_name: string }[];
+  already_clear: { player_id: number; player_name: string }[];
+  unmatched: string[];
+  ambiguous: string[];
+}
+
+function TeamSheetsTab() {
+  const [names, setNames] = useState("");
+  const [parsed, setParsed] = useState<string[]>([]);
+  const [previewed, setPreviewed] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [result, setResult] = useState<ApplyNamedSquadsResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function handlePreview() {
+    setError(null);
+    setResult(null);
+    const lines = names
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    setParsed(lines);
+    setPreviewed(true);
+  }
+
+  async function handleApply() {
+    setApplying(true);
+    setError(null);
+    try {
+      const { data, error: rpcErr } = await supabase!.rpc("apply_named_squads", {
+        p_names: parsed,
+      });
+      if (rpcErr) { setError(`RPC error: ${rpcErr.message}`); return; }
+      setResult(data as ApplyNamedSquadsResult);
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          Player Names (one per line)
+        </label>
+        <textarea
+          className="w-full h-52 bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 resize-y"
+          placeholder={"Marcus Bontempelli\nClayton Oliver\n..."}
+          value={names}
+          onChange={(e) => setNames(e.target.value)}
+        />
+      </div>
+
+      <button
+        onClick={handlePreview}
+        disabled={!names.trim()}
+        className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-white text-sm rounded-lg transition-colors"
+      >
+        Preview
+      </button>
+
+      {error && (
+        <div className="bg-red-950 border border-red-800 text-red-300 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
+
+      {previewed && (
+        <div className="space-y-4">
+          <div className="bg-zinc-900 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-zinc-100">{parsed.length}</div>
+            <div className="text-xs text-zinc-500 mt-1">Names parsed</div>
+          </div>
+
+          {parsed.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="text-left py-2 px-3 text-zinc-500 font-medium">#</th>
+                    <th className="text-left py-2 px-3 text-zinc-500 font-medium">Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsed.map((name, i) => (
+                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                      <td className="py-2 px-3 text-zinc-500">{i + 1}</td>
+                      <td className="py-2 px-3 text-zinc-200">{name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="border-t border-zinc-800 pt-4">
+            <button
+              onClick={handleApply}
+              disabled={applying || parsed.length === 0}
+              className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {applying ? "Applying…" : `Apply ${parsed.length} names`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="bg-green-950/30 border border-green-800 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-green-300 mb-2">Cleared ({result.cleared?.length ?? 0})</h3>
+              {result.cleared?.length > 0 ? (
+                <ul className="space-y-1">
+                  {result.cleared.map((p) => (
+                    <li key={p.player_id} className="text-xs text-green-200">{p.player_name} <span className="text-green-600">#{p.player_id}</span></li>
+                  ))}
+                </ul>
+              ) : <p className="text-xs text-zinc-500">None</p>}
+            </div>
+
+            <div className="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-zinc-300 mb-2">Already clear ({result.already_clear?.length ?? 0})</h3>
+              {result.already_clear?.length > 0 ? (
+                <ul className="space-y-1">
+                  {result.already_clear.map((p) => (
+                    <li key={p.player_id} className="text-xs text-zinc-400">{p.player_name} <span className="text-zinc-600">#{p.player_id}</span></li>
+                  ))}
+                </ul>
+              ) : <p className="text-xs text-zinc-600">None</p>}
+            </div>
+
+            <div className="bg-red-950/30 border border-red-900/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-300 mb-2">Unmatched ({result.unmatched?.length ?? 0})</h3>
+              {result.unmatched?.length > 0 ? (
+                <ul className="space-y-1">
+                  {result.unmatched.map((name, i) => (
+                    <li key={i} className="text-xs text-red-200/70">{name}</li>
+                  ))}
+                </ul>
+              ) : <p className="text-xs text-zinc-500">None</p>}
+            </div>
+
+            <div className="bg-red-950/30 border border-red-900/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-300 mb-2">Ambiguous ({result.ambiguous?.length ?? 0})</h3>
+              {result.ambiguous?.length > 0 ? (
+                <ul className="space-y-1">
+                  {result.ambiguous.map((name, i) => (
+                    <li key={i} className="text-xs text-red-200/70">{name}</li>
+                  ))}
+                </ul>
+              ) : <p className="text-xs text-zinc-500">None</p>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tab 4: Pipeline Health ────────────────────────────────────────────────────
 
 function PipelineHealthTab() {
@@ -966,7 +1129,7 @@ function PipelineBanner() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-const TABS = ["Paste", "Resolve Queue", "Mismatches", "Pipeline Health", "Content"] as const;
+const TABS = ["Paste", "Resolve Queue", "Mismatches", "Team Sheets", "Pipeline Health", "Content"] as const;
 type Tab = typeof TABS[number];
 
 export default function OpsConsole() {
@@ -1053,6 +1216,7 @@ export default function OpsConsole() {
           {activeTab === "Paste" && <PasteTab onUnresolved={setUnresolvedRows} />}
           {activeTab === "Resolve Queue" && <ResolveQueueTab rows={unresolvedRows} />}
           {activeTab === "Mismatches" && <MismatchesTab />}
+          {activeTab === "Team Sheets" && <TeamSheetsTab />}
           {activeTab === "Pipeline Health" && <PipelineHealthTab />}
           {activeTab === "Content" && <ContentSheet />}
         </div>
