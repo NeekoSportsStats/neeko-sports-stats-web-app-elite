@@ -210,6 +210,11 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   const [backfillError, setBackfillError] = useState<string | null>(null);
   const [refreshBanner, setRefreshBanner] = useState<{ type: 'green' | 'amber'; message: string } | null>(null);
 
+  // Sync-statuses-only state
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ updated: number; unchanged: number; unmatched: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   function RefreshBannerBlock({ banner }: { banner: { type: 'green' | 'amber'; message: string } | null }) {
     if (!banner) return null;
     return (
@@ -326,6 +331,30 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
       onUnresolved(result.unresolved ?? []);
     } finally {
       setCommitting(false);
+    }
+  }
+
+  async function handleSyncStatuses() {
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(json.trim());
+      } catch {
+        setSyncError("Invalid JSON — paste the raw AFL Fantasy player array.");
+        return;
+      }
+      if (!Array.isArray(parsed)) {
+        setSyncError("Expected a JSON array at the top level.");
+        return;
+      }
+      const { data, error: rpcErr } = await supabase!.rpc("sync_player_statuses_from_paste", { p_rows: parsed });
+      if (rpcErr) { setSyncError(`RPC error: ${rpcErr.message}`); return; }
+      setSyncResult(data.summary as { updated: number; unchanged: number; unmatched: number });
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -483,16 +512,44 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
             </div>
           )}
 
-          <div className="border-t border-zinc-800 pt-4">
-            <button
-              onClick={handleCommit}
-              disabled={committing || result.resolved.length === 0}
-              className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              {committing ? "Committing…" : `Commit ${result.resolved.length} prices (Round ${round})`}
-            </button>
+          <div className="border-t border-zinc-800 pt-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCommit}
+                disabled={committing || result.resolved.length === 0}
+                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {committing ? "Committing…" : `Commit ${result.resolved.length} prices (Round ${round})`}
+              </button>
+              <button
+                onClick={handleSyncStatuses}
+                disabled={syncing || !json.trim()}
+                className="px-4 py-2 bg-sky-800 hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {syncing ? "Syncing…" : "Sync statuses only"}
+              </button>
+            </div>
             <RefreshBannerBlock banner={refreshBanner} />
           </div>
+
+          {syncError && (
+            <div className="bg-red-950 border border-red-800 text-red-300 rounded-lg px-4 py-3 text-sm">
+              {syncError}
+            </div>
+          )}
+
+          {syncResult && (
+            <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm space-y-1">
+              <p className="text-zinc-200 font-medium">Status sync complete</p>
+              <p className="text-zinc-400">
+                Updated: <span className="text-green-400">{syncResult.updated}</span>
+                {" · "}
+                Unchanged: <span className="text-zinc-300">{syncResult.unchanged}</span>
+                {" · "}
+                Unmatched: <span className={syncResult.unmatched > 0 ? "text-red-400" : "text-zinc-300"}>{syncResult.unmatched}</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 
