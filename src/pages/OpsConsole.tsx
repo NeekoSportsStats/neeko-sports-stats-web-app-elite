@@ -215,6 +215,18 @@ function PasteTab({ onUnresolved }: { onUnresolved: (rows: UnresolvedRow[]) => v
   const [syncResult, setSyncResult] = useState<{ updated: number; unchanged: number; unmatched: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase!.rpc("get_last_committed_price_round");
+      if (cancelled) return;
+      if (data != null && typeof data === "number") {
+        setRound(data + 1);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   function RefreshBannerBlock({ banner }: { banner: { type: 'green' | 'amber'; message: string } | null }) {
     if (!banner) return null;
     return (
