@@ -35,6 +35,7 @@ const RefundPolicy      = React.lazy(() => import("@/pages/policies/RefundPolicy
 const SecurityPolicy    = React.lazy(() => import("@/pages/policies/SecurityPolicy"));
 const TermsConditions   = React.lazy(() => import("@/pages/policies/TermsConditions"));
 const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductPolicy"));
+const DeleteData       = React.lazy(() => import("@/pages/policies/DeleteData"));
 
 /* =========================
    Suspense helpers
@@ -82,6 +83,7 @@ function App() {
         <Route path="/refund-policy" element={<S fallback={Generic}><RefundPolicy /></S>} />
         <Route path="/security-policy" element={<S fallback={Generic}><SecurityPolicy /></S>} />
         <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
+        <Route path="/delete-data" element={<S fallback={Generic}><DeleteData /></S>} />
       </Route>
 
       {/* ── SEO-ONLY ROUTES: player/team/position pages kept for deindexing crawl */}
