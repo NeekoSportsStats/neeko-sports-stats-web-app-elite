@@ -1,3 +1,6 @@
+import { lastUpdated as privacyLastUpdated, title as privacyTitle, description as privacyDescription, sections as privacySections } from "./src/content/privacyPolicy";
+import { lastUpdated as deleteLastUpdated, title as deleteTitle, description as deleteDescription, sections as deleteSections } from "./src/content/deleteData";
+
 export const config = {
   matcher: [
     "/",
@@ -18,6 +21,13 @@ export const config = {
     "/sports/afl/teams/:team*",
     "/sports/afl/positions/:position*",
     "/sports/afl/round/:roundNumber*",
+    "/privacy-policy",
+    "/delete-data",
+    "/policies",
+    "/terms-conditions",
+    "/refund-policy",
+    "/security-policy",
+    "/user-conduct-policy",
   ],
 };
 
@@ -60,7 +70,7 @@ const BOT_AGENTS = [
   "scrapy",
 ];
 
-function isBot(userAgent) {
+function isBot(userAgent: string): boolean {
   if (!userAgent) return false;
   const ua = userAgent.toLowerCase();
   return BOT_AGENTS.some((bot) => ua.includes(bot));
@@ -71,7 +81,7 @@ const DEFAULT_IMAGE = `${DOMAIN}/og-default.png`;
 const DEFAULT_DESCRIPTION =
   "AI-powered AFL Fantasy projections, rankings, trade targets and Start/Sit analysis built to give fantasy coaches an edge.";
 
-function slugToTitle(slug) {
+function slugToTitle(slug: string): string {
   if (!slug) return "";
   return slug
     .split("-")
@@ -79,7 +89,7 @@ function slugToTitle(slug) {
     .join(" ");
 }
 
-function getPageMeta(pathname) {
+function getPageMeta(pathname: string): { title: string; description: string; canonical: string } {
   const p = pathname.replace(/\/$/, "") || "/";
 
   if (p === "/") {
@@ -254,61 +264,226 @@ function getPageMeta(pathname) {
   };
 }
 
-function buildBotHTML(meta, _pathname) {
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function buildBotHTML(meta: { title: string; description: string; canonical: string }, _pathname: string): string {
   const { title, description, canonical } = meta;
-  const escaped = (s) =>
-    s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escaped(title)}</title>
-  <meta name="description" content="${escaped(description)}" />
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}" />
   <meta name="author" content="Neeko Sports Stats" />
-  <link rel="canonical" href="${escaped(canonical)}" />
+  <link rel="canonical" href="${esc(canonical)}" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="${escaped(canonical)}" />
-  <meta property="og:title" content="${escaped(title)}" />
-  <meta property="og:description" content="${escaped(description)}" />
+  <meta property="og:url" content="${esc(canonical)}" />
+  <meta property="og:title" content="${esc(title)}" />
+  <meta property="og:description" content="${esc(description)}" />
   <meta property="og:image" content="${DEFAULT_IMAGE}" />
   <meta property="og:site_name" content="Neeko Sports Stats" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@neekostats" />
-  <meta name="twitter:title" content="${escaped(title)}" />
-  <meta name="twitter:description" content="${escaped(description)}" />
+  <meta name="twitter:title" content="${esc(title)}" />
+  <meta name="twitter:description" content="${esc(description)}" />
   <meta name="twitter:image" content="${DEFAULT_IMAGE}" />
   <link rel="icon" type="image/png" href="/logo.png" />
 </head>
 <body>
   <div id="root">
-    <h1>${escaped(title)}</h1>
-    <p>${escaped(description)}</p>
-    <p><a href="${escaped(canonical)}">View on Neeko Sports Stats</a></p>
+    <h1>${esc(title)}</h1>
+    <p>${esc(description)}</p>
+    <p><a href="${esc(canonical)}">View on Neeko Sports Stats</a></p>
   </div>
 </body>
 </html>`;
 }
 
-export default function middleware(request) {
-  const userAgent = request.headers.get("user-agent") || "";
+// --- Legal page prerendering ---
 
-  if (!isBot(userAgent)) {
-    return;
+const LEGAL_ROUTES = new Set([
+  "/privacy-policy",
+  "/delete-data",
+  "/policies",
+  "/terms-conditions",
+  "/refund-policy",
+  "/security-policy",
+  "/user-conduct-policy",
+]);
+
+interface LegalSection {
+  num?: number;
+  heading: string;
+  paragraphs?: string[];
+  bullets?: { label?: string; text: string }[];
+  closingParagraphs?: string[];
+  cards?: { title: string; body: string }[];
+  boldFirstParagraph?: boolean;
+}
+
+function renderLegalSections(sections: LegalSection[]): string {
+  const parts: string[] = [];
+  for (const section of sections) {
+    const numLabel = section.num ? `${section.num}. ` : "";
+    if (section.heading) {
+      parts.push(`<h2>${esc(numLabel + section.heading)}</h2>`);
+    }
+    if (section.paragraphs) {
+      for (let i = 0; i < section.paragraphs.length; i++) {
+        const p = section.paragraphs[i];
+        if (section.boldFirstParagraph && i === 0) {
+          parts.push(`<p><strong>${esc(p)}</strong></p>`);
+        } else {
+          parts.push(`<p>${esc(p)}</p>`);
+        }
+      }
+    }
+    if (section.bullets && section.bullets.length > 0) {
+      parts.push("<ul>");
+      for (const b of section.bullets) {
+        const label = b.label ? `<strong>${esc(b.label)}:</strong> ` : "";
+        parts.push(`<li>${label}${esc(b.text)}</li>`);
+      }
+      parts.push("</ul>");
+    }
+    if (section.cards) {
+      for (const card of section.cards) {
+        parts.push(`<div><strong>${esc(card.title)}</strong><p>${esc(card.body)}</p></div>`);
+      }
+    }
+    if (section.closingParagraphs) {
+      for (const p of section.closingParagraphs) {
+        parts.push(`<p>${esc(p)}</p>`);
+      }
+    }
   }
+  return parts.join("\n");
+}
 
-  const url = new URL(request.url);
-  const pathname = url.pathname;
+function buildPrivacyPolicyHTML(): string {
+  const canonical = `${DOMAIN}/privacy-policy`;
+  const body = renderLegalSections(privacySections as LegalSection[]);
 
-  const BLOCKED = ["/admin", "/account", "/billing", "/checkout", "/success", "/cancel", "/functions/"];
-  if (BLOCKED.some((b) => pathname.startsWith(b))) {
-    return;
-  }
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(privacyTitle)}</title>
+  <meta name="description" content="${esc(privacyDescription)}">
+  <link rel="canonical" href="${esc(canonical)}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${esc(canonical)}">
+  <meta property="og:title" content="${esc(privacyTitle)}">
+  <meta property="og:description" content="${esc(privacyDescription)}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${esc(privacyTitle)}">
+  <meta name="twitter:description" content="${esc(privacyDescription)}">
+  <link rel="icon" type="image/png" href="/logo.png">
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p>Last updated: ${esc(privacyLastUpdated)}</p>
+  ${body}
+</body>
+</html>`;
+}
 
-  const meta = getPageMeta(pathname);
-  const html = buildBotHTML(meta, pathname);
+function buildDeleteDataHTML(): string {
+  const canonical = `${DOMAIN}/delete-data`;
+  const body = renderLegalSections(deleteSections as LegalSection[]);
 
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(deleteTitle)}</title>
+  <meta name="description" content="${esc(deleteDescription)}">
+  <link rel="canonical" href="${esc(canonical)}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${esc(canonical)}">
+  <meta property="og:title" content="${esc(deleteTitle)}">
+  <meta property="og:description" content="${esc(deleteDescription)}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${esc(deleteTitle)}">
+  <meta name="twitter:description" content="${esc(deleteDescription)}">
+  <link rel="icon" type="image/png" href="/logo.png">
+</head>
+<body>
+  <h1>Delete your Neeko Stats data</h1>
+  <p>Last updated: ${esc(deleteLastUpdated)}</p>
+  ${body}
+</body>
+</html>`;
+}
+
+const SIMPLE_LEGAL_PAGES: Record<string, { title: string; description: string }> = {
+  "/policies": {
+    title: "Policies — Neeko Stats",
+    description: "Legal policies and terms for Neeko Stats.",
+  },
+  "/terms-conditions": {
+    title: "Terms & Conditions — Neeko Stats",
+    description: "Terms and conditions for using Neeko Stats.",
+  },
+  "/refund-policy": {
+    title: "Refund Policy — Neeko Stats",
+    description: "Refund policy for Neeko Pro subscriptions.",
+  },
+  "/security-policy": {
+    title: "Security Policy — Neeko Stats",
+    description: "Security practices and policies for Neeko Stats.",
+  },
+  "/user-conduct-policy": {
+    title: "User Conduct Policy — Neeko Stats",
+    description: "User conduct policy for Neeko Stats.",
+  },
+};
+
+function buildSimpleLegalHTML(pathname: string): string {
+  const meta = SIMPLE_LEGAL_PAGES[pathname];
+  const canonical = `${DOMAIN}${pathname}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(meta.title)}</title>
+  <meta name="description" content="${esc(meta.description)}">
+  <link rel="canonical" href="${esc(canonical)}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${esc(canonical)}">
+  <meta property="og:title" content="${esc(meta.title)}">
+  <meta property="og:description" content="${esc(meta.description)}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${esc(meta.title)}">
+  <meta name="twitter:description" content="${esc(meta.description)}">
+  <link rel="icon" type="image/png" href="/logo.png">
+</head>
+<body>
+  <h1>${esc(meta.title.replace(" — Neeko Stats", ""))}</h1>
+  <p><a href="${esc(canonical)}">View the full page on Neeko Stats</a></p>
+</body>
+</html>`;
+}
+
+function buildLegalHTML(pathname: string): string {
+  if (pathname === "/privacy-policy") return buildPrivacyPolicyHTML();
+  if (pathname === "/delete-data") return buildDeleteDataHTML();
+  return buildSimpleLegalHTML(pathname);
+}
+
+function htmlResponse(html: string): Response {
   return new Response(html, {
     status: 200,
     headers: {
@@ -318,4 +493,30 @@ export default function middleware(request) {
       "X-Robots-Tag": "index, follow",
     },
   });
+}
+
+export default function middleware(request: Request): Response | undefined {
+  const userAgent = request.headers.get("user-agent") || "";
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+
+  // Legal routes: serve prerendered HTML to ALL requests
+  if (LEGAL_ROUTES.has(pathname)) {
+    return htmlResponse(buildLegalHTML(pathname));
+  }
+
+  // Everything else: bot-only prerendering (unchanged from original)
+  if (!isBot(userAgent)) {
+    return;
+  }
+
+  const BLOCKED = ["/admin", "/account", "/billing", "/checkout", "/success", "/cancel", "/functions/"];
+  if (BLOCKED.some((b) => pathname.startsWith(b))) {
+    return;
+  }
+
+  const meta = getPageMeta(pathname);
+  const html = buildBotHTML(meta, pathname);
+
+  return htmlResponse(html);
 }
