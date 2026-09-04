@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { IOS_URL, ANDROID_URL } from "@/config/stores";
@@ -137,6 +137,39 @@ export default function Index() {
   const featRef  = useReveal() as React.RefObject<HTMLElement>;
   const proRef   = useReveal() as React.RefObject<HTMLElement>;
   const trustRef = useReveal() as React.RefObject<HTMLElement>;
+  const shotRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkArrows = useCallback(() => {
+    const el = shotRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = shotRef.current;
+    if (!el) return;
+    checkArrows();
+    el.addEventListener("scroll", checkArrows, { passive: true });
+    window.addEventListener("resize", checkArrows);
+    return () => {
+      el.removeEventListener("scroll", checkArrows);
+      window.removeEventListener("resize", checkArrows);
+    };
+  }, [checkArrows]);
+
+  const scrollByCard = (dir: 1 | -1) => {
+    const el = shotRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-shot-card]");
+    const step = card ? card.offsetWidth + 18 : el.clientWidth * 0.8;
+    el.scrollBy({
+      left: dir * step,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  };
 
   return (
     <div style={{ background: DARK, overflowX: "hidden", minHeight: "100vh" }}>
@@ -266,17 +299,37 @@ export default function Index() {
           ))}
         </div>
 
-        {/* Desktop: static premium gallery (all screenshots, centred) */}
-        <div className="ix-screenshot-grid ix-container">
-          {SCREENSHOTS.map(({ src, caption, sub, alt }) => (
-            <div key={caption} className="ix-shot-grid-item">
-              <div className="ix-shot-frame">
-                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="725" height="1568" />
+        {/* Desktop: scrollable carousel (all screenshots) */}
+        <div className="ix-screenshot-carousel ix-container">
+          <button
+            type="button"
+            className="ix-carousel-arrow ix-carousel-arrow-left"
+            aria-label="Scroll screenshots left"
+            onClick={() => scrollByCard(-1)}
+            style={{ opacity: canScrollLeft ? 1 : 0, pointerEvents: canScrollLeft ? "auto" : "none" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <div className="ix-carousel-viewport" ref={shotRef}>
+            {SCREENSHOTS.map(({ src, caption, sub, alt }) => (
+              <div key={caption} className="ix-shot-grid-item" data-shot-card>
+                <div className="ix-shot-frame">
+                  <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="725" height="1568" />
+                </div>
+                <p className="ix-shot-caption">{caption}</p>
+                <p className="ix-shot-sub">{sub}</p>
               </div>
-              <p className="ix-shot-caption">{caption}</p>
-              <p className="ix-shot-sub">{sub}</p>
-            </div>
-          ))}
+            ))}
+          </div>
+          <button
+            type="button"
+            className="ix-carousel-arrow ix-carousel-arrow-right"
+            aria-label="Scroll screenshots right"
+            onClick={() => scrollByCard(1)}
+            style={{ opacity: canScrollRight ? 1 : 0, pointerEvents: canScrollRight ? "auto" : "none" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
         </div>
       </section>
 
@@ -681,8 +734,8 @@ export default function Index() {
           width: clamp(130px, 22vw, 190px);
           text-align: center;
         }
-        /* Static desktop grid: hidden by default, shown on desktop */
-        .ix-screenshot-grid {
+        /* Desktop carousel: hidden by default, shown on desktop */
+        .ix-screenshot-carousel {
           display: none;
         }
         .ix-shot-grid-item {
@@ -931,14 +984,48 @@ export default function Index() {
             text-align: left;
           }
           .ix-trust-n { font-size: clamp(18px, 1.8vw, 24px); margin-bottom: 0; }
-          /* Desktop screenshots: hide carousel, show static grid */
+          /* Desktop screenshots: hide marquee, show carousel */
           .ix-marquee-section { padding: clamp(28px, 3.5vw, 56px) clamp(20px, 5vw, 64px); overflow: visible; }
           .ix-marquee-track { display: none !important; }
-          .ix-screenshot-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
+          .ix-screenshot-carousel {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             margin: 0 auto;
+          }
+          .ix-carousel-viewport {
+            flex: 1;
+            display: flex;
+            gap: 18px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding: 8px 0 12px;
+          }
+          .ix-carousel-viewport::-webkit-scrollbar { display: none; }
+          .ix-carousel-viewport > * {
+            flex: 0 0 calc(100% / 3.5);
+            scroll-snap-align: start;
+          }
+          .ix-carousel-arrow {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+          }
+          .ix-carousel-arrow:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.08);
           }
           .ix-shot-grid-item .ix-shot-frame {
             transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -946,6 +1033,9 @@ export default function Index() {
           .ix-shot-grid-item:hover .ix-shot-frame {
             transform: translateY(-6px);
             box-shadow: 0 28px 60px rgba(0,0,0,0.68), 0 6px 20px rgba(34,197,94,0.10);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .ix-carousel-viewport { scroll-behavior: auto; }
           }
         }
       `}</style>
