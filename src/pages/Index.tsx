@@ -92,7 +92,7 @@ const SCREENSHOTS = [
 
 const PRO_FEATURES = [
   "Every match board, every round",
-  "All six stat lenses: disposals, goals, marks, tackles, kicks and fantasy",
+  "Every stat lens across all three sports",
   "Fantasy HQ — breakevens, price changes and projections",
   "Hit Rate Builder and Trend Stacks for every player",
   "Trend Stacks up to six legs",
@@ -268,7 +268,7 @@ export default function Index() {
 
         {/* Desktop: static premium gallery (4 screenshots, centred) */}
         <div className="ix-screenshot-grid ix-container">
-          {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub, alt }) => (
+          {SCREENSHOTS.map(({ src, caption, sub, alt }) => (
             <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
                 <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="725" height="1568" />
