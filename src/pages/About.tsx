@@ -1,48 +1,64 @@
 import { Helmet } from "react-helmet-async";
-import { APP_STORE_URL } from "@/constants/appStore";
+import { IOS_URL, ANDROID_URL } from "@/config/stores";
 
 const DARK  = "#07090C";
 const GOLD  = "#E0AE2D";
 const TEAL  = "#22c55e";
-const APP_STORE = APP_STORE_URL;
 
-const APPLE_ICON = (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-  </svg>
-);
+function StoreBadges({ className }: { className?: string }) {
+  return (
+    <div className={className} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+      <a href={IOS_URL} target="_blank" rel="noopener noreferrer">
+        <img
+          src="/images/app-store-badge.svg"
+          alt="Download on the App Store"
+          height="48"
+          style={{ height: 48, width: "auto", display: "block" }}
+        />
+      </a>
+      <a href={ANDROID_URL} target="_blank" rel="noopener noreferrer">
+        <img
+          src="/images/GetItOnGooglePlay_Badge_Web_color_English.png"
+          alt="Get it on Google Play"
+          height="48"
+          style={{ height: 48, width: "auto", display: "block" }}
+        />
+      </a>
+    </div>
+  );
+}
 
 const FEATURES = [
   {
     icon: "▦",
     color: TEAL,
-    label: "Match Boards",
-    copy: "Every player in a game, side by side. Hit rates, recent form and stat lines — before lockout.",
+    label: "Three sports, one app",
+    copy: "Follow the AFL season and finals, the NBA regular season, and every Premier League matchweek. Switch sports in a tap.",
   },
   {
     icon: "◎",
     color: GOLD,
-    label: "Player Profiles",
-    copy: "Season averages, round-by-round trends, hit-rate lines and recent form for 600+ AFL players.",
+    label: "Player form and hit rates",
+    copy: "See how often a player has reached a statistical mark across recent games. Disposals, goals, points, rebounds, assists, shots, tackles — laid out clearly.",
   },
   {
     icon: "◉",
     color: "#60a5fa",
-    label: "Team Trends",
-    copy: "Compare scoring, defence and last-5 form across all 18 AFL teams in one place.",
+    label: "Hit Rate Builder",
+    copy: "Pick a player, a stat and a threshold. See the history behind it, game by game, including against the same opponent.",
   },
   {
     icon: "◆",
     color: GOLD,
-    label: "Neeko Pro",
-    copy: "Full-round boards, all stat lenses, fine-line thresholds and matchup compare — fully unlocked.",
+    label: "Trend Stacks",
+    copy: "Combine players and stats into a single view to compare form side by side.",
   },
 ];
 
 const PRO_FEATURES = [
   "Every match board this round",
   "All six stat lenses — disposals, goals, marks, tackles, kicks, fantasy",
-  "Full hit-rate lines and fine thresholds",
+  "Full hit rates and finer thresholds",
   "Matchup Compare access",
   "Team and match context",
 ];
@@ -51,13 +67,13 @@ export default function About() {
   return (
     <div style={{ background: DARK, color: "#f0f0f0", overflowX: "hidden" }}>
       <Helmet>
-        <title>About Neeko Stats | AFL Stats App for iPhone</title>
-        <meta name="description" content="Neeko Stats is the AFL stats app for iPhone. Player hit rates, match boards, team form and recent trends — built for research before the bounce." />
+        <title>About Neeko Stats | AFL, NBA & EPL Stats App</title>
+        <meta name="description" content="Neeko Stats gives fans fast access to player hit rates, match boards, team form and matchup context across the AFL, the NBA and the Premier League — on iOS and Android." />
         <link rel="canonical" href="https://neekostats.com.au/about" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/about" />
-        <meta property="og:title" content="About Neeko Stats | AFL Stats App for iPhone" />
-        <meta property="og:description" content="Neeko Stats is the AFL stats app for iPhone. Player hit rates, match boards, team form and recent trends — built for research before the bounce." />
+        <meta property="og:title" content="About Neeko Stats | AFL, NBA & EPL Stats App" />
+        <meta property="og:description" content="Neeko Stats gives fans fast access to player hit rates, match boards, team form and matchup context across the AFL, the NBA and the Premier League — on iOS and Android." />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="robots" content="index, follow" />
@@ -69,19 +85,16 @@ export default function About() {
         <div className="ab-container ab-hero-inner">
           <p className="ab-eyebrow">About Neeko Stats</p>
           <h1 className="ab-h1">
-            AFL stats for iPhone.<br />
+            Three sports.<br />
             <span style={{ color: GOLD }}>Built for research.</span>
           </h1>
           <p className="ab-sub">
-            Neeko Stats gives AFL fans fast access to player hit rates, match boards, team form and matchup context — all on iPhone, before lockout.
+            Neeko Stats gives fans fast access to player hit rates, match boards, team form and matchup context across the AFL, the NBA and the Premier League — on iOS and Android.
           </p>
-          <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ab-btn-primary">
-            {APPLE_ICON}
-            Download on the App Store
-          </a>
+          <StoreBadges />
           <div className="ab-chips">
-            <span className="ab-chip">600+ players</span>
-            <span className="ab-chip">All 18 teams</span>
+            <span className="ab-chip">Three sports</span>
+            <span className="ab-chip">iOS and Android</span>
             <span className="ab-chip">Stats research only</span>
           </div>
         </div>
@@ -93,7 +106,7 @@ export default function About() {
           <div className="ab-section-head">
             <p className="ab-label">What's inside</p>
             <h2 className="ab-h2">Everything before lockout.</h2>
-            <p className="ab-section-sub">Four core tools, all on your iPhone — no browser needed, no juggling tabs.</p>
+            <p className="ab-section-sub">Four core tools, all on your phone — no browser needed, no juggling tabs.</p>
           </div>
           <div className="ab-feature-grid">
             {FEATURES.map(({ icon, color, label, copy }) => (
@@ -124,7 +137,7 @@ export default function About() {
                 <span style={{ color: GOLD }}>match board.</span>
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.65, margin: "0 0 22px" }}>
-                Full-round access — every stat lens, fine-line thresholds, matchup compare and team context. Everything you need before lockout.
+                Core stats, profiles and Fantasy HQ are free, with a set number of free matches each round and Trend Stacks up to three legs. Neeko Pro unlocks every match and Trend Stacks up to six legs — weekly or monthly, with a free trial on the weekly plan.
               </p>
               <div className="ab-pro-feats">
                 {PRO_FEATURES.map(f => (
@@ -136,14 +149,7 @@ export default function About() {
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: 32, fontWeight: 900, color: GOLD, letterSpacing: "-0.03em", lineHeight: 1 }}>$9.99</p>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.40)" }}>/ month · billed via Apple</span>
-              </div>
-              <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ab-btn-primary ab-pro-cta">
-                {APPLE_ICON}
-                Download on the App Store
-              </a>
+              <StoreBadges className="ab-pro-cta" />
             </div>
           </div>
         </div>
@@ -154,22 +160,19 @@ export default function About() {
         <div className="ab-container">
           <div className="ab-trust-inner">
             <div className="ab-trust-text">
-              <p className="ab-label">For AFL stats research</p>
+              <p className="ab-label">For stats research</p>
               <h2 className="ab-h2" style={{ textAlign: "left", marginBottom: 14 }}>
                 Stats and research.<br />Nothing else.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, margin: 0 }}>
-                Neeko Stats surfaces AFL hit rates, form data and matchup context for research and entertainment purposes.
-              </p>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", lineHeight: 1.65, marginTop: 14 }}>
-                Neeko Stats does not provide betting tips, does not partner with any bookmaker, and does not endorse or encourage gambling.
+                Neeko Stats is made in Melbourne by one person. It is not affiliated with the AFL, the NBA, the Premier League, or any bookmaker. No ads. No betting content. Research and entertainment only.
               </p>
             </div>
             <div className="ab-trust-stats">
               {[
-                { n: "600+", label: "AFL players tracked", color: TEAL },
-                { n: "18",   label: "teams, all positions", color: GOLD },
-                { n: "iOS",  label: "native iPhone app",   color: "#60a5fa" },
+                { n: "3", label: "sports in one app",        color: TEAL },
+                { n: "2", label: "platforms: iOS and Android", color: GOLD },
+                { n: "0", label: "ads, no bookmakers",        color: "#60a5fa" },
               ].map(({ n, label, color }) => (
                 <div key={n} className="ab-trust-card">
                   <p className="ab-trust-n" style={{ color }}>{n}</p>
@@ -190,7 +193,7 @@ export default function About() {
               Questions or feedback?
             </h2>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65, marginBottom: 22 }}>
-              Based in Melbourne, Victoria, Australia.
+              Made in Melbourne by Matthew Nixon.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               <a
@@ -302,28 +305,6 @@ export default function About() {
           white-space: nowrap;
         }
 
-        /* Button */
-        .ab-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: linear-gradient(150deg, ${GOLD} 0%, #c8940e 100%);
-          color: #07090C;
-          font-weight: 800;
-          font-size: clamp(13px, 1vw, 15px);
-          padding: 13px 24px;
-          border-radius: 12px;
-          text-decoration: none;
-          letter-spacing: 0.01em;
-          box-shadow: 0 8px 24px rgba(224,174,45,0.28), 0 3px 10px rgba(0,0,0,0.45);
-          transition: transform 0.18s ease, box-shadow 0.18s ease;
-          white-space: nowrap;
-        }
-        .ab-btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 14px 32px rgba(224,174,45,0.40), 0 3px 10px rgba(0,0,0,0.45);
-        }
-
         /* Feature grid */
         .ab-feature-grid {
           display: grid;
@@ -419,7 +400,6 @@ export default function About() {
           color: rgba(255,255,255,0.78);
         }
         .ab-pro-cta {
-          width: 100%;
           justify-content: center;
           box-sizing: border-box;
         }

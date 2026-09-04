@@ -1,87 +1,101 @@
 import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { APP_STORE_URL } from "@/constants/appStore";
+import { IOS_URL, ANDROID_URL } from "@/config/stores";
 
 const DARK  = "#07090C";
 const GOLD  = "#E0AE2D";
 const TEAL  = "#22c55e";
-const APP_STORE = APP_STORE_URL;
 
-const APPLE_ICON = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-  </svg>
-);
+function StoreBadges({ className }: { className?: string }) {
+  return (
+    <div className={className} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+      <a href={IOS_URL} target="_blank" rel="noopener noreferrer">
+        <img
+          src="/images/app-store-badge.svg"
+          alt="Download on the App Store"
+          height="48"
+          style={{ height: 48, width: "auto", display: "block" }}
+        />
+      </a>
+      <a href={ANDROID_URL} target="_blank" rel="noopener noreferrer">
+        <img
+          src="/images/GetItOnGooglePlay_Badge_Web_color_English.png"
+          alt="Get it on Google Play"
+          height="48"
+          style={{ height: 48, width: "auto", display: "block" }}
+        />
+      </a>
+    </div>
+  );
+}
 
 const FEATURES = [
   {
-    label: "Match Boards",
-    copy:  "Every game, every round. Six stat lenses and hit rates for every line.",
-    stat:  "Round-by-round",
+    label: "Three sports, one app",
+    copy:  "Follow the AFL season and finals, the NBA regular season, and every Premier League matchweek. Switch sports in a tap.",
+    stat:  "AFL · NBA · EPL",
     color: TEAL,
     icon:  "▦",
   },
   {
-    label: "Fantasy HQ",
-    copy:  "Live breakevens, projections, hot and cold form, and value.",
-    stat:  "487 players",
+    label: "Match boards",
+    copy:  "Every fixture in the round with the players involved and their recent output.",
+    stat:  "Round-by-round",
     color: GOLD,
     icon:  "◆",
   },
   {
-    label: "Hit Rate Builder",
-    copy:  "Pick a player, a stat and a line. Season, last 10, last 5, home and away.",
-    stat:  "Any player, any line",
+    label: "Player form and hit rates",
+    copy:  "See how often a player has reached a statistical mark across recent games. Disposals, goals, points, rebounds, assists, shots, tackles — laid out clearly.",
+    stat:  "Every player",
     color: TEAL,
     icon:  "◎",
   },
   {
-    label: "Trend Stack",
-    copy:  "Research six players at once and see how often they all cleared in the same round.",
-    stat:  "Up to six players",
+    label: "Hit Rate Builder",
+    copy:  "Pick a player, a stat and a threshold. See the history behind it, game by game, including against the same opponent.",
+    stat:  "Any player, any mark",
     color: "#60a5fa",
     icon:  "◉",
   },
   {
-    label: "Player Profiles",
-    copy:  "Career highs, consistency, venue splits, head-to-head and percentile rankings.",
-    stat:  "Career and form",
+    label: "Trend Stacks",
+    copy:  "Combine players and stats into a single view to compare form side by side.",
+    stat:  "Up to six players",
     color: GOLD,
     icon:  "◎",
   },
   {
-    label: "Team Trends",
-    copy:  "Compare scoring, defence and last-5 form across every AFL team.",
-    stat:  "All 18 teams",
+    label: "Fantasy HQ (AFL)",
+    copy:  "Breakevens, price changes and projections for AFL Fantasy coaches, through the season.",
+    stat:  "AFL Fantasy",
     color: "#60a5fa",
     icon:  "▦",
   },
 ];
 
 const SCREENSHOTS = [
-  { src: "/images/app-screenshots/Neeko_Screenshot_03_1242x2688.png", caption: "Hit Rate Builder", sub: "Any player, any line, any split",
-    alt: "Hit Rate Builder showing Bailey Smith at 30+ disposals, 81 percent for the season, with a last-10 game history" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_05_1242x2688.png", caption: "Player Profile", sub: "Career highs, form & head-to-head",
-    alt: "Harry Sheezel player profile showing disposals summary, career high, consistency score and head-to-head history against Melbourne" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_04_1242x2688.png", caption: "Trend Stack", sub: "Up to six players at once",
-    alt: "Trend Stack showing three players researched together and how often all three cleared their lines in the same round" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_06_1242x2688.png", caption: "Team Trends", sub: "Ladder, scoring & team leaders",
-    alt: "Hawthorn team page showing season record, scoring profile and team leaders" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_08_1242x2688.png", caption: "Hot & Cold", sub: "Last 5 against season average",
-    alt: "Fantasy HQ hot and cold showing last-5 average against season average for 477 players" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_09_1242x2688.png", caption: "Value", sub: "Projected points per $100k",
-    alt: "Fantasy HQ value showing projected points per $100k for 361 players" },
-  { src: "/images/app-screenshots/Neeko_Screenshot_10_1242x2688.png", caption: "Captains", sub: "Highest projected scores",
-    alt: "Fantasy HQ captains showing the highest projected scores for Round 19" },
+  { src: "/images/app-screenshots/01-afl-home.png", caption: "AFL Home", sub: "Fixtures, watchlist and form",
+    alt: "Neeko Stats AFL home screen" },
+  { src: "/images/app-screenshots/02-afl-board.png", caption: "AFL Match Board", sub: "Player hit rates by fixture",
+    alt: "AFL match board with player hit rates" },
+  { src: "/images/app-screenshots/03-builder-afl.png", caption: "Hit Rate Builder", sub: "Any player, any mark",
+    alt: "Hit Rate Builder for an AFL player" },
+  { src: "/images/app-screenshots/04-epl-board.png", caption: "Premier League Board", sub: "Matchweek stats",
+    alt: "Premier League match board" },
+  { src: "/images/app-screenshots/05-builder.png", caption: "Hit Rate Builder", sub: "NBA player thresholds",
+    alt: "Hit Rate Builder for an NBA player" },
+  { src: "/images/app-screenshots/06-player-profile.png", caption: "Player Profile", sub: "Career and form",
+    alt: "AFL player profile" },
 ];
 
 const PRO_FEATURES = [
   "Every match board, every round",
   "All six stat lenses: disposals, goals, marks, tackles, kicks and fantasy",
-  "Fantasy HQ — all 487 players, every sort and filter",
-  "Hit Rate Builder and Trend Stack for every player",
-  "Matchup context and team trends",
+  "Fantasy HQ — breakevens, price changes and projections",
+  "Hit Rate Builder and Trend Stacks for every player",
+  "Trend Stacks up to six legs",
 ];
 
 function useReveal() {
@@ -127,11 +141,11 @@ export default function Index() {
   return (
     <div style={{ background: DARK, overflowX: "hidden", minHeight: "100vh" }}>
       <Helmet>
-        <title>Neeko Stats — AFL Stats App for iPhone</title>
-        <meta name="description" content="Neeko Stats is the AFL stats app for iPhone. Player hit rates, match boards, team form and recent trends — before the bounce." />
+        <title>Neeko Stats — AFL, NBA & EPL player stats app</title>
+        <meta name="description" content="Player stats, hit rates, match boards, Builder and Trend Stacks for AFL, NBA and the English Premier League. Independent, no ads." />
         <link rel="canonical" href="https://neekostats.com.au/" />
-        <meta property="og:title" content="Neeko Stats — AFL Stats App for iPhone" />
-        <meta property="og:description" content="AFL hit rates, match boards and team trends in your pocket. Now on iOS." />
+        <meta property="og:title" content="Neeko Stats — AFL, NBA & EPL player stats app" />
+        <meta property="og:description" content="Player stats, hit rates, match boards, Builder and Trend Stacks for AFL, NBA and the English Premier League. Independent, no ads." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
@@ -147,27 +161,24 @@ export default function Index() {
 
           {/* Text column */}
           <div className="ix-hero-text">
-            <p className="ix-eyebrow">Now on iOS</p>
+            <p className="ix-eyebrow">NOW ON iOS AND ANDROID</p>
             <h1 className="ix-h1">
-              AFL stats{" "}
+              AFL, NBA and Premier League{" "}
               <span style={{ color: GOLD, textShadow: "0 0 36px rgba(224,174,45,0.32)" }}>
-                before bounce.
+                player stats in one app.
               </span>
             </h1>
             <p className="ix-sub">
-              Hit rates, live breakevens and player trends. 487 AFL players, refreshed every morning — built for iPhone.
+              Hit rates, form and trends for every player — built for people who want to understand form, not just read a scoreboard. Independent. No ads.
             </p>
 
             <div className="ix-ctas">
-              <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary">
-                {APPLE_ICON}
-                Download on the App Store
-              </a>
+              <StoreBadges />
             </div>
 
             <div className="ix-chips">
-              <span className="ix-chip">487 players</span>
-              <span className="ix-chip">Refreshed every morning during the season</span>
+              <span className="ix-chip">Three sports</span>
+              <span className="ix-chip">Refreshed daily in season</span>
               <span className="ix-chip">Stats research only</span>
             </div>
           </div>
@@ -178,34 +189,34 @@ export default function Index() {
               {/* Left rear — Home screen */}
               <div className="ix-phone ix-phone-left">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_01_1242x2688.png"
-                  alt="Neeko Stats home screen showing Round 19 fixtures, watchlist players with breakeven, projection and form, and top season stat lines"
+                  src="/images/app-screenshots/01-afl-home.png"
+                  alt="Neeko Stats AFL home screen"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="1242"
-                  height="2688"
+                  width="725"
+                  height="1568"
                 />
               </div>
-              {/* Centre front — Round board, COL v CAR */}
+              {/* Centre front — Round board */}
               <div className="ix-phone ix-phone-center">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_02_1242x2688.png"
-                  alt="Neeko Stats match board for Collingwood v Carlton showing projections and 15+, 20+, 25+ and 30+ disposal hit rates, with Nick Daicos expanded"
+                  src="/images/app-screenshots/02-afl-board.png"
+                  alt="AFL match board with player hit rates"
                   className="ix-phone-img"
                   loading="eager"
-                  width="1242"
-                  height="2688"
+                  width="725"
+                  height="1568"
                 />
               </div>
-              {/* Right rear — Fantasy HQ Rankings */}
+              {/* Right rear — Player profile */}
               <div className="ix-phone ix-phone-right">
                 <img
-                  src="/images/app-screenshots/Neeko_Screenshot_07_1242x2688.png"
-                  alt="Neeko Stats Fantasy HQ rankings showing live breakevens and projections for 487 players"
+                  src="/images/app-screenshots/06-player-profile.png"
+                  alt="AFL player profile"
                   className="ix-phone-img"
                   loading="lazy"
-                  width="1242"
-                  height="2688"
+                  width="725"
+                  height="1568"
                 />
               </div>
             </div>
@@ -247,7 +258,7 @@ export default function Index() {
           {[...SCREENSHOTS, ...SCREENSHOTS].map(({ src, caption, sub, alt }, i) => (
             <div key={i} className="ix-marquee-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="1242" height="2688" />
+                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="725" height="1568" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -260,7 +271,7 @@ export default function Index() {
           {SCREENSHOTS.slice(0, 4).map(({ src, caption, sub, alt }) => (
             <div key={caption} className="ix-shot-grid-item">
               <div className="ix-shot-frame">
-                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="1242" height="2688" />
+                <img src={src} alt={alt} className="ix-shot-img" loading="lazy" width="725" height="1568" />
               </div>
               <p className="ix-shot-caption">{caption}</p>
               <p className="ix-shot-sub">{sub}</p>
@@ -286,7 +297,7 @@ export default function Index() {
                 <span style={{ color: GOLD }}>match board.</span>
               </h2>
               <p className="ix-pro-desc">
-                Full-round access — every stat lens, fine-line thresholds, matchup compare and team context. Everything you need before lockout.
+                Core stats, profiles and Fantasy HQ are free, with a set number of free matches each round and Trend Stacks up to three legs. Neeko Pro unlocks every match and Trend Stacks up to six legs — weekly or monthly, with a free trial on the weekly plan.
               </p>
 
               <div className="ix-pro-feats">
@@ -300,15 +311,7 @@ export default function Index() {
                 ))}
               </div>
 
-              <div className="ix-pro-price-row">
-                <p className="ix-pro-price">$9.99</p>
-                <span className="ix-pro-period">/ month</span>
-              </div>
-
-              <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary ix-pro-cta">
-                {APPLE_ICON}
-                Download on the App Store
-              </a>
+              <StoreBadges className="ix-pro-cta" />
             </div>
           </div>
         </div>
@@ -319,22 +322,19 @@ export default function Index() {
         <div className="ix-container">
           <div className="ix-trust-inner">
             <div className="ix-trust-text reveal" style={{ "--delay": "0s" } as React.CSSProperties}>
-              <p className="ix-label">For AFL stats research</p>
+              <p className="ix-label">For stats research</p>
               <h2 className="ix-h2" style={{ textAlign: "left", marginBottom: 16 }}>
                 Stats and research.<br />Nothing else.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, margin: 0 }}>
-                Neeko Stats surfaces AFL hit rates, form data and matchup context for research and entertainment purposes.
-              </p>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", lineHeight: 1.65, marginTop: 14 }}>
-                Neeko Stats does not provide betting tips, does not partner with any bookmaker, and does not endorse or encourage gambling.
+                Neeko Stats is made in Melbourne by one person. It is not affiliated with the AFL, the NBA, the Premier League, or any bookmaker. No ads. No betting content. Research and entertainment only.
               </p>
             </div>
             <div className="ix-trust-stats reveal" style={{ "--delay": "0.12s" } as React.CSSProperties}>
               {[
-                { n: "487",     label: "AFL players tracked",  color: TEAL    },
-                { n: "18",     label: "teams, all positions", color: GOLD    },
-                { n: "iOS",    label: "native iPhone app",    color: "#60a5fa" },
+                { n: "3",     label: "sports in one app",        color: TEAL    },
+                { n: "2",     label: "platforms: iOS and Android", color: GOLD    },
+                { n: "0",     label: "ads, no bookmakers",        color: "#60a5fa" },
               ].map(({ n, label, color }) => (
                 <div key={n} className="ix-trust-card">
                   <p className="ix-trust-n" style={{ color }}>{n}</p>
@@ -354,14 +354,9 @@ export default function Index() {
             Ready before first bounce.
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.48)", marginBottom: 32, lineHeight: 1.6 }}>
-            Download Neeko Stats free on iPhone. Follow your players, read the free boards, and upgrade to Pro when you're ready.
+            Download Neeko Stats free on iOS or Android. Follow your players, read the free boards, and upgrade to Pro when you're ready.
           </p>
-          <a href={APP_STORE} target="_blank" rel="noopener noreferrer" className="ix-btn-primary ix-btn-lg">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-            </svg>
-            Download on the App Store
-          </a>
+          <StoreBadges className="ix-btn-lg" />
         </div>
       </section>
 
@@ -372,7 +367,7 @@ export default function Index() {
             <div className="ix-footer-brand">
               <img src="/logo.png" alt="Neeko Stats" style={{ height: 20, width: "auto", opacity: 0.75 }} />
               <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>
-                AFL stats for iPhone.
+                AFL, NBA and Premier League stats. Made in Melbourne by Matthew Nixon.
               </p>
             </div>
             <nav className="ix-footer-nav" aria-label="Footer navigation">
@@ -381,6 +376,7 @@ export default function Index() {
                 { label: "Privacy",  to: "/privacy-policy" },
                 { label: "Contact",  to: "/contact"        },
                 { label: "About",    to: "/about"          },
+                { label: "Delete my data", to: "/delete-data" },
               ].map(({ label, to }) => (
                 <Link key={to} to={to} className="ix-footer-link">{label}</Link>
               ))}
@@ -481,30 +477,8 @@ export default function Index() {
         }
 
         /* ── Button ─────────────────────────────────────────────────────────── */
-        .ix-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: linear-gradient(150deg, ${GOLD} 0%, #c8940e 100%);
-          color: #07090C;
-          font-weight: 800;
-          font-size: clamp(13px, 1vw, 15px);
-          padding: 14px 26px;
-          border-radius: 12px;
-          text-decoration: none;
-          letter-spacing: 0.01em;
-          box-shadow: 0 8px 24px rgba(224,174,45,0.28), 0 3px 10px rgba(0,0,0,0.45);
-          transition: transform 0.18s ease, box-shadow 0.18s ease;
-          white-space: nowrap;
-        }
-        .ix-btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 14px 32px rgba(224,174,45,0.40), 0 3px 10px rgba(0,0,0,0.45);
-        }
         .ix-btn-lg {
-          font-size: clamp(14px, 1.1vw, 17px);
-          padding: 16px 34px;
-          border-radius: 14px;
+          justify-content: center;
         }
 
         /* ── Hero ───────────────────────────────────────────────────────────── */
@@ -805,27 +779,7 @@ export default function Index() {
           font-weight: 600;
           color: rgba(255,255,255,0.78);
         }
-        .ix-pro-price-row {
-          display: flex;
-          align-items: baseline;
-          gap: 6px;
-          margin-bottom: 20px;
-        }
-        .ix-pro-price {
-          margin: 0;
-          font-size: 32px;
-          font-weight: 900;
-          color: ${GOLD};
-          letter-spacing: -0.03em;
-          line-height: 1;
-        }
-        .ix-pro-period {
-          font-size: 14px;
-          font-weight: 600;
-          color: rgba(255,255,255,0.40);
-        }
         .ix-pro-cta {
-          width: 100%;
           justify-content: center;
           box-sizing: border-box;
         }
@@ -930,7 +884,7 @@ export default function Index() {
             transform: translateX(0%) rotate(5deg);
           }
           .ix-ctas { flex-direction: column; align-items: stretch; }
-          .ix-ctas .ix-btn-primary { justify-content: center; }
+          .ix-ctas > div { justify-content: center; }
           .ix-chips { flex-wrap: wrap; overflow: visible; }
           .ix-feature-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
           .ix-feature-card { padding: 12px; }
@@ -939,7 +893,6 @@ export default function Index() {
           .ix-trust-inner .ix-h2 { text-align: center; }
           .ix-footer-row { flex-direction: column; align-items: center; gap: 12px; }
           .ix-footer-nav { grid-template-columns: repeat(2, auto); gap: 8px 28px; justify-items: center; }
-          .ix-pro-price { font-size: 26px; }
           .ix-marquee-item { width: clamp(120px, 36vw, 170px); }
         }
 
@@ -953,7 +906,7 @@ export default function Index() {
         /* ── Desktop ────────────────────────────────────────────────────────── */
         @media (min-width: 1024px) {
           .ix-hero { padding-bottom: 0; }
-          .ix-footer-nav { grid-template-columns: repeat(4, auto); gap: 0 18px; }
+          .ix-footer-nav { grid-template-columns: repeat(5, auto); gap: 0 18px; }
           .ix-hero-inner {
             grid-template-columns: 1fr auto;
             gap: 80px;

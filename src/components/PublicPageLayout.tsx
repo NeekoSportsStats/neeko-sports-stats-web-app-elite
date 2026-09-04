@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { APP_STORE_URL } from "@/constants/appStore";
+import { IOS_URL } from "@/config/stores";
 
-const APP_STORE = APP_STORE_URL;
 const GOLD = "#E0AE2D";
 
 const FOOTER_LINKS = [
@@ -10,6 +9,7 @@ const FOOTER_LINKS = [
   { label: "Privacy",  to: "/privacy-policy" },
   { label: "Contact",  to: "/contact"        },
   { label: "About",    to: "/about"          },
+  { label: "Delete my data", to: "/delete-data" },
 ];
 
 export function PublicPageLayout() {
@@ -47,7 +47,7 @@ export function PublicPageLayout() {
         </Link>
 
         <a
-          href={APP_STORE}
+          href={IOS_URL}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -100,7 +100,7 @@ export function PublicPageLayout() {
 
             <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }} className="ppl-footer-brand">
               <img src="/logo.png" alt="Neeko Stats" style={{ height: 20, width: "auto", opacity: 0.75 }} />
-              <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>AFL stats for iPhone.</span>
+              <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>AFL, NBA and Premier League stats. Made in Melbourne by Matthew Nixon.</span>
             </Link>
 
             <nav className="ppl-footer-nav" aria-label="Footer navigation">
