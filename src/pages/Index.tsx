@@ -266,7 +266,7 @@ export default function Index() {
           ))}
         </div>
 
-        {/* Desktop: static premium gallery (4 screenshots, centred) */}
+        {/* Desktop: static premium gallery (all screenshots, centred) */}
         <div className="ix-screenshot-grid ix-container">
           {SCREENSHOTS.map(({ src, caption, sub, alt }) => (
             <div key={caption} className="ix-shot-grid-item">
@@ -936,7 +936,7 @@ export default function Index() {
           .ix-marquee-track { display: none !important; }
           .ix-screenshot-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 18px;
             margin: 0 auto;
           }
