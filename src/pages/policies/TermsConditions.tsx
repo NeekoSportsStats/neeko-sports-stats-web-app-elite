@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "2 July 2026";
+const LAST_UPDATED = "2 September 2026";
 
 const TOC = [
   { id: "s1",  label: "Acceptance of Terms" },
@@ -55,7 +55,7 @@ export default function TermsConditions() {
     <>
       <Helmet>
         <title>Terms &amp; Conditions | Neeko Stats</title>
-        <meta name="description" content="Terms and conditions for using Neeko Stats, the AFL statistics app for iPhone." />
+        <meta name="description" content="Terms and conditions for using Neeko Stats, the AFL, NBA and Premier League statistics app for iOS and Android." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
@@ -100,10 +100,10 @@ export default function TermsConditions() {
             <Section id="s2" num="2" title="About the App">
               <Prose>
                 <p>
-                  Neeko Stats is an AFL statistics and research app for iPhone. The App provides AFL player hit rates, match boards, team form, and matchup data. Information is provided for research, informational, and entertainment purposes only.
+                  Neeko Stats is an AFL, NBA and Premier League statistics and research app for iOS and Android. The App provides player hit rates, match boards, team form, and matchup data. Information is provided for research, informational, and entertainment purposes only.
                 </p>
                 <p>
-                  Neeko Stats is not affiliated with the AFL, AFL clubs, or any official AFL data provider.
+                  Neeko Stats is not affiliated with the AFL, the NBA, the Premier League, or any official data provider.
                 </p>
               </Prose>
             </Section>
@@ -125,7 +125,7 @@ export default function TermsConditions() {
             <Section id="s4" num="4" title="No Guarantee of Accuracy">
               <Prose>
                 <p>
-                  AFL statistics, projections, and hit rates are based on available data and are subject to change. AFL player performance is inherently variable and data may be delayed, incomplete, or inaccurate despite our reasonable efforts.
+                  Statistics, projections, and hit rates are based on available data and are subject to change. Player performance is inherently variable and data may be delayed, incomplete, or inaccurate despite our reasonable efforts.
                 </p>
                 <BulletList items={[
                   "Past performance does not guarantee future results",
@@ -154,12 +154,12 @@ export default function TermsConditions() {
             <Section id="s6" num="6" title="Neeko Pro Subscription">
               <Prose>
                 <p>
-                  Neeko Pro is a premium subscription that unlocks additional features within the Neeko Stats app, including full-round match boards, all stat lenses, fine-line thresholds, and matchup compare access.
+                  Neeko Pro is a premium subscription that unlocks additional features within the Neeko Stats app, including full-round match boards, all stat lenses, finer thresholds, and matchup compare access.
                 </p>
                 <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4 mt-2">
-                  <p className="text-sm font-bold text-white/80 mb-2">Neeko Pro — $9.99 AUD / month</p>
+                  <p className="text-sm font-bold text-white/80 mb-2">Neeko Pro</p>
                   <p className="text-sm text-white/55">
-                    Neeko Pro is available as an auto-renewing monthly subscription for $9.99 AUD per month. Payment is charged to your Apple ID through the App Store. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your Apple ID subscription settings.
+                    Neeko Pro is available as an auto-renewing subscription on iOS and Android. Payment is charged through the App Store or Google Play depending on your device. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your Apple ID or Google Play subscription settings.
                   </p>
                 </div>
                 <p>
@@ -171,20 +171,20 @@ export default function TermsConditions() {
             <Section id="s7" num="7" title="Subscription Management and Cancellation">
               <Prose>
                 <p>
-                  Neeko Pro subscriptions are managed entirely through Apple. You can manage or cancel your subscription at any time through:
+                  Neeko Pro subscriptions are managed entirely through Apple or Google. You can manage or cancel your subscription at any time through:
                 </p>
                 <BulletList items={[
-                  "iPhone Settings → [Your Name] → Subscriptions",
-                  "The App Store → your account → Subscriptions",
+                  "iPhone Settings → [Your Name] → Subscriptions (iOS)",
+                  "Google Play Store → your profile → Payments & subscriptions (Android)",
                 ]} />
                 <BulletList items={[
                   "Cancelling stops future renewals — no further charges will be made after the current period ends",
                   "Access to Neeko Pro continues until the end of the current paid billing period",
                   "Cancellation does not automatically trigger a refund for the current period unless required by law",
-                  "Refund requests must be submitted to Apple at reportaproblem.apple.com",
+                  "Refund requests must be submitted to Apple at reportaproblem.apple.com or Google at support.google.com/googleplay",
                 ]} />
                 <p>
-                  Because Neeko Pro is purchased through Apple in-app purchase, refund requests are managed by Apple. Neeko Stats does not receive or store your payment card details. For our full refund terms, see the{" "}
+                  Because Neeko Pro is purchased through the App Store or Google Play, refund requests are managed by Apple or Google respectively. Neeko Stats does not receive or store your payment card details. For our full refund terms, see the{" "}
                   <a href="/refund-policy" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">Refund Policy</a>.
                 </p>
               </Prose>

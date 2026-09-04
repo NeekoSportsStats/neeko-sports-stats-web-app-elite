@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "2 July 2026";
+const LAST_UPDATED = "2 September 2026";
 
 const TOC = [
   { id: "s1", label: "Overview" },
@@ -86,7 +86,7 @@ export default function RefundPolicy() {
             <Section id="s1" num="1" title="Overview">
               <Prose>
                 <p>
-                  Neeko Stats offers Neeko Pro, a monthly subscription for the iOS app. Billing is handled by Apple via the App Store. This policy outlines the refund and cancellation terms for Neeko Pro.
+                  Neeko Stats offers Neeko Pro, a subscription for the iOS and Android app. Billing is handled by Apple and Google via the App Store and Google Play. This policy outlines the refund and cancellation terms for Neeko Pro.
                 </p>
               </Prose>
             </Section>
@@ -97,15 +97,15 @@ export default function RefundPolicy() {
                 <div className="space-y-3 mt-2">
                   <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
                     <p className="text-sm font-bold text-white/80 mb-1">
-                      Neeko Pro — $9.99 AUD / month
+                      Neeko Pro
                     </p>
                     <p className="text-sm text-white/60">
-                      Recurring monthly billing via Apple. Automatically renews unless cancelled before the next billing date. A receipt is sent by Apple after each successful charge.
+                      Recurring billing via the App Store or Google Play depending on your device. Automatically renews unless cancelled before the next billing date. A receipt is sent by Apple or Google after each successful charge.
                     </p>
                   </div>
                 </div>
                 <p>
-                  All billing, receipts, and payment management are handled by Apple through the App Store. Neeko Stats does not have direct access to your payment information.
+                  All billing, receipts, and payment management are handled by Apple or Google through the App Store or Google Play respectively. Neeko Stats does not have direct access to your payment information.
                 </p>
               </Prose>
             </Section>
@@ -113,7 +113,7 @@ export default function RefundPolicy() {
             <Section id="s3" num="3" title="Cancellation">
               <Prose>
                 <p>
-                  Neeko Pro can be cancelled at any time through your iPhone Settings → Apple ID → Subscriptions.
+                  Neeko Pro can be cancelled at any time through your iPhone Settings → Apple ID → Subscriptions (iOS) or Google Play Store → your profile → Payments & subscriptions (Android).
                 </p>
                 <BulletList items={[
                   "Cancelling stops future billing immediately",
@@ -127,9 +127,12 @@ export default function RefundPolicy() {
             <Section id="s4" num="4" title="Refund Eligibility">
               <Prose>
                 <p>
-                  Because billing is managed by Apple, most refund requests must be submitted directly to Apple at{" "}
+                  Because billing is managed by Apple or Google, most refund requests must be submitted directly to the relevant platform — Apple at{" "}
                   <a href="https://reportaproblem.apple.com" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
                     reportaproblem.apple.com
+                  </a>{" "}or Google at{" "}
+                  <a href="https://support.google.com/googleplay/contact/play_console_support" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    support.google.com/googleplay
                   </a>.
                   Refund requests are reviewed in the following circumstances:
                 </p>
@@ -161,6 +164,9 @@ export default function RefundPolicy() {
                   For App Store billing issues, visit{" "}
                   <a href="https://reportaproblem.apple.com" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
                     reportaproblem.apple.com
+                  </a>. For Google Play billing issues, visit{" "}
+                  <a href="https://support.google.com/googleplay/contact/play_console_support" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    support.google.com/googleplay
                   </a>.
                 </p>
                 <p>

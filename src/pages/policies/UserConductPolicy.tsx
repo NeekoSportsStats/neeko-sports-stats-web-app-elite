@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "2 July 2026";
+const LAST_UPDATED = "2 September 2026";
 
 const TOC = [
   { id: "s1", label: "Acceptable Use" },
@@ -85,12 +85,12 @@ export default function UserConductPolicy() {
             <Section id="s1" num="1" title="Acceptable Use">
               <Prose>
                 <p>
-                  Neeko Stats is an AFL statistics and research app provided for personal, non-commercial use. By accessing the platform you agree to use it only for its intended purpose.
+                  Neeko Stats is an AFL, NBA and Premier League statistics and research app provided for personal, non-commercial use. By accessing the platform you agree to use it only for its intended purpose.
                 </p>
                 <p>Permitted use includes:</p>
                 <BulletList items={[
                   "Viewing player stats, rankings, projections, and analysis for personal fantasy or research purposes",
-                  "Accessing Neeko Pro features under a single active subscription tied to your own account",
+                  "Accessing Neeko Pro features under a single active subscription tied to your own Apple ID or Google Account",
                   "Contacting support through official channels",
                   "Brief, non-commercial references to individual insights, provided attribution to Neeko Stats is included",
                 ]} />
@@ -104,15 +104,13 @@ export default function UserConductPolicy() {
               <Prose>
                 <p>The following will result in account suspension or permanent termination:</p>
                 <BulletList items={[
-                  "Sharing login credentials to give non-subscribers access to premium content",
-                  "Creating multiple accounts to circumvent free-tier limits or bans",
-                  "Providing false information during account registration or billing",
+                  "Sharing your Apple ID or Google Account with others to give non-subscribers access to Neeko Pro",
                   "Using stolen or unauthorised payment methods",
                   "Filing fraudulent chargebacks without first contacting support",
                   "Impersonating another user, staff member, or organisation",
                 ]} />
                 <p className="text-white/50 mt-2">
-                  Accounts terminated for misuse forfeit all subscription benefits. Refunds in such cases are subject to the Refund Policy and applicable law.
+                  Misuse may result in access to Neeko Pro features being withdrawn. Refunds in such cases are subject to the Refund Policy and applicable law.
                 </p>
               </Prose>
             </Section>

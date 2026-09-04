@@ -1,28 +1,35 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { FileText, Shield, DollarSign, Mail, ChevronRight, ArrowLeft } from "lucide-react";
+import { FileText, Shield, DollarSign, Mail, ChevronRight, ArrowLeft, Trash2 } from "lucide-react";
 
 const POLICIES = [
   {
     title: "Privacy Policy",
     description: "What data we collect, how it is used, and your rights.",
-    updated: "2 July 2026",
+    updated: "2 September 2026",
     icon: Shield,
     url: "/privacy-policy",
   },
   {
     title: "Terms & Conditions",
     description: "App usage rules, Neeko Pro subscription terms, and legal agreements.",
-    updated: "2 July 2026",
+    updated: "2 September 2026",
     icon: FileText,
     url: "/terms-conditions",
   },
   {
     title: "Refund Policy",
-    description: "Neeko Pro refund terms and how to request a refund via Apple.",
-    updated: "2 July 2026",
+    description: "Neeko Pro refund terms and how to request a refund via Apple or Google Play.",
+    updated: "2 September 2026",
     icon: DollarSign,
     url: "/refund-policy",
+  },
+  {
+    title: "Delete My Data",
+    description: "Request deletion of your personal data from Neeko Stats.",
+    updated: null,
+    icon: Trash2,
+    url: "/delete-data",
   },
   {
     title: "Contact",

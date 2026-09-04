@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const LAST_UPDATED = "2 July 2026";
+const LAST_UPDATED = "2 September 2026";
 
 const TOC = [
   { id: "s1",  label: "Overview" },
@@ -103,12 +103,15 @@ export default function SecurityPolicy() {
             <Section id="s2" num="2" title="Payment Security">
               <Prose>
                 <p>
-                  Neeko Pro is purchased exclusively through Apple in-app purchase. Apple handles all payment processing, billing, and receipts. Neeko Stats does not receive, handle, or store full credit card numbers or CVV codes.
+                  Neeko Pro is purchased through Apple in-app purchase or Google Play billing. Apple and Google handle all payment processing, billing, and receipts. Neeko Stats does not receive, handle, or store full credit card numbers or CVV codes.
                 </p>
                 <p>
-                  For details about Apple's security and privacy practices, visit{" "}
+                  For details about Apple's and Google's security and privacy practices, visit{" "}
                   <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
                     apple.com/legal/privacy
+                  </a>{" "}or{" "}
+                  <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    policies.google.com/privacy
                   </a>.
                 </p>
               </Prose>
@@ -117,10 +120,7 @@ export default function SecurityPolicy() {
             <Section id="s3" num="3" title="Authentication & Account Security">
               <Prose>
                 <p>
-                  Authentication and account access are managed through trusted infrastructure providers. User passwords are not stored in plain text. Session tokens are used to maintain authenticated access and are subject to expiry.
-                </p>
-                <p>
-                  Account credentials are not visible to Neeko Stats staff and should be kept confidential by the user.
+                  The app requires no account, password or login. An app user identifier is created automatically for subscription entitlement only. Your subscription is tied to your Apple ID or Google Account, which are secured by Apple and Google, not by us.
                 </p>
               </Prose>
             </Section>
@@ -128,7 +128,7 @@ export default function SecurityPolicy() {
             <Section id="s4" num="4" title="Data Transmission">
               <Prose>
                 <p>
-                  Data transmitted between your browser and our servers is protected using standard encryption protocols. This applies to all platform traffic, including account sign-in, subscription management, and data retrieval.
+                  Data transmitted between your browser and our servers is protected using standard encryption protocols. This applies to all platform traffic, including subscription verification and data retrieval.
                 </p>
               </Prose>
             </Section>
@@ -161,16 +161,17 @@ export default function SecurityPolicy() {
                   <div>
                     <p className="font-semibold text-white/60 mb-2">Active user data</p>
                     <BulletList items={[
-                      "Account information: retained while the account is active",
+                      "Subscription entitlement records: retained while the subscription is active",
                       "Usage logs: retained for operational and security purposes",
                       "Analytics data: may be anonymised and retained for platform improvement",
                     ]} />
                   </div>
                   <div>
-                    <p className="font-semibold text-white/60 mb-2">Deleted account data</p>
+                    <p className="font-semibold text-white/60 mb-2">Data deleted on request</p>
                     <BulletList items={[
                       "Personal data is removed from active systems within 30 days of deletion",
                       "Billing records may be retained for up to 7 years for legal and accounting purposes",
+                      "See neekostats.com.au/delete-data",
                     ]} />
                   </div>
                 </div>
@@ -198,13 +199,9 @@ export default function SecurityPolicy() {
 
             <Section id="s10" num="10" title="User Account Security">
               <Prose>
-                <p>Users are responsible for maintaining the security of their own account. We recommend:</p>
-                <BulletList items={[
-                  "Use a strong, unique password for your Neeko Stats account",
-                  "Never share your password or account credentials with anyone",
-                  "Sign out of shared or public devices after use",
-                  "Report any suspected unauthorised access immediately to matthew@neekostats.com.au",
-                ]} />
+                <p>
+                  Because Neeko Stats has no account or password, there is nothing for you to secure on our side. Protect your Apple ID or Google Account credentials, and report any suspected unauthorised access to Apple or Google.
+                </p>
               </Prose>
             </Section>
 
@@ -224,7 +221,7 @@ export default function SecurityPolicy() {
               <Prose>
                 <p>Neeko Stats relies on the following third-party providers:</p>
                 <BulletList items={[
-                  <><strong className="text-white/60">Apple App Store:</strong> In-app purchase, subscription management and payment processing for Neeko Pro.</>,
+                  <><strong className="text-white/60">Apple App Store & Google Play:</strong> In-app purchase, subscription management and payment processing for Neeko Pro.</>,
                   <><strong className="text-white/60">RevenueCat:</strong> Subscription status and entitlement management within the app.</>,
                   <><strong className="text-white/60">Supabase:</strong> Database, authentication, and backend infrastructure.</>,
                   <><strong className="text-white/60">Analytics tools:</strong> Where used, data is processed in anonymised or aggregate form.</>,
